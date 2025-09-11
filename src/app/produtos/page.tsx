@@ -38,8 +38,19 @@ async function ProductsList() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {products.map((product: any) => (
           <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="aspect-square bg-gray-200 flex items-center justify-center">
-              <span className="text-gray-500">Imagem do Produto</span>
+            <div className="aspect-square bg-gray-200 relative overflow-hidden">
+              {product.thumbnail ? (
+                <img
+                  src={product.thumbnail}
+                  alt={product.title}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <span className="text-gray-500">Sem imagem</span>
+                </div>
+              )}
             </div>
             <div className="p-4">
               <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 min-h-[3rem]">
