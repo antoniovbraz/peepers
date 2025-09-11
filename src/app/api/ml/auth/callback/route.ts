@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
     console.log('Received authorization code, exchanging for token...');
 
     // Exchange code for access token
-    const tokenData = await mlApi.exchangeCodeForToken(code);
+    const redirectUri = `${process.env.NEXTAUTH_URL}/api/ml/auth/callback`;
+    const tokenData = await mlApi.exchangeCodeForToken(code, redirectUri);
     
     console.log('Token exchange successful:', {
       access_token: tokenData.access_token ? 'received' : 'missing',
