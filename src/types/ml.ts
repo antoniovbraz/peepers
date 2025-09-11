@@ -357,9 +357,17 @@ export interface MLSearchResult {
 }
 
 // Cache Types
-export interface CachedProduct extends MLProduct {
+export interface CachedProduct {
+  code?: number;
+  body?: MLProduct;
   cached_at: string;
   cache_ttl: number;
+  // Also support direct MLProduct properties for backward compatibility
+  id?: string;
+  status?: 'active' | 'paused' | 'closed' | 'under_review' | 'inactive';
+  title?: string;
+  price?: number;
+  [key: string]: any;
 }
 
 export interface CachedQuestions {

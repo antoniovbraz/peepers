@@ -46,7 +46,8 @@ class CacheManager {
         return null;
       }
       
-      return cached;
+      // Extract products from nested structure if needed
+      return cached.map(product => product.body || product as any);
     } catch (error) {
       console.error('Cache get error:', error);
       return null;
@@ -65,7 +66,14 @@ class CacheManager {
         kv.set(CACHE_KEYS.PRODUCTS_ALL, cachedProducts, { ex: CACHE_TTL.PRODUCTS }),
         kv.set(
           CACHE_KEYS.PRODUCTS_ACTIVE, 
-          cachedProducts.filter(p => p.status === 'active'),
+          cachedProducts.filter(p => {
+            // Handle nested structure from ML API response
+            if (p.body && p.body.status) {
+              return p.body.status === 'active';
+            }
+            // Handle direct structure
+            return p.status === 'active';
+          }),
           { ex: CACHE_TTL.PRODUCTS }
         )
       ]);
@@ -104,7 +112,8 @@ class CacheManager {
         return null;
       }
       
-      return cached;
+      // Extract products from nested structure if needed
+      return cached.map(product => product.body || product as any);
     } catch (error) {
       console.error('Cache get error:', error);
       return null;
@@ -126,7 +135,8 @@ class CacheManager {
         return null;
       }
       
-      return cached;
+      // Extract product from nested structure if needed
+      return cached.body || cached as any;
     } catch (error) {
       console.error('Cache get error:', error);
       return null;
