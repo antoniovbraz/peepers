@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
+import ReloadButton from '@/components/ReloadButton';
 
 // Componente para listar produtos
 async function ProductsList() {
@@ -73,12 +74,9 @@ async function ProductsList() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-600 mb-4">Erro ao carregar produtos.</p>
-        <button 
-          onClick={() => window.location.reload()} 
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
+        <ReloadButton className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
           Tentar Novamente
-        </button>
+        </ReloadButton>
       </div>
     );
   }
