@@ -55,14 +55,18 @@ export async function GET(request: NextRequest) {
 
     // Store code_verifier temporarily (in a real app, use secure session storage)
     const response = NextResponse.redirect(authUrl.toString());
-    response.cookies.set('pkce_verifier', codeVerifier, { 
+    response.cookies.set('ml_code_verifier', codeVerifier, { 
       httpOnly: true, 
-      secure: true, 
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
       maxAge: 600 // 10 minutes
     });
     response.cookies.set('oauth_state', state, { 
       httpOnly: true, 
-      secure: true, 
+      secure: true,
+      sameSite: 'lax', 
+      path: '/',
       maxAge: 600 
     });
 
