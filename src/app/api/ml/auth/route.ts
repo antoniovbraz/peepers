@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+// Removed edge runtime for consistency with other OAuth routes
 
 // PKCE helper functions
 function generateCodeVerifier(): string {

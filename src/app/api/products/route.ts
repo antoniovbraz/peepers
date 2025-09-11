@@ -1,26 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
+import { mlApi } from '@/lib/ml-api';
 
-export const runtime = 'edge';
+// Removed edge runtime - incompatible with Redis operations
 
 export async function GET(request: NextRequest) {
   try {
     console.log('Products API called');
     
     // Try to get products from cache first
-    const products = await cache.getActiveProducts();
+    let products = await cache.getActiveProducts();
     console.log('Products from cache:', products ? products.length : 0);
 
-    // If no cached products, return empty with sync suggestion
+    // If no cached products, try to fetch from ML API as fallback
     if (!products || products.length === 0) {
-      console.log('No cached products found');
+      console.log('No cached products found, trying ML API fallback...');
       
-      return NextResponse.json({
-        products: [],
-        total: 0,
-        message: 'No products found. Please sync products first.',
-        last_sync: await cache.getLastSyncTime()
-      });
+      try {
+        // Get access token from cache
+        const tokenData = await cache.getUser('access_token');
+        
+        if (tokenData && tokenData.token) {
+          // Check if token is not expired
+          if (!tokenData.expires_at || new Date(tokenData.expires_at) > new Date()) {
+            console.log('Using ML API fallback with valid token');
+            
+            // Set token in ML API instance
+            mlApi.setAccessToken(tokenData.token, tokenData.user_id);
+            
+            // Fetch products directly from ML API
+            const mlProducts = await mlApi.syncAllProducts();
+            
+            if (mlProducts.length > 0) {
+              console.log(`Fallback successful: fetched ${mlProducts.length} products from ML API`);
+              
+              // Cache the products for future requests
+              await cache.setAllProducts(mlProducts);
+              
+              // Use the fetched products
+              products = mlProducts.filter(p => p.status === 'active');
+            }
+          }
+        }
+      } catch (fallbackError) {
+        console.error('ML API fallback failed:', fallbackError);
+      }
+      
+      // If still no products after fallback, return empty with sync suggestion
+      if (!products || products.length === 0) {
+        return NextResponse.json({
+          products: [],
+          total: 0,
+          message: 'No products found. Please sync products first.',
+          last_sync: await cache.getLastSyncTime(),
+          fallback_attempted: true
+        });
+      }
     }
 
     // Transform products for frontend display

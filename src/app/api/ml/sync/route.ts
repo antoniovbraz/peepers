@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { mlApi } from '@/lib/ml-api';
 import { cache } from '@/lib/cache';
 
-export const runtime = 'edge';
+// Removed edge runtime - incompatible with Redis operations
 export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
