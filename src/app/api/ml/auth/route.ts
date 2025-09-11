@@ -5,7 +5,7 @@ export const runtime = 'edge';
 export async function GET(request: NextRequest) {
   try {
     const clientId = process.env.ML_CLIENT_ID;
-    const redirectUri = `${process.env.NEXTAUTH_URL}/api/ml/auth/callback`;
+    const redirectUri = 'https://peepers.vercel.app/api/ml/auth/callback';
     
     if (!clientId) {
       return NextResponse.json(

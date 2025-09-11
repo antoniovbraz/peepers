@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     console.log('Received authorization code, exchanging for token...');
 
     // Exchange code for access token
-    const redirectUri = `${process.env.NEXTAUTH_URL}/api/ml/auth/callback`;
+    const redirectUri = 'https://peepers.vercel.app/api/ml/auth/callback';
     const tokenData = await mlApi.exchangeCodeForToken(code, redirectUri);
     
     console.log('Token exchange successful:', {
