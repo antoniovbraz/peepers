@@ -58,7 +58,105 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get sync status and cache stats
+    // Check if user wants to trigger sync via GET (for convenience)
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action');
+    
+    if (action === 'sync') {
+      // Redirect to POST for actual sync
+      return new NextResponse(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Peepers - Sincronizando Produtos</title>
+            <meta charset="utf-8">
+            <style>
+              body { 
+                font-family: Arial, sans-serif; 
+                max-width: 600px; 
+                margin: 50px auto; 
+                padding: 20px;
+                text-align: center;
+              }
+              .loading { color: #007bff; }
+              .result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+              .success { background: #d4edda; color: #155724; }
+              .error { background: #f8d7da; color: #721c24; }
+              .button {
+                display: inline-block;
+                background: #007bff;
+                color: white;
+                padding: 10px 20px;
+                text-decoration: none;
+                border-radius: 5px;
+                margin: 10px;
+              }
+            </style>
+          </head>
+          <body>
+            <h1 class="loading">🔄 Sincronizando Produtos...</h1>
+            <p>Aguarde enquanto sincronizamos seus produtos do Mercado Livre.</p>
+            
+            <div id="result"></div>
+            
+            <script>
+              async function syncProducts() {
+                try {
+                  const response = await fetch('/api/ml/sync', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    }
+                  });
+                  
+                  const data = await response.json();
+                  const resultDiv = document.getElementById('result');
+                  
+                  if (response.ok) {
+                    resultDiv.innerHTML = \`
+                      <div class="result success">
+                        <h2>✅ Sincronização Concluída!</h2>
+                        <p>\${data.message}</p>
+                        <p><strong>Produtos sincronizados:</strong> \${data.products_count}</p>
+                        <a href="/" class="button">Voltar ao Site</a>
+                        <a href="/produtos" class="button">Ver Produtos</a>
+                      </div>
+                    \`;
+                  } else {
+                    resultDiv.innerHTML = \`
+                      <div class="result error">
+                        <h2>❌ Erro na Sincronização</h2>
+                        <p><strong>Erro:</strong> \${data.message || data.error}</p>
+                        <a href="/api/ml/sync?action=sync" class="button">Tentar Novamente</a>
+                        <a href="/" class="button">Voltar ao Site</a>
+                      </div>
+                    \`;
+                  }
+                } catch (error) {
+                  document.getElementById('result').innerHTML = \`
+                    <div class="result error">
+                      <h2>❌ Erro de Conexão</h2>
+                      <p><strong>Erro:</strong> \${error.message}</p>
+                      <a href="/api/ml/sync?action=sync" class="button">Tentar Novamente</a>
+                      <a href="/" class="button">Voltar ao Site</a>
+                    </div>
+                  \`;
+                }
+              }
+              
+              // Start sync automatically
+              syncProducts();
+            </script>
+          </body>
+        </html>
+      `, {
+        headers: {
+          'Content-Type': 'text/html',
+        },
+      });
+    }
+    
+    // Default GET behavior - return sync status
     const [cacheStats, lastSync] = await Promise.all([
       cache.getCacheStats(),
       cache.getLastSyncTime()

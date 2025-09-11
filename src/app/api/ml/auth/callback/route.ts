@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
           </div>
 
           <a href="/" class="button">Voltar ao Site</a>
-          <a href="/api/ml/sync" class="button">Sincronizar Produtos Agora</a>
+          <a href="/api/ml/sync?action=sync" class="button">Sincronizar Produtos Agora</a>
           
           <p><small>User ID: ${tokenData.user_id}</small></p>
         </body>
