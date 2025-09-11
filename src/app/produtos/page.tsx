@@ -4,54 +4,38 @@ import { Suspense } from 'react';
 // Componente para listar produtos
 async function ProductsList() {
   try {
-    // Por enquanto, vamos simular produtos
-    // Em produção, isso virá da API /api/products
-    const mockProducts = [
-      {
-        id: 'MLB123456789',
-        title: 'Smartphone Samsung Galaxy A54 128GB',
-        price: 1299.99,
-        currency_id: 'BRL',
-        thumbnail: '/api/placeholder/300/300',
-        condition: 'new',
-        shipping: { free_shipping: true },
-        available_quantity: 10
-      },
-      {
-        id: 'MLB987654321',
-        title: 'Notebook Lenovo IdeaPad 3 Intel Core i5',
-        price: 2499.99,
-        currency_id: 'BRL',
-        thumbnail: '/api/placeholder/300/300',
-        condition: 'new',
-        shipping: { free_shipping: true },
-        available_quantity: 5
-      },
-      {
-        id: 'MLB456789123',
-        title: 'Fone de Ouvido Bluetooth JBL Tune 510BT',
-        price: 199.99,
-        currency_id: 'BRL',
-        thumbnail: '/api/placeholder/300/300',
-        condition: 'new',
-        shipping: { free_shipping: false },
-        available_quantity: 25
-      },
-      {
-        id: 'MLB789123456',
-        title: 'Smart TV LG 50" 4K UHD',
-        price: 1899.99,
-        currency_id: 'BRL',
-        thumbnail: '/api/placeholder/300/300',
-        condition: 'new',
-        shipping: { free_shipping: true },
-        available_quantity: 3
-      }
-    ];
+    // Buscar produtos reais da API
+    const response = await fetch(`${process.env.NEXTAUTH_URL || 'https://peepers.vercel.app'}/api/products`, {
+      cache: 'no-store' // Sempre buscar dados atualizados
+    });
+    
+    if (!response.ok) {
+      throw new Error('Falha ao carregar produtos');
+    }
+    
+    const data = await response.json();
+    const products = data.products || [];
+
+    if (products.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-gray-600 mb-4">Nenhum produto encontrado.</p>
+          <p className="text-sm text-gray-500 mb-4">
+            Os produtos podem ainda estar sendo sincronizados do Mercado Livre.
+          </p>
+          <a 
+            href="/api/ml/sync?action=sync"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Sincronizar Produtos
+          </a>
+        </div>
+      );
+    }
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {mockProducts.map((product) => (
+        {products.map((product: any) => (
           <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
             <div className="aspect-square bg-gray-200 flex items-center justify-center">
               <span className="text-gray-500">Imagem do Produto</span>

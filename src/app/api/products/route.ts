@@ -1,77 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { mlApi } from '@/lib/ml-api';
 import { cache } from '@/lib/cache';
-import { MLProduct } from '@/types/ml';
 
 export const runtime = 'edge';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') as 'active' | 'all' | null;
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
-    const category = searchParams.get('category');
-    const search = searchParams.get('search');
-
-    // Try to get products from cache first
-    let products: MLProduct[] = [];
+    console.log('Products API called');
     
-    if (status === 'all') {
-      products = (await cache.getAllProducts()) || [];
-    } else {
-      // Default to active products
-      products = (await cache.getActiveProducts()) || [];
-    }
+    // Try to get products from cache first
+    const products = await cache.getActiveProducts();
+    console.log('Products from cache:', products ? products.length : 0);
 
-    // If no cached products, try to sync
-    if (products.length === 0) {
-      console.log('No cached products found, attempting sync...');
+    // If no cached products, return empty with sync suggestion
+    if (!products || products.length === 0) {
+      console.log('No cached products found');
       
-      try {
-        const freshProducts = await mlApi.syncAllProducts();
-        await cache.setAllProducts(freshProducts);
-        
-        products = status === 'all' ? freshProducts : freshProducts.filter(p => p.status === 'active');
-      } catch (error) {
-        console.error('Failed to sync products:', error);
-        
-        return NextResponse.json(
-          { 
-            error: 'Products not available',
-            message: 'Failed to load products from cache and API',
-            products: [],
-            total: 0
-          },
-          { status: 503 }
-        );
-      }
+      return NextResponse.json({
+        products: [],
+        total: 0,
+        message: 'No products found. Please sync products first.',
+        last_sync: await cache.getLastSyncTime()
+      });
     }
 
-    // Apply filters
-    let filteredProducts = products;
-
-    if (category) {
-      filteredProducts = filteredProducts.filter(p => p.category_id === category);
-    }
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filteredProducts = filteredProducts.filter(p => 
-        p.title.toLowerCase().includes(searchLower) ||
-        p.attributes.some(attr => 
-          attr.name.toLowerCase().includes(searchLower) ||
-          attr.value_name?.toLowerCase().includes(searchLower)
-        )
-      );
-    }
-
-    // Apply pagination
-    const total = filteredProducts.length;
-    const paginatedProducts = filteredProducts.slice(offset, offset + limit);
-
-    // Transform products for frontend (remove sensitive data, optimize for display)
-    const transformedProducts = paginatedProducts.map(product => ({
+    // Transform products for frontend display
+    const transformedProducts = products.map(product => ({
       id: product.id,
       title: product.title,
       price: product.price,
@@ -79,37 +32,25 @@ export async function GET(request: NextRequest) {
       available_quantity: product.available_quantity,
       condition: product.condition,
       thumbnail: product.secure_thumbnail || product.thumbnail,
-      pictures: product.pictures.slice(0, 5), // Limit pictures for performance
+      pictures: product.pictures?.slice(0, 3) || [], // Limit pictures for performance
       permalink: product.permalink,
       status: product.status,
       shipping: {
-        free_shipping: product.shipping.free_shipping,
-        local_pick_up: product.shipping.local_pick_up
+        free_shipping: product.shipping?.free_shipping || false,
+        local_pick_up: product.shipping?.local_pick_up || false
       },
-      attributes: product.attributes.filter(attr => 
+      attributes: product.attributes?.filter(attr => 
         ['BRAND', 'MODEL', 'COLOR', 'SIZE'].includes(attr.id)
-      ).slice(0, 5), // Only show key attributes
-      category_id: product.category_id,
-      last_updated: product.last_updated
+      ).slice(0, 3) || [], // Only show key attributes
+      category_id: product.category_id
     }));
+
+    console.log('Returning', transformedProducts.length, 'transformed products');
 
     return NextResponse.json({
       products: transformedProducts,
-      pagination: {
-        total,
-        limit,
-        offset,
-        has_more: offset + limit < total
-      },
-      filters: {
-        status: status || 'active',
-        category,
-        search
-      },
-      cache_info: {
-        cached: true,
-        last_sync: await cache.getLastSyncTime()
-      }
+      total: transformedProducts.length,
+      last_sync: await cache.getLastSyncTime()
     });
 
   } catch (error) {
@@ -117,7 +58,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json(
       { 
-        error: 'Internal server error',
+        error: 'Failed to load products',
         message: error instanceof Error ? error.message : 'Unknown error',
         products: [],
         total: 0
