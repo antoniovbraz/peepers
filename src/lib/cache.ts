@@ -1,5 +1,11 @@
-import { kv } from '@vercel/kv';
+import { createClient } from '@vercel/kv';
 import { MLProduct, MLQuestion, CachedProduct, CachedQuestions } from '@/types/ml';
+
+// Create KV client with our environment variables
+const kv = createClient({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 // Cache TTL constants (in seconds)
 const CACHE_TTL = {
