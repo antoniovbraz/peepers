@@ -25,6 +25,15 @@ class MercadoLivreAPI {
     this.userId = process.env.ML_USER_ID;
   }
 
+  // Method to set access token dynamically
+  setAccessToken(accessToken: string, userId: string, refreshToken?: string): void {
+    this.accessToken = accessToken;
+    this.userId = userId;
+    if (refreshToken) {
+      this.refreshToken = refreshToken;
+    }
+  }
+
   // OAuth Methods
   getAuthUrl(redirectUri: string, state?: string): string {
     const params = new URLSearchParams({

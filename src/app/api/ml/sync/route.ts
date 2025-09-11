@@ -19,6 +19,28 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      // Get access token from cache
+      const tokenData = await cache.getUser('access_token');
+      if (!tokenData || !tokenData.token) {
+        return NextResponse.json(
+          { error: 'No access token found. Please authorize with Mercado Livre first.' },
+          { status: 401 }
+        );
+      }
+
+      // Check if token is expired
+      if (tokenData.expires_at && new Date(tokenData.expires_at) < new Date()) {
+        return NextResponse.json(
+          { error: 'Access token expired. Please re-authorize with Mercado Livre.' },
+          { status: 401 }
+        );
+      }
+
+      console.log('Using access token for user:', tokenData.user_id);
+
+      // Set the token in the ML API instance
+      mlApi.setAccessToken(tokenData.token, tokenData.user_id);
+      
       // Sync all products from ML API
       const products = await mlApi.syncAllProducts();
       
