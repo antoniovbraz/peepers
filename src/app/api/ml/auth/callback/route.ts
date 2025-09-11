@@ -25,12 +25,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Retrieve code_verifier from cookies
+    const codeVerifier = request.cookies.get('ml_code_verifier')?.value;
+    
+    if (!codeVerifier) {
+      console.error('PKCE code_verifier not found in cookies');
+      return NextResponse.json(
+        { error: 'PKCE code_verifier missing - please restart authorization' },
+        { status: 400 }
+      );
+    }
+
     console.log('Received authorization code:', code);
+    console.log('Retrieved code_verifier from cookies');
     console.log('Exchanging for token...');
 
-    // Exchange code for access token
+    // Exchange code for access token with PKCE
     const redirectUri = 'https://peepers.vercel.app/api/ml/auth/callback';
-    const tokenData = await mlApi.exchangeCodeForToken(code, redirectUri);
+    const tokenData = await mlApi.exchangeCodeForToken(code, redirectUri, codeVerifier);
     
     console.log('Token exchange successful:', {
       access_token: tokenData.access_token ? 'received' : 'missing',
@@ -51,8 +63,8 @@ export async function GET(request: NextRequest) {
       connected_at: new Date().toISOString()
     });
 
-    // Return success page
-    return new NextResponse(`
+    // Create response with success page
+    const response = new NextResponse(`
       <!DOCTYPE html>
       <html>
         <head>
@@ -101,6 +113,17 @@ export async function GET(request: NextRequest) {
         'Content-Type': 'text/html',
       },
     });
+
+    // Clear the code_verifier cookie after successful token exchange
+    response.cookies.set('ml_code_verifier', '', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      maxAge: 0, // Expire immediately
+      path: '/'
+    });
+
+    return response;
 
   } catch (error) {
     console.error('OAuth callback error:', error);

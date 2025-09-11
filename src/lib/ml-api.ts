@@ -37,20 +37,27 @@ class MercadoLivreAPI {
     return `https://auth.mercadolivre.com.br/authorization?${params.toString()}`;
   }
 
-  async exchangeCodeForToken(code: string, redirectUri: string): Promise<MLTokenResponse> {
+  async exchangeCodeForToken(code: string, redirectUri: string, codeVerifier?: string): Promise<MLTokenResponse> {
+    const params: Record<string, string> = {
+      grant_type: 'authorization_code',
+      client_id: this.clientId,
+      client_secret: this.clientSecret,
+      code,
+      redirect_uri: redirectUri
+    };
+
+    // Add PKCE code_verifier if provided
+    if (codeVerifier) {
+      params.code_verifier = codeVerifier;
+    }
+
     const response = await fetch(`${this.baseUrl}/oauth/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json'
       },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-        code,
-        redirect_uri: redirectUri
-      })
+      body: new URLSearchParams(params)
     });
 
     if (!response.ok) {
