@@ -58,27 +58,60 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Transform products for frontend display
-    const transformedProducts = products.map(product => ({
-      id: product.id,
-      title: product.title,
-      price: product.price,
-      currency_id: product.currency_id,
-      available_quantity: product.available_quantity,
-      condition: product.condition,
-      thumbnail: product.secure_thumbnail || product.thumbnail,
-      pictures: product.pictures?.slice(0, 3) || [], // Limit pictures for performance
-      permalink: product.permalink,
-      status: product.status,
-      shipping: {
-        free_shipping: product.shipping?.free_shipping || false,
-        local_pick_up: product.shipping?.local_pick_up || false
-      },
-      attributes: product.attributes?.filter(attr => 
-        ['BRAND', 'MODEL', 'COLOR', 'SIZE'].includes(attr.id)
-      ).slice(0, 3) || [], // Only show key attributes
-      category_id: product.category_id
-    }));
+    // Transform products for frontend display with high-quality images
+    const transformedProducts = products.map(product => {
+      // Get high-quality image - prefer secure_url from pictures array
+      let highQualityImage = product.secure_thumbnail || product.thumbnail;
+      let allPictures: Array<{
+        id: string;
+        url: string;
+        secure_url: string;
+        size: string;
+        max_size: string;
+        quality: string;
+      }> = [];
+      
+      if (product.pictures && product.pictures.length > 0) {
+        // Use the first high-quality image as main thumbnail
+        const firstPicture = product.pictures[0];
+        highQualityImage = firstPicture.secure_url || firstPicture.url || highQualityImage;
+        
+        // Prepare all pictures with high-quality URLs
+        allPictures = product.pictures.slice(0, 5).map(pic => ({
+          id: pic.id || '',
+          url: pic.url || '',
+          secure_url: pic.secure_url || '',
+          size: pic.size || '',
+          max_size: pic.max_size || '',
+          quality: pic.quality || 'standard'
+        }));
+      }
+
+      return {
+        id: product.id,
+        title: product.title,
+        price: product.price,
+        currency_id: product.currency_id,
+        available_quantity: product.available_quantity,
+        condition: product.condition,
+        thumbnail: highQualityImage,
+        pictures: allPictures,
+        permalink: product.permalink,
+        status: product.status,
+        shipping: {
+          free_shipping: product.shipping?.free_shipping || false,
+          local_pick_up: product.shipping?.local_pick_up || false
+        },
+        attributes: product.attributes?.filter(attr => 
+          ['BRAND', 'MODEL', 'COLOR', 'SIZE'].includes(attr.id)
+        ).slice(0, 4) || [], // Show more key attributes
+        category_id: product.category_id,
+        // Add additional useful fields
+        sold_quantity: product.sold_quantity || 0,
+        warranty: product.warranty,
+        tags: product.tags || []
+      };
+    });
 
     console.log('Returning', transformedProducts.length, 'transformed products');
 
