@@ -35,6 +35,10 @@ class MercadoLivreAPI {
     }
   }
 
+  hasAccessToken(): boolean {
+    return !!this.accessToken;
+  }
+
   // OAuth Methods
   getAuthUrl(redirectUri: string, state?: string): string {
     const params = new URLSearchParams({
@@ -131,13 +135,18 @@ class MercadoLivreAPI {
           await this.refreshAccessToken();
         }
 
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          ...(options.headers as Record<string, string> | undefined)
+        };
+
+        if (this.accessToken) {
+          headers['Authorization'] = `Bearer ${this.accessToken}`;
+        } // if no token, omit Authorization header
+
         const response = await fetch(url, {
           ...options,
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'Content-Type': 'application/json',
-            ...options.headers
-          }
+          headers
         });
 
         if (response.status === 401 && i < retries - 1) {
