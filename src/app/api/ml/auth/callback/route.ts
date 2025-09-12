@@ -9,6 +9,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const error = searchParams.get('error');
+    const state = searchParams.get('state');
+    const oauthState = request.cookies.get('oauth_state')?.value;
 
     if (error) {
       console.error('OAuth error:', error);
@@ -16,6 +18,21 @@ export async function GET(request: NextRequest) {
         { error: 'OAuth authorization failed', details: error },
         { status: 400 }
       );
+    }
+
+    if (!state || !oauthState || state !== oauthState) {
+      const response = NextResponse.json(
+        { error: 'Invalid OAuth state' },
+        { status: 400 }
+      );
+      response.cookies.set('oauth_state', '', {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        maxAge: 0,
+        path: '/',
+      });
+      return response;
     }
 
     if (!code) {
@@ -121,6 +138,15 @@ export async function GET(request: NextRequest) {
       sameSite: 'lax',
       maxAge: 0, // Expire immediately
       path: '/'
+    });
+
+    // Remove the OAuth state cookie
+    response.cookies.set('oauth_state', '', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
     });
 
     return response;
