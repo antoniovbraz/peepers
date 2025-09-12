@@ -134,24 +134,29 @@ async function handleQuestionsWebhook(webhook: MLWebhook): Promise<void> {
     }
 
     console.log(`Processing question update for: ${questionId}`);
-    
+
+    if (!mlApi.hasAccessToken()) {
+      console.log('Skipping question processing: no access token');
+      return;
+    }
+
     // Get question details to find the item ID
     try {
       const question = await mlApi.getQuestion(questionId);
       const itemId = question.item_id;
-      
+
       // Invalidate questions cache for this product
       await cache.invalidateProductQuestions(itemId);
-      
+
       // Fetch fresh questions and update cache
       const questionsResponse = await mlApi.getProductQuestions(itemId);
       await cache.setProductQuestions(itemId, questionsResponse.questions);
-      
+
       // Revalidate product page to show updated Q&A
       await revalidatePath(`/produtos/${itemId}`);
-      
+
       console.log(`Updated questions cache for product: ${itemId}`);
-      
+
     } catch (error) {
       console.error(`Failed to process question ${questionId}:`, error);
       // Don't throw - we still want to acknowledge the webhook
@@ -173,7 +178,12 @@ async function handleOrdersWebhook(webhook: MLWebhook): Promise<void> {
     }
 
     console.log(`Processing order update for: ${orderId}`);
-    
+
+    if (!mlApi.hasAccessToken()) {
+      console.log('Skipping order processing: no access token');
+      return;
+    }
+
     // For now, just log the order update
     // In the future, you might want to:
     // - Update inventory counts
