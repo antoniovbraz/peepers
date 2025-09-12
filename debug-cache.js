@@ -10,16 +10,25 @@ const kv = createClient({
 async function debugCache() {
   try {
     console.log('🔍 Debugging Cache...\n');
-    
+
+    // Helper to scan keys by pattern
+    async function scanKeys(pattern) {
+      const keys = [];
+      for await (const key of kv.scanIterator({ match: pattern })) {
+        keys.push(key);
+      }
+      return keys;
+    }
+
     // Check all keys
     console.log('1. Getting all keys:');
-    const allKeys = await kv.keys('*');
+    const allKeys = await scanKeys('*');
     console.log('All keys:', allKeys);
     console.log('Total keys:', allKeys.length);
-    
+
     // Check products keys specifically
     console.log('\n2. Getting product keys:');
-    const productKeys = await kv.keys('products:*');
+    const productKeys = await scanKeys('products:*');
     console.log('Product keys:', productKeys);
     
     // Check specific product keys
@@ -47,7 +56,7 @@ async function debugCache() {
     
     // Check individual product keys
     console.log('\n5. Checking individual product keys:');
-    const individualProductKeys = await kv.keys('product:*');
+    const individualProductKeys = await scanKeys('product:*');
     console.log('Individual product keys count:', individualProductKeys.length);
     console.log('Sample individual keys:', individualProductKeys.slice(0, 5));
     
