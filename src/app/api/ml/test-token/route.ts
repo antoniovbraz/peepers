@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
 
     console.log('Testing token exchange with code:', code);
 
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
     // Direct API call to ML
     const tokenResponse = await fetch('https://api.mercadolibre.com/oauth/token', {
       method: 'POST',
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
         client_id: process.env.ML_CLIENT_ID!,
         client_secret: process.env.ML_CLIENT_SECRET!,
         code: code,
-        redirect_uri: 'https://peepers.vercel.app/api/ml/auth/callback'
+        redirect_uri: `${baseUrl}/api/ml/auth/callback`
       })
     });
 

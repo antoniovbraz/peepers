@@ -25,7 +25,8 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
 export async function GET(request: NextRequest) {
   try {
     const clientId = process.env.ML_CLIENT_ID;
-    const redirectUri = 'https://peepers.vercel.app/api/ml/auth/callback';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+    const redirectUri = `${baseUrl}/api/ml/auth/callback`;
     
     if (!clientId) {
       return NextResponse.json(
