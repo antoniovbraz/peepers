@@ -4,11 +4,10 @@ import { cache } from '@/lib/cache';
 
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
+  const { id: productId } = await params;
   try {
-    const { params } = context;
-    const { id: productId } = params;
     
     if (!productId) {
       return NextResponse.json(
@@ -124,9 +123,6 @@ export async function GET(
   } catch (error) {
     console.error('Product API error:', error);
 
-    const { params } = context;
-    const { id: productId } = params;
-
     return NextResponse.json(
       {
         error: 'Internal server error',
@@ -141,9 +137,9 @@ export async function GET(
 // Update product cache (for admin use)
 export async function POST(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
-  const { params } = context;
+  const { id: productId } = await params;
   // Require admin token for cache updates
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
@@ -151,7 +147,6 @@ export async function POST(
   }
 
   try {
-    const { id: productId } = params;
     const { action } = await request.json();
     
     if (action === 'refresh_cache') {
@@ -193,7 +188,8 @@ export async function POST(
     return NextResponse.json(
       {
         error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
+        product_id: productId
       },
       { status: 500 }
     );
