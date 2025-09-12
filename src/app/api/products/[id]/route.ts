@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { mlApi } from '@/lib/ml-api';
 import { cache } from '@/lib/cache';
 
-export const GET = (async (
+export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
-) => {
+  context: { params: { id: string } }
+): Promise<NextResponse> {
   try {
+    const { params } = context;
     const { id: productId } = params;
     
     if (!productId) {
@@ -122,11 +123,12 @@ export const GET = (async (
 
   } catch (error) {
     console.error('Product API error:', error);
-    
+
+    const { params } = context;
     const { id: productId } = params;
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
         message: error instanceof Error ? error.message : 'Unknown error',
         product_id: productId
@@ -134,13 +136,14 @@ export const GET = (async (
       { status: 500 }
     );
   }
-}) as any;
+}
 
 // Update product cache (for admin use)
-export const POST = (async (
+export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
-) => {
+  context: { params: { id: string } }
+): Promise<NextResponse> {
+  const { params } = context;
   // Require admin token for cache updates
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
@@ -186,13 +189,13 @@ export const POST = (async (
     
   } catch (error) {
     console.error('Product POST API error:', error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
         message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
   }
-}) as any;
+}
