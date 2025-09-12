@@ -41,6 +41,12 @@ This project uses [Vercel KV](https://vercel.com/docs/storage/vercel-kv) to cach
 the cache rely on iterating over keys with `scan`. Scanning is appropriate for small and medium datasets but it requires reading
 through all matching keys and cannot efficiently paginate very large key sets.
 
+## Environment Variables
+
+Set the following variable to configure absolute URLs used in API calls and OAuth redirects:
+
+- `NEXT_PUBLIC_APP_URL` – Base URL of the application (e.g., `https://peepers.vercel.app`).
+
 ## API Authentication
 
 Sensitive API routes require a bearer token for access. Set the `ADMIN_SECRET` environment variable and include it in requests using the `Authorization` header:

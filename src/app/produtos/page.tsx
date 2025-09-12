@@ -8,7 +8,9 @@ import type { ProductSummary } from '@/types/product';
 async function ProductsList() {
   try {
     // Buscar produtos reais da API
-    const response = await fetch(`${process.env.NEXTAUTH_URL || 'https://peepers.vercel.app'}/api/products`, {
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
+    const response = await fetch(`${baseUrl}/api/products`, {
       cache: 'no-store' // Sempre buscar dados atualizados
     });
     

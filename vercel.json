@@ -1,4 +1,7 @@
 {
+  "env": {
+    "NEXT_PUBLIC_APP_URL": "https://peepers.vercel.app"
+  },
   "functions": {
     "src/app/api/ml/webhook/route.ts": {
       "maxDuration": 10

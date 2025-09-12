@@ -58,8 +58,12 @@ export async function GET(request: NextRequest) {
     console.log('Exchanging for token...');
 
     // Exchange code for access token with PKCE
-    const redirectUri = 'https://peepers.vercel.app/api/ml/auth/callback';
-    const tokenData = await mlApi.exchangeCodeForToken(code, redirectUri, codeVerifier);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+    const tokenData = await mlApi.exchangeCodeForToken(
+      code,
+      `${baseUrl}/api/ml/auth/callback`,
+      codeVerifier
+    );
     
     console.log('Token exchange successful:', {
       access_token: tokenData.access_token ? 'received' : 'missing',
