@@ -1,5 +1,12 @@
 import { createClient } from '@vercel/kv';
-import { MLProduct, MLQuestion, CachedProduct, CachedQuestions } from '@/types/ml';
+import {
+  MLProduct,
+  MLQuestion,
+  CachedProduct,
+  CachedQuestions,
+  CachedUser,
+  CachedCategory,
+} from '@/types/ml';
 
 // Create KV client with our environment variables
 const kv = createClient({
@@ -28,6 +35,23 @@ const CACHE_KEYS = {
 } as const;
 
 class CacheManager {
+  private toMLProduct(cached: CachedProduct): MLProduct {
+    if (cached.body) {
+      return cached.body;
+    }
+
+    const { cached_at: _ca, cache_ttl: _ct, code: _code, ...product } = cached;
+    if (
+      typeof product.id === 'string' &&
+      typeof product.title === 'string' &&
+      typeof product.status === 'string'
+    ) {
+      return product as MLProduct;
+    }
+
+    throw new Error('Invalid cached product format');
+  }
+
   // Product Cache Methods
   async getAllProducts(): Promise<MLProduct[] | null> {
     try {
@@ -47,7 +71,7 @@ class CacheManager {
       }
       
       // Extract products from nested structure if needed
-      return cached.map(product => product.body || product as any);
+      return cached.map(product => this.toMLProduct(product));
     } catch (error) {
       console.error('Cache get error:', error);
       return null;
@@ -111,9 +135,9 @@ class CacheManager {
         await this.invalidateProductsCache();
         return null;
       }
-      
+
       // Extract products from nested structure if needed
-      return cached.map(product => product.body || product as any);
+      return cached.map(product => this.toMLProduct(product));
     } catch (error) {
       console.error('Cache get error:', error);
       return null;
@@ -134,9 +158,9 @@ class CacheManager {
         await kv.del(`${CACHE_KEYS.PRODUCT}${productId}`);
         return null;
       }
-      
+
       // Extract product from nested structure if needed
-      return cached.body || cached as any;
+      return this.toMLProduct(cached);
     } catch (error) {
       console.error('Cache get error:', error);
       return null;
@@ -233,16 +257,16 @@ class CacheManager {
   }
 
   // User Cache Methods
-  async getUser(userId: string): Promise<any | null> {
+  async getUser(userId: string): Promise<CachedUser | null> {
     try {
-      return await kv.get(`${CACHE_KEYS.USER}${userId}`);
+      return await kv.get<CachedUser>(`${CACHE_KEYS.USER}${userId}`);
     } catch (error) {
       console.error('Cache get error:', error);
       return null;
     }
   }
 
-  async setUser(userId: string, userData: any): Promise<void> {
+  async setUser(userId: string, userData: CachedUser): Promise<void> {
     try {
       await kv.set(`${CACHE_KEYS.USER}${userId}`, userData, { ex: CACHE_TTL.USER_DATA });
     } catch (error) {
@@ -252,16 +276,16 @@ class CacheManager {
   }
 
   // Categories Cache Methods
-  async getCategories(): Promise<any[] | null> {
+  async getCategories(): Promise<CachedCategory[] | null> {
     try {
-      return await kv.get<any[]>(CACHE_KEYS.CATEGORIES);
+      return await kv.get<CachedCategory[]>(CACHE_KEYS.CATEGORIES);
     } catch (error) {
       console.error('Cache get error:', error);
       return null;
     }
   }
 
-  async setCategories(categories: any[]): Promise<void> {
+  async setCategories(categories: CachedCategory[]): Promise<void> {
     try {
       await kv.set(CACHE_KEYS.CATEGORIES, categories, { ex: CACHE_TTL.CATEGORIES });
     } catch (error) {
