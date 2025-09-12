@@ -7,7 +7,9 @@ import {
   MLTokenResponse,
   MLTokenRefreshResponse,
   MLSearchResult,
-  MLApiResponse
+  MLApiResponse,
+  AnswerResponse,
+  Paging
 } from '@/types/ml';
 
 class MercadoLivreAPI {
@@ -196,11 +198,11 @@ class MercadoLivreAPI {
 
   // Product Methods
   async getUserProducts(
-    userId?: string, 
+    userId?: string,
     status?: 'active' | 'paused' | 'closed',
     limit = 50,
     offset = 0
-  ): Promise<{ results: string[]; paging: any }> {
+  ): Promise<{ results: string[]; paging: Paging }> {
     const targetUserId = userId || this.userId;
     if (!targetUserId) {
       throw new Error('User ID is required');
@@ -212,7 +214,7 @@ class MercadoLivreAPI {
       ...(status && { status })
     });
 
-    return this.makeRequest<{ results: string[]; paging: any }>(
+    return this.makeRequest<{ results: string[]; paging: Paging }>(
       `/users/${targetUserId}/items/search?${params.toString()}`
     );
   }
@@ -271,8 +273,8 @@ class MercadoLivreAPI {
     return this.makeRequest<MLQuestion>(`/questions/${questionId}`);
   }
 
-  async answerQuestion(questionId: string, answer: string): Promise<any> {
-    return this.makeRequest(`/answers`, {
+  async answerQuestion(questionId: string, answer: string): Promise<AnswerResponse> {
+    return this.makeRequest<AnswerResponse>(`/answers`, {
       method: 'POST',
       body: JSON.stringify({
         question_id: parseInt(questionId),
@@ -285,14 +287,14 @@ class MercadoLivreAPI {
     status?: 'UNANSWERED' | 'ANSWERED',
     limit = 50,
     offset = 0
-  ): Promise<{ questions: MLQuestion[]; paging: any }> {
+  ): Promise<{ questions: MLQuestion[]; paging: Paging }> {
     const params = new URLSearchParams({
       limit: limit.toString(),
       offset: offset.toString(),
       ...(status && { status })
     });
 
-    return this.makeRequest<{ questions: MLQuestion[]; paging: any }>(
+    return this.makeRequest<{ questions: MLQuestion[]; paging: Paging }>(
       `/my/received_questions/search?${params.toString()}`
     );
   }
@@ -303,7 +305,7 @@ class MercadoLivreAPI {
     status?: string,
     limit = 50,
     offset = 0
-  ): Promise<{ results: MLOrder[]; paging: any }> {
+  ): Promise<{ results: MLOrder[]; paging: Paging }> {
     const targetUserId = userId || this.userId;
     if (!targetUserId) {
       throw new Error('User ID is required');
@@ -316,7 +318,7 @@ class MercadoLivreAPI {
       ...(status && { 'order.status': status })
     });
 
-    return this.makeRequest<{ results: MLOrder[]; paging: any }>(
+    return this.makeRequest<{ results: MLOrder[]; paging: Paging }>(
       `/orders/search?${params.toString()}`
     );
   }
