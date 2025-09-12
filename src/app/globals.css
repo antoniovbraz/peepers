@@ -190,11 +190,21 @@ body {
 /* Component styles */
 @layer components {
   .btn-primary {
-    @apply bg-primary-500 text-white px-6 py-3 rounded-lg font-medium transition-peepers hover:bg-primary-600 shadow-peepers;
+    background-color: var(--color-primary-500);
+    @apply text-white px-6 py-3 rounded-lg font-medium transition-peepers shadow-peepers;
   }
-  
+
+  .btn-primary:hover {
+    background-color: var(--color-primary-600);
+  }
+
   .btn-secondary {
-    @apply bg-secondary-500 text-primary-900 px-6 py-3 rounded-lg font-medium transition-peepers hover:bg-secondary-600 shadow-peepers;
+    background-color: var(--color-secondary-500);
+    @apply text-primary-900 px-6 py-3 rounded-lg font-medium transition-peepers shadow-peepers;
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--color-secondary-600);
   }
   
   .card-peepers {
@@ -202,7 +212,12 @@ body {
   }
   
   .input-peepers {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-peepers;
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 transition-peepers;
+  }
+
+  .input-peepers:focus {
+    box-shadow: 0 0 0 2px var(--color-primary-500);
+    border-color: var(--color-primary-500);
   }
 }
 
