@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import ReloadButton from '@/components/ReloadButton';
 import PeepersLogo from '@/components/PeepersLogo';
+import type { ProductSummary } from '@/types/product';
 
 // Componente para listar produtos
 async function ProductsList() {
@@ -15,8 +16,8 @@ async function ProductsList() {
       throw new Error('Falha ao carregar produtos');
     }
     
-    const data = await response.json();
-    const products = data.products || [];
+    const data: { products: ProductSummary[] } = await response.json();
+    const products: ProductSummary[] = data.products || [];
 
     if (products.length === 0) {
       return (
@@ -43,7 +44,7 @@ async function ProductsList() {
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {products.map((product: any) => (
+        {products.map((product: ProductSummary) => (
           <div key={product.id} className="card-peepers group">
             <div className="aspect-square bg-peepers-neutral-100 relative overflow-hidden rounded-t-lg">
               {product.thumbnail ? (
