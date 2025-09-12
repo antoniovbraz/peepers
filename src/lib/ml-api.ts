@@ -16,6 +16,7 @@ class MercadoLivreAPI {
   private accessToken?: string;
   private refreshToken?: string;
   private userId?: string;
+  private tokenExpiry?: number;
 
   constructor() {
     this.clientId = process.env.ML_CLIENT_ID!;
@@ -78,6 +79,7 @@ class MercadoLivreAPI {
     this.accessToken = tokenData.access_token;
     this.refreshToken = tokenData.refresh_token;
     this.userId = tokenData.user_id.toString();
+    this.tokenExpiry = Date.now() + tokenData.expires_in * 1000;
 
     return tokenData;
   }
@@ -109,6 +111,7 @@ class MercadoLivreAPI {
     const tokenData = await response.json();
     this.accessToken = tokenData.access_token;
     this.refreshToken = tokenData.refresh_token;
+    this.tokenExpiry = Date.now() + tokenData.expires_in * 1000;
 
     return tokenData;
   }
@@ -164,8 +167,8 @@ class MercadoLivreAPI {
   }
 
   private isTokenExpired(): boolean {
-    // Simple check - in production, you'd want to store token expiry time
-    return false;
+    if (!this.tokenExpiry) return false;
+    return Date.now() >= this.tokenExpiry;
   }
 
   private sleep(ms: number): Promise<void> {
