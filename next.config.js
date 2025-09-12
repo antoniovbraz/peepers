@@ -3,7 +3,9 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  serverExternalPackages: ['redis'],
+  experimental: {
+    serverComponentsExternalPackages: ['redis']
+  },
   images: {
     remotePatterns: [
       {

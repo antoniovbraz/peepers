@@ -1,5 +1,5 @@
 import { Product, ProductQuestion } from '@/types/product';
-import { AppError } from '../error';
+import { AppError } from '@/core/error';
 
 export class MLApiService {
   private accessToken: string | null = null;
