@@ -21,9 +21,9 @@ class MercadoLivreAPI {
   private userId?: string;
   private tokenExpiry?: number;
 
-  constructor() {
-    this.clientId = process.env.ML_CLIENT_ID!;
-    this.clientSecret = process.env.ML_CLIENT_SECRET!;
+  constructor(clientId: string, clientSecret: string) {
+    this.clientId = clientId;
+    this.clientSecret = clientSecret;
     this.accessToken = process.env.ML_ACCESS_TOKEN;
     this.refreshToken = process.env.ML_REFRESH_TOKEN;
     this.userId = process.env.ML_USER_ID;
@@ -386,6 +386,20 @@ class MercadoLivreAPI {
   }
 }
 
+function createMercadoLivreAPI(): MercadoLivreAPI {
+  const clientId = process.env.ML_CLIENT_ID;
+  if (!clientId) {
+    throw new Error('ML_CLIENT_ID environment variable is not set');
+  }
+
+  const clientSecret = process.env.ML_CLIENT_SECRET;
+  if (!clientSecret) {
+    throw new Error('ML_CLIENT_SECRET environment variable is not set');
+  }
+
+  return new MercadoLivreAPI(clientId, clientSecret);
+}
+
 // Export singleton instance
-export const mlApi = new MercadoLivreAPI();
+export const mlApi = createMercadoLivreAPI();
 export default mlApi;

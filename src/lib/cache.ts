@@ -8,11 +8,21 @@ import {
   CachedCategory,
 } from '@/types/ml';
 
-// Create KV client with our environment variables
-const kv = createClient({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+function createKVClient() {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  if (!url) {
+    throw new Error('UPSTASH_REDIS_REST_URL environment variable is not set');
+  }
+
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!token) {
+    throw new Error('UPSTASH_REDIS_REST_TOKEN environment variable is not set');
+  }
+
+  return createClient({ url, token });
+}
+
+const kv = createKVClient();
 
 // Cache TTL constants (in seconds)
 const CACHE_TTL = {
