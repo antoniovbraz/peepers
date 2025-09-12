@@ -61,3 +61,7 @@ This token is required when calling:
 - `POST /api/products/[id]`
 
 Requests without the correct token will receive a `401 Unauthorized` response.
+
+## Runtime Requirements
+
+The `/api/ml/webhook` endpoint uses `revalidatePath` to update ISR pages and therefore runs on the Node.js runtime rather than the Edge runtime.
