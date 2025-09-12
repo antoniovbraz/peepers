@@ -3,17 +3,42 @@ import { MLWebhook } from '@/types/ml';
 import { mlApi } from '@/lib/ml-api';
 import { cache } from '@/lib/cache';
 import { revalidatePath } from 'next/cache';
+import crypto from 'node:crypto';
 
 // revalidatePath requires the Node.js runtime
 export const runtime = 'nodejs';
 export const maxDuration = 10;
 
+function timingSafeEqual(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a, 'hex');
+  const bBuf = Buffer.from(b, 'hex');
+  if (aBuf.length !== bBuf.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
-  
+
   try {
+    const secret = process.env.ML_WEBHOOK_SECRET ?? '';
+    const signature = request.headers.get('x-ml-signature') ?? '';
+
+    // Read raw body for signature verification
+    const rawBody = await request.text();
+    const expectedSignature = secret
+      ? crypto.createHmac('sha256', secret).update(rawBody).digest('hex')
+      : '';
+
+    if (!secret || !signature || !timingSafeEqual(signature, expectedSignature)) {
+      console.warn('Invalid webhook signature');
+      console.log('metric.webhook.invalid_signature');
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    }
+
     // Parse webhook payload
-    const webhook: MLWebhook = await request.json();
+    const webhook: MLWebhook = JSON.parse(rawBody);
     
     console.log('Webhook received:', {
       topic: webhook.topic,
