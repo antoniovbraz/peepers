@@ -6,6 +6,12 @@ import { cache } from '@/lib/cache';
 export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
+  // Require admin token for manual sync
+  const authHeader = request.headers.get('authorization');
+  if (authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     console.log('Starting ML sync...');
     

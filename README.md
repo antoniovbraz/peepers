@@ -40,3 +40,18 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 This project uses [Vercel KV](https://vercel.com/docs/storage/vercel-kv) to cache data. Operations that need to inspect or clear
 the cache rely on iterating over keys with `scan`. Scanning is appropriate for small and medium datasets but it requires reading
 through all matching keys and cannot efficiently paginate very large key sets.
+
+## API Authentication
+
+Sensitive API routes require a bearer token for access. Set the `ADMIN_SECRET` environment variable and include it in requests using the `Authorization` header:
+
+```
+Authorization: Bearer <your token>
+```
+
+This token is required when calling:
+
+- `POST /api/ml/sync`
+- `POST /api/products/[id]`
+
+Requests without the correct token will receive a `401 Unauthorized` response.

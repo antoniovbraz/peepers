@@ -141,6 +141,12 @@ export const POST = (async (
   request: NextRequest,
   { params }: { params: { id: string } }
 ) => {
+  // Require admin token for cache updates
+  const authHeader = request.headers.get('authorization');
+  if (authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { id: productId } = params;
     const { action } = await request.json();
