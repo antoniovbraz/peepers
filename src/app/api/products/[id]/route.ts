@@ -2,14 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { mlApi } from '@/lib/ml-api';
 import { cache } from '@/lib/cache';
 
-export const runtime = 'edge';
-
-export async function GET(
+export const GET = (async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: { params: { id: string } }
+) => {
   try {
-    const { id: productId } = await params;
+    const { id: productId } = params;
     
     if (!productId) {
       return NextResponse.json(
@@ -125,7 +123,7 @@ export async function GET(
   } catch (error) {
     console.error('Product API error:', error);
     
-    const { id: productId } = await params;
+    const { id: productId } = params;
     
     return NextResponse.json(
       { 
@@ -136,15 +134,15 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}) as any;
 
 // Update product cache (for admin use)
-export async function POST(
+export const POST = (async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: { params: { id: string } }
+) => {
   try {
-    const { id: productId } = await params;
+    const { id: productId } = params;
     const { action } = await request.json();
     
     if (action === 'refresh_cache') {
@@ -191,4 +189,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}) as any;
