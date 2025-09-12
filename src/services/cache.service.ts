@@ -14,6 +14,14 @@ interface CacheStats {
   cached_questions: number;
 }
 
+interface CacheKVResponse<T = any> {
+  result: T;
+  metadata: {
+    created_at: string;
+    expires_at?: string;
+  };
+}
+
 export class CacheService {
   private readonly kv;
   private readonly productPrefix = 'product:';
@@ -25,8 +33,8 @@ export class CacheService {
 
   constructor(config: CacheConfig = {}) {
     if (!config.url || !config.token) {
-      config.url = process.env.REDIS_REST_API_URL;
-      config.token = process.env.REDIS_REST_API_TOKEN;
+      config.url = process.env.UPSTASH_REDIS_REST_URL;
+      config.token = process.env.UPSTASH_REDIS_REST_TOKEN;
     }
 
     if (!config.url || !config.token) {
@@ -80,7 +88,7 @@ export class CacheService {
   async getActiveProducts(): Promise<Product[] | null> {
     try {
       const products = await this.kv.get<Product[]>(this.productsKey);
-      return products?.filter(p => p.status === 'active') || null;
+      return products?.filter((p: Product) => p.status === 'active') || null;
     } catch (error) {
       console.error('Cache error (getActiveProducts):', error);
       return null;
@@ -112,7 +120,7 @@ export class CacheService {
       const products = await this.kv.get<Product[]>(this.productsKey) || [];
       const stats: CacheStats = {
         total_products: products.length,
-        active_products: products.filter(p => p.status === 'active').length,
+        active_products: products.filter((p: Product) => p.status === 'active').length,
         cached_questions: await this.countCachedQuestions(),
       };
       await this.kv.set(this.statsKey, stats);
@@ -131,9 +139,9 @@ export class CacheService {
     }
   }
 
-  async getUser(key: keyof CacheUser): Promise<any> {
+  async getUser(key: keyof CacheUser): Promise<CacheUser[keyof CacheUser] | null> {
     try {
-      const user = await this.kv.get(this.userKey);
+      const user = await this.kv.get<CacheUser>(this.userKey);
       return user ? user[key] : null;
     } catch (error) {
       console.error('Cache error (getUser):', error);
