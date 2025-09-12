@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx src/lib/cache.test.ts && tsx src/app/api/ml/webhook/route.test.ts && tsx src/lib/html.test.ts"
+    "test": "tsx src/lib/cache.test.ts && tsx src/app/api/ml/webhook/route.test.ts && tsx src/lib/html.test.ts && tsx src/lib/render-html.test.ts"
   },
   "dependencies": {
     "@tailwindcss/forms": "^0.5.10",

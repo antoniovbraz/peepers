@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mlApi } from '@/lib/ml-api';
 import { cache } from '@/lib/cache';
+import { renderHtml } from '@/lib/render-html';
 
 // Removed edge runtime - incompatible with Redis operations
 export const maxDuration = 30;
@@ -93,17 +94,17 @@ export async function GET(request: NextRequest) {
     
     if (action === 'sync') {
       // Redirect to POST for actual sync
-      return new NextResponse(`
+      return renderHtml(`
         <!DOCTYPE html>
         <html>
           <head>
             <title>Peepers - Sincronizando Produtos</title>
             <meta charset="utf-8">
             <style>
-              body { 
-                font-family: Arial, sans-serif; 
-                max-width: 600px; 
-                margin: 50px auto; 
+              body {
+                font-family: Arial, sans-serif;
+                max-width: 600px;
+                margin: 50px auto;
                 padding: 20px;
                 text-align: center;
               }
@@ -125,9 +126,9 @@ export async function GET(request: NextRequest) {
           <body>
             <h1 class="loading">🔄 Sincronizando Produtos...</h1>
             <p>Aguarde enquanto sincronizamos seus produtos do Mercado Livre.</p>
-            
+
             <div id="result"></div>
-            
+
             <script>
               async function syncProducts() {
                 try {
@@ -137,10 +138,10 @@ export async function GET(request: NextRequest) {
                       'Content-Type': 'application/json'
                     }
                   });
-                  
+
                   const data = await response.json();
                   const resultDiv = document.getElementById('result');
-                  
+
                   if (response.ok) {
                     resultDiv.innerHTML = \`
                       <div class="result success">
@@ -172,17 +173,13 @@ export async function GET(request: NextRequest) {
                   \`;
                 }
               }
-              
+
               // Start sync automatically
               syncProducts();
             </script>
           </body>
         </html>
-      `, {
-        headers: {
-          'Content-Type': 'text/html',
-        },
-      });
+      `);
     }
     
     // Default GET behavior - return sync status
