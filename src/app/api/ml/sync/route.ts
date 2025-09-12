@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       console.log('Using access token for user:', tokenData.user_id);
 
       // Set the token in the ML API instance
-      mlApi.setAccessToken(tokenData.token, tokenData.user_id);
+      mlApi.setAccessToken(tokenData.token, tokenData.user_id.toString());
       
       // Sync all products from ML API
       const products = await mlApi.syncAllProducts();

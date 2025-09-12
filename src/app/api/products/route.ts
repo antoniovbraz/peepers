@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
             console.log('Using ML API fallback with valid token');
             
             // Set token in ML API instance
-            mlApi.setAccessToken(tokenData.token, tokenData.user_id);
+            mlApi.setAccessToken(tokenData.token, tokenData.user_id.toString());
             
             // Fetch products directly from ML API
             const mlProducts = await mlApi.syncAllProducts();
