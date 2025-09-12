@@ -3,6 +3,8 @@ import { mlApi } from '@/lib/ml-api';
 import { cache } from '@/lib/cache';
 import { AppError } from '@/core/error';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
