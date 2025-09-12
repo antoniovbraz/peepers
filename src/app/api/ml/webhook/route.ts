@@ -5,7 +5,7 @@ import { cache } from '@/lib/cache';
 import { revalidatePath } from 'next/cache';
 
 // revalidatePath requires the Node.js runtime
-export const runtime = 'node';
+export const runtime = 'nodejs';
 export const maxDuration = 10;
 
 export async function POST(request: NextRequest) {
