@@ -34,3 +34,9 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Limitations
+
+This project uses [Vercel KV](https://vercel.com/docs/storage/vercel-kv) to cache data. Operations that need to inspect or clear
+the cache rely on iterating over keys with `scan`. Scanning is appropriate for small and medium datasets but it requires reading
+through all matching keys and cannot efficiently paginate very large key sets.

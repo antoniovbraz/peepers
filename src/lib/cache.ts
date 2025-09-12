@@ -303,19 +303,36 @@ class CacheManager {
   }
 
   // Utility Methods
+  private async collectKeys(pattern: string): Promise<string[]> {
+    const keys: string[] = [];
+    for await (const key of kv.scanIterator({ match: pattern })) {
+      keys.push(key);
+    }
+    return keys;
+  }
+
+  private async countKeys(pattern: string): Promise<number> {
+    let count = 0;
+    for await (const _ of kv.scanIterator({ match: pattern })) {
+      count++;
+    }
+    return count;
+  }
+
   async clearAllCache(): Promise<void> {
     try {
-      // Get all keys with our prefixes
-      const keys = await kv.keys('products:*');
-      const questionKeys = await kv.keys('questions:*');
-      const userKeys = await kv.keys('user:*');
-      
-      const allKeys = [...keys, ...questionKeys, ...userKeys, CACHE_KEYS.CATEGORIES];
-      
+      const [productKeys, questionKeys, userKeys] = await Promise.all([
+        this.collectKeys('products:*'),
+        this.collectKeys('questions:*'),
+        this.collectKeys('user:*')
+      ]);
+
+      const allKeys = [...productKeys, ...questionKeys, ...userKeys, CACHE_KEYS.CATEGORIES];
+
       if (allKeys.length > 0) {
         await kv.del(...allKeys);
       }
-      
+
       console.log(`Cleared ${allKeys.length} cache entries`);
     } catch (error) {
       console.error('Cache clear error:', error);
@@ -330,17 +347,17 @@ class CacheManager {
     lastSync: string | null;
   }> {
     try {
-      const [productKeys, questionKeys, userKeys, lastSync] = await Promise.all([
-        kv.keys('products:*'),
-        kv.keys('questions:*'),
-        kv.keys('user:*'),
+      const [productsCount, questionsCount, usersCount, lastSync] = await Promise.all([
+        this.countKeys('products:*'),
+        this.countKeys('questions:*'),
+        this.countKeys('user:*'),
         this.getLastSyncTime()
       ]);
 
       return {
-        productsCount: productKeys.length,
-        questionsCount: questionKeys.length,
-        usersCount: userKeys.length,
+        productsCount,
+        questionsCount,
+        usersCount,
         lastSync
       };
     } catch (error) {
