@@ -20,7 +20,8 @@ export async function POST(request: NextRequest) {
 
     try {
       // Get access token from cache
-      const tokenData = await cache.getUser('access_token');
+      const userId = process.env.ML_USER_ID!;
+      const tokenData = await cache.getUser(`access_token:${userId}`);
       if (!tokenData || !tokenData.token) {
         return NextResponse.json(
           { error: 'No access token found. Please authorize with Mercado Livre first.' },
