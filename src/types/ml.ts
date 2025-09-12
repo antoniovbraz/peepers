@@ -165,6 +165,15 @@ export interface MLQuestion {
   tags: string[];
 }
 
+export interface AnswerResponse {
+  id: number;
+  question_id: number;
+  text: string;
+  status: string;
+  item_id: string;
+  date_created: string;
+}
+
 export interface MLOrder {
   id: number;
   status: 'confirmed' | 'payment_required' | 'payment_in_process' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
@@ -333,16 +342,17 @@ export interface MLCategory {
   };
 }
 
+export interface Paging {
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface MLSearchResult {
   site_id: string;
   country_default_time_zone: string;
   query?: string;
-  paging: {
-    total: number;
-    primary_results: number;
-    offset: number;
-    limit: number;
-  };
+  paging: Paging & { primary_results: number };
   results: MLProduct[];
   sort: {
     id: string;
