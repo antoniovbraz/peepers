@@ -8,21 +8,28 @@ import {
   CachedCategory,
 } from '@/types/ml';
 
-function createKVClient() {
+let kvClient: ReturnType<typeof createClient> | null = null;
+
+export function getKVClient() {
+  if (kvClient) return kvClient;
+
   const url = process.env.UPSTASH_REDIS_REST_URL;
   if (!url) {
-    throw new Error('UPSTASH_REDIS_REST_URL environment variable is not set');
+    throw new Error('Missing environment variable: UPSTASH_REDIS_REST_URL');
   }
 
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!token) {
-    throw new Error('UPSTASH_REDIS_REST_TOKEN environment variable is not set');
+    throw new Error('Missing environment variable: UPSTASH_REDIS_REST_TOKEN');
   }
 
-  return createClient({ url, token });
+  kvClient = createClient({ url, token });
+  return kvClient;
 }
 
-const kv = createKVClient();
+export function __resetKVClient() {
+  kvClient = null;
+}
 
 // Cache TTL constants (in seconds)
 const CACHE_TTL = {
@@ -64,6 +71,7 @@ class CacheManager {
 
   // Product Cache Methods
   async getAllProducts(): Promise<MLProduct[] | null> {
+    const kv = getKVClient();
     try {
       const cached = await kv.get<CachedProduct[]>(CACHE_KEYS.PRODUCTS_ALL);
       
@@ -89,6 +97,7 @@ class CacheManager {
   }
 
   async setAllProducts(products: MLProduct[]): Promise<void> {
+    const kv = getKVClient();
     try {
       const cachedProducts: CachedProduct[] = products.map(product => ({
         ...product,
@@ -130,6 +139,7 @@ class CacheManager {
   }
 
   async getActiveProducts(): Promise<MLProduct[] | null> {
+    const kv = getKVClient();
     try {
       const cached = await kv.get<CachedProduct[]>(CACHE_KEYS.PRODUCTS_ACTIVE);
       
@@ -155,6 +165,7 @@ class CacheManager {
   }
 
   async getProduct(productId: string): Promise<MLProduct | null> {
+    const kv = getKVClient();
     try {
       const cached = await kv.get<CachedProduct>(`${CACHE_KEYS.PRODUCT}${productId}`);
       
@@ -178,6 +189,7 @@ class CacheManager {
   }
 
   async setProduct(product: MLProduct): Promise<void> {
+    const kv = getKVClient();
     try {
       const cachedProduct: CachedProduct = {
         ...product,
@@ -193,6 +205,7 @@ class CacheManager {
   }
 
   async invalidateProduct(productId: string): Promise<void> {
+    const kv = getKVClient();
     try {
       await kv.del(`${CACHE_KEYS.PRODUCT}${productId}`);
       
@@ -206,6 +219,7 @@ class CacheManager {
   }
 
   async invalidateProductsCache(): Promise<void> {
+    const kv = getKVClient();
     try {
       await Promise.all([
         kv.del(CACHE_KEYS.PRODUCTS_ALL),
@@ -220,6 +234,7 @@ class CacheManager {
 
   // Questions Cache Methods
   async getProductQuestions(productId: string): Promise<MLQuestion[] | null> {
+    const kv = getKVClient();
     try {
       const cached = await kv.get<CachedQuestions>(`${CACHE_KEYS.QUESTIONS}${productId}`);
       
@@ -242,6 +257,7 @@ class CacheManager {
   }
 
   async setProductQuestions(productId: string, questions: MLQuestion[]): Promise<void> {
+    const kv = getKVClient();
     try {
       const cachedQuestions: CachedQuestions = {
         item_id: productId,
@@ -258,6 +274,7 @@ class CacheManager {
   }
 
   async invalidateProductQuestions(productId: string): Promise<void> {
+    const kv = getKVClient();
     try {
       await kv.del(`${CACHE_KEYS.QUESTIONS}${productId}`);
       console.log(`Invalidated questions cache for product ${productId}`);
@@ -268,6 +285,7 @@ class CacheManager {
 
   // User Cache Methods
   async getUser(userId: string): Promise<CachedUser | null> {
+    const kv = getKVClient();
     try {
       return await kv.get<CachedUser>(`${CACHE_KEYS.USER}${userId}`);
     } catch (error) {
@@ -277,6 +295,7 @@ class CacheManager {
   }
 
   async setUser(userId: string, userData: CachedUser): Promise<void> {
+    const kv = getKVClient();
     try {
       await kv.set(`${CACHE_KEYS.USER}${userId}`, userData, { ex: CACHE_TTL.USER_DATA });
     } catch (error) {
@@ -287,6 +306,7 @@ class CacheManager {
 
   // Categories Cache Methods
   async getCategories(): Promise<CachedCategory[] | null> {
+    const kv = getKVClient();
     try {
       return await kv.get<CachedCategory[]>(CACHE_KEYS.CATEGORIES);
     } catch (error) {
@@ -296,6 +316,7 @@ class CacheManager {
   }
 
   async setCategories(categories: CachedCategory[]): Promise<void> {
+    const kv = getKVClient();
     try {
       await kv.set(CACHE_KEYS.CATEGORIES, categories, { ex: CACHE_TTL.CATEGORIES });
     } catch (error) {
@@ -306,6 +327,7 @@ class CacheManager {
 
   // Sync Lock Methods (to prevent concurrent syncs)
   async acquireSyncLock(): Promise<boolean> {
+    const kv = getKVClient();
     try {
       const lockAcquired = await kv.set(CACHE_KEYS.SYNC_LOCK, 'locked', { 
         ex: 300, // 5 minutes
@@ -320,6 +342,7 @@ class CacheManager {
   }
 
   async releaseSyncLock(): Promise<void> {
+    const kv = getKVClient();
     try {
       await kv.del(CACHE_KEYS.SYNC_LOCK);
     } catch (error) {
@@ -328,6 +351,7 @@ class CacheManager {
   }
 
   async getLastSyncTime(): Promise<string | null> {
+    const kv = getKVClient();
     try {
       return await kv.get<string>(CACHE_KEYS.LAST_SYNC);
     } catch (error) {
@@ -338,6 +362,7 @@ class CacheManager {
 
   // Utility Methods
   private async collectKeys(pattern: string): Promise<string[]> {
+    const kv = getKVClient();
     const keys: string[] = [];
     for await (const key of kv.scanIterator({ match: pattern })) {
       keys.push(key);
@@ -346,6 +371,7 @@ class CacheManager {
   }
 
   private async countKeys(pattern: string): Promise<number> {
+    const kv = getKVClient();
     let count = 0;
     for await (const _ of kv.scanIterator({ match: pattern })) {
       count++;
@@ -354,6 +380,7 @@ class CacheManager {
   }
 
   async clearAllCache(): Promise<void> {
+    const kv = getKVClient();
     try {
       const [productKeys, questionKeys, userKeys] = await Promise.all([
         this.collectKeys('products:*'),
@@ -407,10 +434,11 @@ class CacheManager {
 
   // Health check
   async healthCheck(): Promise<boolean> {
+    const kv = getKVClient();
     try {
       const testKey = 'health:check';
       const testValue = Date.now().toString();
-      
+
       await kv.set(testKey, testValue, { ex: 10 });
       const retrieved = await kv.get(testKey);
       await kv.del(testKey);
