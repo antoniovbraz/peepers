@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mlApi } from '@/lib/ml-api';
 import { cache } from '@/lib/cache';
+import { html } from '@/lib/html';
 
 // Removed edge runtime - incompatible with Redis operations
 
@@ -85,17 +86,18 @@ export async function GET(request: NextRequest) {
     });
 
     // Create response with success page
-    const response = new NextResponse(`
+    const response = new NextResponse(
+      html`
       <!DOCTYPE html>
       <html>
         <head>
           <title>Peepers - Autorização Concluída</title>
           <meta charset="utf-8">
           <style>
-            body { 
-              font-family: Arial, sans-serif; 
-              max-width: 600px; 
-              margin: 50px auto; 
+            body {
+              font-family: Arial, sans-serif;
+              max-width: 600px;
+              margin: 50px auto;
               padding: 20px;
               text-align: center;
             }
@@ -115,7 +117,7 @@ export async function GET(request: NextRequest) {
         <body>
           <h1 class="success">✅ Autorização Concluída!</h1>
           <p>Sua conta do Mercado Livre foi conectada com sucesso à Peepers.</p>
-          
+
           <div class="info">
             <strong>Próximos passos:</strong><br>
             • Seus produtos serão sincronizados automaticamente<br>
@@ -125,15 +127,17 @@ export async function GET(request: NextRequest) {
 
           <a href="/" class="button">Voltar ao Site</a>
           <a href="/api/ml/sync?action=sync" class="button">Sincronizar Produtos Agora</a>
-          
+
           <p><small>User ID: ${tokenData.user_id}</small></p>
         </body>
       </html>
-    `, {
-      headers: {
-        'Content-Type': 'text/html',
-      },
-    });
+    `,
+      {
+        headers: {
+          'Content-Type': 'text/html',
+        },
+      }
+    );
 
     // Clear the code_verifier cookie after successful token exchange
     response.cookies.set('ml_code_verifier', '', {
@@ -157,18 +161,20 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('OAuth callback error:', error);
-    
-    return new NextResponse(`
+
+    const message = error instanceof Error ? error.message : 'Erro desconhecido';
+    return new NextResponse(
+      html`
       <!DOCTYPE html>
       <html>
         <head>
           <title>Peepers - Erro na Autorização</title>
           <meta charset="utf-8">
           <style>
-            body { 
-              font-family: Arial, sans-serif; 
-              max-width: 600px; 
-              margin: 50px auto; 
+            body {
+              font-family: Arial, sans-serif;
+              max-width: 600px;
+              margin: 50px auto;
               padding: 20px;
               text-align: center;
             }
@@ -187,17 +193,19 @@ export async function GET(request: NextRequest) {
         <body>
           <h1 class="error">❌ Erro na Autorização</h1>
           <p>Ocorreu um erro ao conectar sua conta do Mercado Livre.</p>
-          <p><strong>Erro:</strong> ${error instanceof Error ? error.message : 'Erro desconhecido'}</p>
-          
+          <p><strong>Erro:</strong> ${message}</p>
+
           <a href="/api/ml/auth" class="button">Tentar Novamente</a>
           <a href="/" class="button">Voltar ao Site</a>
         </body>
       </html>
-    `, {
-      status: 500,
-      headers: {
-        'Content-Type': 'text/html',
-      },
-    });
+    `,
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'text/html',
+        },
+      }
+    );
   }
 }
