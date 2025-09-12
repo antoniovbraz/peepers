@@ -68,9 +68,9 @@ export async function GET(request: NextRequest) {
     });
 
     // Store token and user info in cache
-    await cache.setUser('access_token', {
+    await cache.setUser(`access_token:${tokenData.user_id}`, {
       token: tokenData.access_token,
-      expires_at: new Date(Date.now() + (tokenData.expires_in * 1000)).toISOString(),
+      expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
       user_id: tokenData.user_id
     });
 
