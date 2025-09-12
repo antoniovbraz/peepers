@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { mlApi } from '@/lib/ml-api';
 import { cache } from '@/lib/cache';
 import { html } from '@/lib/html';
+import { renderHtml } from '@/lib/render-html';
 
 // Removed edge runtime - incompatible with Redis operations
 
@@ -86,7 +87,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Create response with success page
-    const response = new NextResponse(
+    const response = renderHtml(
       html`
       <!DOCTYPE html>
       <html>
@@ -131,12 +132,7 @@ export async function GET(request: NextRequest) {
           <p><small>User ID: ${tokenData.user_id}</small></p>
         </body>
       </html>
-    `,
-      {
-        headers: {
-          'Content-Type': 'text/html',
-        },
-      }
+    `
     );
 
     // Clear the code_verifier cookie after successful token exchange
@@ -163,7 +159,7 @@ export async function GET(request: NextRequest) {
     console.error('OAuth callback error:', error);
 
     const message = error instanceof Error ? error.message : 'Erro desconhecido';
-    return new NextResponse(
+    return renderHtml(
       html`
       <!DOCTYPE html>
       <html>
@@ -200,12 +196,7 @@ export async function GET(request: NextRequest) {
         </body>
       </html>
     `,
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'text/html',
-        },
-      }
+      { status: 500 }
     );
   }
 }
