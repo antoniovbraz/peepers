@@ -377,6 +377,22 @@ export interface CachedQuestions {
   cache_ttl: number;
 }
 
+export interface CachedUser {
+  user_id: number;
+  token?: string;
+  refresh_token?: string;
+  expires_at?: string;
+  nickname?: string;
+  connected_at?: string;
+  [key: string]: unknown;
+}
+
+export interface CachedCategory {
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
+
 // API Response Types
 export interface MLApiResponse<T> {
   data?: T;

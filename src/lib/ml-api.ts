@@ -1,12 +1,13 @@
 import { 
   MLUser, 
   MLProduct, 
-  MLQuestion, 
-  MLOrder, 
-  MLTokenResponse, 
+  MLQuestion,
+  MLOrder,
+  MLCategory,
+  MLTokenResponse,
   MLTokenRefreshResponse,
   MLSearchResult,
-  MLApiResponse 
+  MLApiResponse
 } from '@/types/ml';
 
 class MercadoLivreAPI {
@@ -325,12 +326,12 @@ class MercadoLivreAPI {
   }
 
   // Categories Methods
-  async getCategories(siteId = 'MLB'): Promise<any[]> {
-    return this.makeRequest<any[]>(`/sites/${siteId}/categories`);
+  async getCategories(siteId = 'MLB'): Promise<MLCategory[]> {
+    return this.makeRequest<MLCategory[]>(`/sites/${siteId}/categories`);
   }
 
-  async getCategory(categoryId: string): Promise<any> {
-    return this.makeRequest<any>(`/categories/${categoryId}`);
+  async getCategory(categoryId: string): Promise<MLCategory> {
+    return this.makeRequest<MLCategory>(`/categories/${categoryId}`);
   }
 
   // Utility Methods
