@@ -73,7 +73,9 @@ export function getConditionLabel(condition: string): string {
   return conditions[condition] || condition;
 }
 
-export function getShippingLabel(shipping: any): string {
+export function getShippingLabel(
+  shipping: { free_shipping: boolean; local_pick_up: boolean }
+): string {
   if (shipping.free_shipping) {
     return 'Frete grátis';
   }
