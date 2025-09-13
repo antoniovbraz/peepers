@@ -18,9 +18,25 @@ export async function middleware(request: NextRequest) {
 
   try {
     // Verifica se tem token de acesso válido
-    const token = await cache.getAccessToken();
-    
-    if (!token) {
+    // O token pode estar no cache (salvo como `access_token:{userId}`) ou em variáveis de ambiente
+    const userId = process.env.ML_USER_ID;
+    let token: { token?: string; expires_at?: string } | null = null;
+
+    if (userId) {
+      // No cache os tokens são salvos via cache.setUser(`access_token:{userId}`, { token, expires_at, user_id })
+      token = await cache.getUser(`access_token:${userId}`);
+    }
+
+    // Fallback para token em variáveis de ambiente caso não exista no cache
+    if ((!token || !token.token) && process.env.ML_ACCESS_TOKEN) {
+      token = {
+        token: process.env.ML_ACCESS_TOKEN,
+        // Se não houver expiry explícito em env, considera um prazo longo para não bloquear chamadas internas
+        expires_at: process.env.ML_ACCESS_TOKEN_EXPIRES_AT ?? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      };
+    }
+
+    if (!token || !token.token) {
       logger.warn('No access token found');
       return new NextResponse(
         JSON.stringify({ 
@@ -35,8 +51,8 @@ export async function middleware(request: NextRequest) {
     }
 
     // Verifica se o token está expirado
-    const expiresAt = new Date(token.expires_at);
-    if (expiresAt < new Date()) {
+    const expiresAt = token.expires_at ? new Date(token.expires_at) : null;
+    if (expiresAt && expiresAt < new Date()) {
       logger.warn('Access token expired');
       return new NextResponse(
         JSON.stringify({ 

@@ -3,7 +3,6 @@ import { cache } from '@/lib/cache';
 import { renderHtml } from '@/lib/render-html';
 import { createMercadoLivreAPI } from '@/lib/ml-api';
 import { logger } from '@/lib/logger';
-import { renderAuthCallback } from '@/lib/templates/auth-callback';
 
 const mlApi = createMercadoLivreAPI(
   { fetch },
@@ -29,11 +28,24 @@ export async function GET(request: NextRequest) {
     if (error) {
       logger.error({ error }, 'OAuth error');
       return renderHtml(
-        renderAuthCallback({
-          success: false,
-          message: 'Falha na autenticação',
-          details: 'Ocorreu um erro durante o processo de autenticação com o Mercado Livre. Por favor, tente novamente.'
-        }),
+        `<!DOCTYPE html>
+        <html>
+          <head>
+            <title>Peepers - Erro na Autorização</title>
+            <meta charset="utf-8">
+            <style>
+              body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+              .error { color: #dc3545; }
+              .button { display: inline-block; background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px; }
+            </style>
+          </head>
+          <body>
+            <h1 class="error">❌ Falha na autenticação</h1>
+            <p>Ocorreu um erro durante o processo de autenticação com o Mercado Livre. Por favor, tente novamente.</p>
+            <a href="/api/ml/auth" class="button">Tentar Novamente</a>
+            <a href="/" class="button">Voltar ao Site</a>
+          </body>
+        </html>`,
         { status: 400 }
       );
     }
@@ -107,8 +119,7 @@ export async function GET(request: NextRequest) {
 
     // Create response with success page
     const response = renderHtml(
-      html`
-      <!DOCTYPE html>
+      `<!DOCTYPE html>
       <html>
         <head>
           <title>Peepers - Autorização Concluída</title>
@@ -179,8 +190,7 @@ export async function GET(request: NextRequest) {
 
     const message = error instanceof Error ? error.message : 'Erro desconhecido';
     return renderHtml(
-      html`
-      <!DOCTYPE html>
+      `<!DOCTYPE html>
       <html>
         <head>
           <title>Peepers - Erro na Autorização</title>
