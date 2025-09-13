@@ -12,8 +12,9 @@ export async function GET(request: NextRequest) {
     if (cachedProducts && cachedProducts.length > 0) {
       console.log(`✅ Found ${cachedProducts.length} products in cache, returning cached data`);
       
-      // Transform cached products for frontend display
-      const transformedProducts = cachedProducts.map((product: any) => {
+      try {
+        // Transform cached products for frontend display
+        const transformedProducts = cachedProducts.map((product: any) => {
         return {
           id: product.id,
           title: product.title,
@@ -52,6 +53,11 @@ export async function GET(request: NextRequest) {
         message: `${transformedProducts.length} produtos carregados do cache (${activeProducts.length} ativos, ${pausedProducts.length} pausados)`,
         timestamp: new Date().toISOString()
       });
+      
+      } catch (transformError) {
+        console.error('❌ Error transforming cached products:', transformError);
+        // Fall through to API fetch below
+      }
     }
     
     // If no cache, fetch from Mercado Livre API
