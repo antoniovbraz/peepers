@@ -3,6 +3,7 @@ import { cache } from '@/lib/cache';
 import { html } from '@/lib/html';
 import { renderHtml } from '@/lib/render-html';
 import { createMercadoLivreAPI } from '@/lib/ml-api';
+import { logger } from '@/lib/logger';
 
 const mlApi = createMercadoLivreAPI(
   { fetch },
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
     const oauthState = request.cookies.get('oauth_state')?.value;
 
     if (error) {
-      console.error('OAuth error:', error);
+      logger.error({ error }, 'OAuth error');
       return NextResponse.json(
         { error: 'OAuth authorization failed', details: error },
         { status: 400 }
@@ -59,16 +60,16 @@ export async function GET(request: NextRequest) {
     const codeVerifier = request.cookies.get('ml_code_verifier')?.value;
     
     if (!codeVerifier) {
-      console.error('PKCE code_verifier not found in cookies');
+      logger.error('PKCE code_verifier not found in cookies');
       return NextResponse.json(
         { error: 'PKCE code_verifier missing - please restart authorization' },
         { status: 400 }
       );
     }
 
-    console.log('Received authorization code:', code);
-    console.log('Retrieved code_verifier from cookies');
-    console.log('Exchanging for token...');
+    logger.info({ code }, 'Received authorization code');
+    logger.info('Retrieved code_verifier from cookies');
+    logger.info('Exchanging for token...');
 
     // Exchange code for access token with PKCE
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
@@ -78,11 +79,14 @@ export async function GET(request: NextRequest) {
       codeVerifier
     );
     
-    console.log('Token exchange successful:', {
-      access_token: tokenData.access_token ? 'received' : 'missing',
-      user_id: tokenData.user_id,
-      expires_in: tokenData.expires_in
-    });
+    logger.info(
+      {
+        access_token: tokenData.access_token ? 'received' : 'missing',
+        user_id: tokenData.user_id,
+        expires_in: tokenData.expires_in
+      },
+      'Token exchange successful'
+    );
 
     // Store token and user info in cache
     await cache.setUser(`access_token:${tokenData.user_id}`, {
@@ -167,7 +171,7 @@ export async function GET(request: NextRequest) {
     return response;
 
   } catch (error) {
-    console.error('OAuth callback error:', error);
+    logger.error({ err: error }, 'OAuth callback error');
 
     const message = error instanceof Error ? error.message : 'Erro desconhecido';
     return renderHtml(

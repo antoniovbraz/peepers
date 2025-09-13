@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 // Removed edge runtime for consistency with other OAuth routes
 
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
     authUrl.searchParams.set('code_challenge_method', 'S256');
     authUrl.searchParams.set('state', state);
 
-    console.log('Redirecting to ML OAuth with PKCE:', authUrl.toString());
+    logger.info({ url: authUrl.toString() }, 'Redirecting to ML OAuth with PKCE');
 
     // Store code_verifier temporarily (in a real app, use secure session storage)
     const response = NextResponse.redirect(authUrl.toString());
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
     return response;
     
   } catch (error) {
-    console.error('OAuth initiation error:', error);
+    logger.error({ err: error }, 'OAuth initiation error');
     
     return NextResponse.json(
       { 
