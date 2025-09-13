@@ -9,6 +9,12 @@ export async function GET(request: NextRequest) {
     console.log('Checking cache for products...');
     const cachedProducts = await cache.getAllProducts();
     
+    console.log('Cache result:', { 
+      hasProducts: !!cachedProducts, 
+      count: cachedProducts?.length || 0,
+      type: typeof cachedProducts 
+    });
+    
     if (cachedProducts && cachedProducts.length > 0) {
       console.log(`Found ${cachedProducts.length} products in cache, returning cached data`);
       
