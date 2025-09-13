@@ -8,7 +8,10 @@ export async function middleware(request: NextRequest) {
   const publicPaths = [
     '/api/ml/auth',
     '/api/ml/auth/callback',
-    '/api/ml/webhook'
+    '/api/ml/webhook',
+    '/api/products',
+    '/api/health',
+    '/api/cache-debug'
   ];
 
   // Se a rota é pública, permite o acesso
