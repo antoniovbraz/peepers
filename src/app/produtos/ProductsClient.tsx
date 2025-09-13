@@ -177,7 +177,7 @@ export default function ProductsClient() {
               <img
                 src={product.thumbnail}
                 alt={product.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 p-2"
                 loading="lazy"
               />
             ) : (
