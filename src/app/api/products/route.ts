@@ -13,32 +13,37 @@ export async function GET(request: NextRequest) {
       console.log(`✅ Found ${cachedProducts.length} products in cache, returning cached data`);
       
       try {
-        // Transform cached products for frontend display
+        // Transform cached products for frontend display with robust error handling
         const transformedProducts = cachedProducts.map((product: any) => {
-        return {
-          id: product.id,
-          title: product.title,
-          price: product.price,
-          currency_id: product.currency_id,
-          available_quantity: product.available_quantity,
-          condition: product.condition,
-          thumbnail: product.secure_thumbnail || product.thumbnail,
-          permalink: product.permalink,
-          status: product.status,
-          shipping: {
-            free_shipping: product.shipping?.free_shipping || false,
-            local_pick_up: product.shipping?.local_pick_up || false
-          },
-          category_id: product.category_id,
-          sold_quantity: product.sold_quantity || 0,
-          warranty: product.warranty,
-          tags: product.tags || []
-        };
-      });
-
-      // Separate by status for statistics
-      const activeProducts = transformedProducts.filter(p => p.status === 'active');
-      const pausedProducts = transformedProducts.filter(p => p.status === 'paused');
+          try {
+            return {
+              id: product.id || '',
+              title: product.title || 'Produto sem título',
+              price: product.price || 0,
+              currency_id: product.currency_id || 'BRL',
+              available_quantity: product.available_quantity || 0,
+              condition: product.condition || 'new',
+              thumbnail: product.secure_thumbnail || product.thumbnail || '',
+              permalink: product.permalink || '',
+              status: product.status || 'unknown',
+              shipping: {
+                free_shipping: product.shipping?.free_shipping || false,
+                local_pick_up: product.shipping?.local_pick_up || false
+              },
+              category_id: product.category_id || '',
+              sold_quantity: product.sold_quantity || 0,
+              warranty: product.warranty || '',
+              tags: product.tags || []
+            };
+          } catch (transformError) {
+            console.warn('Error transforming individual product:', product.id, transformError);
+            return null;
+          }
+        }).filter(Boolean); // Remove null entries
+        
+        // Separate by status for statistics
+        const activeProducts = transformedProducts.filter(p => p && p.status === 'active');
+        const pausedProducts = transformedProducts.filter(p => p && p.status === 'paused');
 
       return NextResponse.json({
         success: true,
