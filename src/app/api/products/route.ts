@@ -23,63 +23,74 @@ export async function GET(request: NextRequest) {
     let products = await cache.getActiveProducts();
     console.log('Products from cache:', products ? products.length : 0);
 
-    // If no cached products, try to fetch from ML API as fallback
+    // If no cached products, try to fetch directly from ML API using the working endpoint logic
     if (!products || products.length === 0) {
-      console.log('No cached products found, trying ML API fallback...');
+      console.log('No cached products found, fetching from ML API...');
       
       try {
-        // Try to find any authenticated user in the cache
-        let tokenData = null;
-        let userId = process.env.ML_USER_ID;
+        // Use the same logic as /api/ml/products which is working
+        const userId = process.env.ML_USER_ID || '669073070';
+        console.log('Using user ID:', userId);
         
-        if (userId) {
-          tokenData = await cache.getUser(`access_token:${userId}`);
-        }
-        
-        // If no configured user or no token found, try the known user from OAuth
-        if (!tokenData) {
-          const knownUserId = '669073070';
-          tokenData = await cache.getUser(`access_token:${knownUserId}`);
-          if (tokenData) {
-            userId = knownUserId;
-          }
-        }
+        // Get token from cache
+        const tokenData = await cache.getUser(`access_token:${userId}`);
+        console.log('Token data found:', !!tokenData);
         
         if (tokenData && tokenData.token) {
-          console.log('Using ML API fallback with token');
+          console.log('Token exists, setting up ML API');
           
-          // Set token in ML API instance with refresh token
+          // Set token in ML API instance
           mlApi.setAccessToken(
             tokenData.token, 
             tokenData.user_id.toString(),
             tokenData.refresh_token
           );
           
-          // Fetch products directly from ML API (will auto-refresh if needed)
+          // Fetch products directly from ML API
           const mlProducts = await mlApi.syncAllProducts();
+          console.log(`Fetched ${mlProducts.length} products from ML API`);
           
           if (mlProducts.length > 0) {
-            console.log(`Fallback successful: fetched ${mlProducts.length} products from ML API`);
-            
             // Cache the products for future requests
             await cache.setAllProducts(mlProducts);
             
-            // Use the fetched products
+            // Filter active products
             products = mlProducts.filter(p => p.status === 'active');
+            console.log(`Filtered to ${products.length} active products`);
           }
+        } else {
+          console.log('No token found in cache for user:', userId);
+          
+          return NextResponse.json(
+            { 
+              error: 'Unauthorized',
+              message: 'Você precisa se autenticar com o Mercado Livre primeiro. Vá para /api/ml/auth para fazer login.',
+              login_url: '/api/ml/auth'
+            },
+            { status: 401 }
+          );
         }
       } catch (fallbackError) {
-        console.error('ML API fallback failed:', fallbackError);
+        console.error('ML API fetch failed:', fallbackError);
+        
+        return NextResponse.json(
+          { 
+            error: 'Failed to fetch products',
+            message: 'Erro ao buscar produtos do Mercado Livre: ' + (fallbackError instanceof Error ? fallbackError.message : 'Unknown error'),
+            suggestion: 'Tente se autenticar novamente em /api/ml/auth'
+          },
+          { status: 500 }
+        );
       }
       
-      // If still no products after fallback, return empty with sync suggestion
+      // If still no products after ML API call
       if (!products || products.length === 0) {
         return NextResponse.json({
           products: [],
           total: 0,
-          message: 'No products found. Please sync products first.',
+          message: 'Nenhum produto ativo encontrado.',
           last_sync: await cache.getLastSyncTime(),
-          fallback_attempted: true
+          suggestion: 'Verifique se há produtos ativos na sua conta do Mercado Livre.'
         });
       }
     }
