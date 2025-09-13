@@ -1,8 +1,8 @@
-import assert from 'node:assert/strict';
+import { describe, it, expect } from 'vitest';
 import { MercadoLivreAPI, HttpClient } from './ml-api';
 
 class MockResponse {
-  constructor(private data: unknown, public ok = true, public status = 200, public statusText = 'OK') {}
+  constructor(private data: unknown, public ok = true) {}
   async json() {
     return this.data;
   }
@@ -19,17 +19,17 @@ class MockClient implements HttpClient {
   }
 }
 
-(async () => {
-  const mockData = { id: '123', title: 'Test Product' };
-  const client = new MockClient(new MockResponse(mockData));
-  const api = new MercadoLivreAPI(client, 'id', 'secret', { accessToken: 'token' });
+describe('MercadoLivreAPI', () => {
+  it('fetches product with auth header', async () => {
+    const mockData = { id: '123', title: 'Test Product' };
+    const client = new MockClient(new MockResponse(mockData));
+    const api = new MercadoLivreAPI(client, 'id', 'secret', { accessToken: 'token' });
 
-  const product = await api.getProduct('123');
+    const product = await api.getProduct('123');
 
-  assert.deepEqual(product, mockData);
-  assert.equal(client.lastUrl, 'https://api.mercadolibre.com/items/123');
-  const headers = client.lastInit?.headers as Record<string, string>;
-  assert.equal(headers['Authorization'], 'Bearer token');
-
-  console.log('MercadoLivreAPI HTTP client tests passed');
-})();
+    expect(product).toEqual(mockData);
+    expect(client.lastUrl).toBe('https://api.mercadolibre.com/items/123');
+    const headers = client.lastInit?.headers as Record<string, string>;
+    expect(headers['Authorization']).toBe('Bearer token');
+  });
+});

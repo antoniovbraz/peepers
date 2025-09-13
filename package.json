@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx src/lib/cache.test.ts && tsx src/app/api/ml/webhook/route.test.ts && tsx src/lib/html.test.ts && tsx src/lib/render-html.test.ts && tsx src/lib/ml-api.test.ts"
+    "test": "vitest run --coverage"
   },
   "dependencies": {
     "@tailwindcss/forms": "^0.5.10",
@@ -30,11 +30,13 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.5",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }
