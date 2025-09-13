@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     
     // First, try to get products from cache
     console.log('Checking cache for products...');
-    const cachedProducts = await cache.getActiveProducts();
+    const cachedProducts = await cache.getAllProducts();
     
     if (cachedProducts && cachedProducts.length > 0) {
       console.log(`Found ${cachedProducts.length} products in cache, returning cached data`);
