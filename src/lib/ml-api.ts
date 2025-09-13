@@ -1,18 +1,27 @@
-import { 
-  MLUser, 
-  MLProduct, 
+import {
+  MLUser,
+  MLProduct,
   MLQuestion,
   MLOrder,
   MLCategory,
   MLTokenResponse,
   MLTokenRefreshResponse,
   MLSearchResult,
-  MLApiResponse,
   AnswerResponse,
   Paging
 } from '@/types/ml';
 
-class MercadoLivreAPI {
+export interface HttpClient {
+  fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+}
+
+interface TokenConfig {
+  accessToken?: string;
+  refreshToken?: string;
+  userId?: string;
+}
+
+export class MercadoLivreAPI {
   private baseUrl = 'https://api.mercadolibre.com';
   private clientId: string;
   private clientSecret: string;
@@ -20,13 +29,15 @@ class MercadoLivreAPI {
   private refreshToken?: string;
   private userId?: string;
   private tokenExpiry?: number;
+  private httpClient: HttpClient;
 
-  constructor(clientId: string, clientSecret: string) {
+  constructor(httpClient: HttpClient, clientId: string, clientSecret: string, tokens: TokenConfig = {}) {
+    this.httpClient = httpClient;
     this.clientId = clientId;
     this.clientSecret = clientSecret;
-    this.accessToken = process.env.ML_ACCESS_TOKEN;
-    this.refreshToken = process.env.ML_REFRESH_TOKEN;
-    this.userId = process.env.ML_USER_ID;
+    this.accessToken = tokens.accessToken;
+    this.refreshToken = tokens.refreshToken;
+    this.userId = tokens.userId;
   }
 
   // Method to set access token dynamically
@@ -68,11 +79,11 @@ class MercadoLivreAPI {
       params.code_verifier = codeVerifier;
     }
 
-    const response = await fetch(`${this.baseUrl}/oauth/token`, {
+    const response = await this.httpClient.fetch(`${this.baseUrl}/oauth/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json'
+        Accept: 'application/json'
       },
       body: new URLSearchParams(params)
     });
@@ -96,11 +107,11 @@ class MercadoLivreAPI {
       throw new Error('No refresh token available');
     }
 
-    const response = await fetch(`${this.baseUrl}/oauth/token`, {
+    const response = await this.httpClient.fetch(`${this.baseUrl}/oauth/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json'
+        Accept: 'application/json'
       },
       body: new URLSearchParams({
         grant_type: 'refresh_token',
@@ -125,12 +136,12 @@ class MercadoLivreAPI {
 
   // API Request Helper with retry logic
   private async makeRequest<T>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestInit = {},
     retries = 3
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    
+
     for (let i = 0; i < retries; i++) {
       try {
         // Ensure we have a valid token
@@ -145,9 +156,9 @@ class MercadoLivreAPI {
 
         if (this.accessToken) {
           headers['Authorization'] = `Bearer ${this.accessToken}`;
-        } // if no token, omit Authorization header
+        }
 
-        const response = await fetch(url, {
+        const response = await this.httpClient.fetch(url, {
           ...options,
           headers
         });
@@ -159,17 +170,16 @@ class MercadoLivreAPI {
         }
 
         if (!response.ok) {
-          const error = await response.json().catch(() => ({ 
-            message: `HTTP ${response.status}`, 
-            error: response.statusText 
-          }));
+          const error = await response
+            .json()
+            .catch(() => ({ message: `HTTP ${response.status}`, error: response.statusText }));
           throw new Error(`API request failed: ${error.message || error.error}`);
         }
 
         return await response.json();
       } catch (error) {
         if (i === retries - 1) throw error;
-        
+
         // Exponential backoff: 1s, 2s, 4s
         await this.sleep(Math.pow(2, i) * 1000);
       }
@@ -225,10 +235,10 @@ class MercadoLivreAPI {
 
   async getMultipleProducts(productIds: string[]): Promise<MLProduct[]> {
     if (productIds.length === 0) return [];
-    
+
     const ids = productIds.join(',');
     const response = await this.makeRequest<MLProduct[]>(`/items?ids=${ids}`);
-    
+
     // Handle both array and object responses
     return Array.isArray(response) ? response : [response];
   }
@@ -337,7 +347,7 @@ class MercadoLivreAPI {
   }
 
   // Utility Methods
-  async validateWebhook(payload: any, signature?: string): Promise<boolean> {
+  async validateWebhook(payload: unknown, signature?: string): Promise<boolean> {
     // In production, implement proper webhook signature validation
     return true;
   }
@@ -346,16 +356,16 @@ class MercadoLivreAPI {
   async syncAllProducts(): Promise<MLProduct[]> {
     try {
       console.log('Starting product sync...');
-      
+
       // Get all product IDs
       const productIds: string[] = [];
       let offset = 0;
       const limit = 50;
-      
+
       while (true) {
         const response = await this.getUserProducts(this.userId, 'active', limit, offset);
         productIds.push(...response.results);
-        
+
         if (response.results.length < limit) break;
         offset += limit;
       }
@@ -365,12 +375,12 @@ class MercadoLivreAPI {
       // Get product details in batches
       const products: MLProduct[] = [];
       const batchSize = 20; // ML API limit for multiget
-      
+
       for (let i = 0; i < productIds.length; i += batchSize) {
         const batch = productIds.slice(i, i + batchSize);
         const batchProducts = await this.getMultipleProducts(batch);
         products.push(...batchProducts);
-        
+
         // Rate limiting - wait between batches
         if (i + batchSize < productIds.length) {
           await this.sleep(100);
@@ -386,20 +396,18 @@ class MercadoLivreAPI {
   }
 }
 
-function createMercadoLivreAPI(): MercadoLivreAPI {
-  const clientId = process.env.ML_CLIENT_ID;
-  if (!clientId) {
-    throw new Error('ML_CLIENT_ID environment variable is not set');
-  }
-
-  const clientSecret = process.env.ML_CLIENT_SECRET;
-  if (!clientSecret) {
-    throw new Error('ML_CLIENT_SECRET environment variable is not set');
-  }
-
-  return new MercadoLivreAPI(clientId, clientSecret);
+export function createMercadoLivreAPI(httpClient: HttpClient, config: {
+  clientId: string;
+  clientSecret: string;
+  accessToken?: string;
+  refreshToken?: string;
+  userId?: string;
+}): MercadoLivreAPI {
+  return new MercadoLivreAPI(httpClient, config.clientId, config.clientSecret, {
+    accessToken: config.accessToken,
+    refreshToken: config.refreshToken,
+    userId: config.userId
+  });
 }
 
-// Export singleton instance
-export const mlApi = createMercadoLivreAPI();
-export default mlApi;
+export default MercadoLivreAPI;
