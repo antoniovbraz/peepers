@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cache } from "@/lib/cache";
 
 // PKCE helper functions
 function generateCodeVerifier(): string {
@@ -51,19 +52,42 @@ export async function GET() {
 
     // Store code_verifier in cookies for the callback
     const response = NextResponse.redirect(authUrl.toString());
-    response.cookies.set('ml_code_verifier', codeVerifier, {
+    
+    // Robust cookie settings for production - remove domain to avoid issues
+    const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
       path: '/',
-      maxAge: 600 // 10 minutes
-    });
-    response.cookies.set('oauth_state', state, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 600
+      maxAge: 900, // 15 minutes (increased for better reliability)
+    };
+    
+    response.cookies.set('ml_code_verifier', codeVerifier, cookieOptions);
+    response.cookies.set('oauth_state', state, cookieOptions);
+
+    // ALSO store in cache as fallback (using state as key)
+    try {
+      await cache.setUser(`oauth_session:${state}`, {
+        access_token: '', // dummy values to match CachedUser interface
+        refresh_token: '',
+        expires_at: '',
+        user_id: 0, // Use number 0 instead of empty string
+        // Store our actual OAuth data in a nested object
+        oauth_data: {
+          code_verifier: codeVerifier,
+          state: state,
+          timestamp: Date.now()
+        }
+      } as any); // Type assertion to bypass interface restrictions
+    } catch (err) {
+      console.warn('Failed to cache OAuth session (cookies only):', err);
+    }
+
+    console.log('🍪 Cookies and cache set:', { 
+      state,
+      secure: cookieOptions.secure,
+      sameSite: cookieOptions.sameSite,
+      maxAge: cookieOptions.maxAge 
     });
 
     return response;

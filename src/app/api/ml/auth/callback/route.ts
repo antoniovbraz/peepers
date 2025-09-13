@@ -8,6 +8,9 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get("error");
     const state = searchParams.get("state");
 
+    console.log('🔍 Callback received:', { code: !!code, error, state });
+    console.log('🍪 Available cookies:', Object.fromEntries(request.cookies.getAll().map(c => [c.name, c.value])));
+
     if (error) {
       return NextResponse.json({ error }, { status: 400 });
     }
@@ -17,17 +20,42 @@ export async function GET(request: NextRequest) {
     }
 
     // Get PKCE code_verifier from cookies
-    const codeVerifier = request.cookies.get('ml_code_verifier')?.value;
-    const storedState = request.cookies.get('oauth_state')?.value;
+    let codeVerifier = request.cookies.get('ml_code_verifier')?.value;
+    let storedState = request.cookies.get('oauth_state')?.value;
+
+    console.log('🔐 PKCE verification:', { 
+      hasCodeVerifier: !!codeVerifier, 
+      hasStoredState: !!storedState,
+      stateMatch: state === storedState
+    });
+
+    // If cookies are missing, try to get from cache as fallback
+    if (!codeVerifier || !storedState) {
+      console.log('🔄 Cookies missing, trying cache fallback...');
+      try {
+        const cachedSession = await cache.getUser(`oauth_session:${state}`);
+        if (cachedSession && (cachedSession as any).oauth_data) {
+          const oauthData = (cachedSession as any).oauth_data;
+          codeVerifier = oauthData.code_verifier;
+          storedState = oauthData.state;
+          console.log('✅ Retrieved from cache:', { hasCodeVerifier: !!codeVerifier, hasStoredState: !!storedState });
+        }
+      } catch (err) {
+        console.warn('Cache lookup failed:', err);
+      }
+    }
 
     if (!codeVerifier) {
+      console.error('❌ Missing code_verifier in both cookies and cache');
       return NextResponse.json({ 
         error: "Missing code_verifier", 
-        message: "PKCE code_verifier not found in cookies" 
+        message: "PKCE code_verifier not found in cookies or cache. Please try the authentication again.",
+        suggestion: "Go to /api/ml/auth to restart the authentication process"
       }, { status: 400 });
     }
 
     if (state !== storedState) {
+      console.error('❌ State mismatch:', { received: state, stored: storedState });
       return NextResponse.json({ 
         error: "Invalid state", 
         message: "OAuth state mismatch" 
@@ -74,7 +102,7 @@ export async function GET(request: NextRequest) {
       user_id: tokenData.user_id
     });
 
-    // Clear PKCE cookies
+    // Clear PKCE cookies (cache will expire automatically)
     const response = NextResponse.json({
       success: true,
       user_id: tokenData.user_id,
