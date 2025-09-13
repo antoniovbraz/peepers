@@ -1,104 +1,120 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
-import { createMercadoLivreAPI } from '@/lib/ml-api';
-
-const mlApi = createMercadoLivreAPI(
-  { fetch },
-  {
-    clientId: process.env.ML_CLIENT_ID!,
-    clientSecret: process.env.ML_CLIENT_SECRET!,
-    accessToken: process.env.ML_ACCESS_TOKEN,
-    refreshToken: process.env.ML_REFRESH_TOKEN,
-    userId: process.env.ML_USER_ID
-  }
-);
-
-// Removed edge runtime - incompatible with Redis operations
 
 export async function GET(request: NextRequest) {
   try {
     console.log('Products API called');
     
-    // Try to get products from cache first
-    let products = await cache.getActiveProducts();
-    console.log('Products from cache:', products ? products.length : 0);
+    // Use the same exact logic as /api/ml/products that we know works
+    const knownUserId = "669073070";
+    const tokenData = await cache.getUser(`access_token:${knownUserId}`);
+    
+    if (!tokenData?.access_token) {
+      return NextResponse.json({
+        error: "Unauthorized",
+        message: "Você precisa se autenticar com o Mercado Livre primeiro.",
+        login_url: "/api/ml/auth",
+        suggestion: "Faça login em /api/ml/auth e tente novamente."
+      }, { status: 401 });
+    }
 
-    // If no cached products, try to fetch directly from ML API using the working endpoint logic
-    if (!products || products.length === 0) {
-      console.log('No cached products found, fetching from ML API...');
+    console.log('Token found, fetching ALL products from ML API with pagination...');
+
+    // Buscar TODOS os produtos usando paginação (não apenas 10)
+    let allProductIds: string[] = [];
+    let offset = 0;
+    const limit = 50; // ML permite até 50 por requisição
+    let totalProducts = 0;
+
+    // Primeira requisição para descobrir total
+    console.log('Fetching first page to determine total products...');
+    const firstResponse = await fetch(`https://api.mercadolibre.com/users/${knownUserId}/items/search?limit=${limit}&offset=${offset}`, {
+      headers: {
+        "Authorization": `Bearer ${tokenData.access_token}`,
+        "Accept": "application/json"
+      }
+    });
+
+    if (!firstResponse.ok) {
+      const errorData = await firstResponse.json();
+      return NextResponse.json({
+        error: "Failed to fetch products",
+        message: "Erro ao buscar produtos do Mercado Livre",
+        details: errorData
+      }, { status: firstResponse.status });
+    }
+
+    const firstData = await firstResponse.json();
+    totalProducts = firstData.paging?.total || firstData.results?.length || 0;
+    allProductIds.push(...(firstData.results || []));
+    
+    console.log(`Found ${totalProducts} total products. First page has ${firstData.results?.length || 0} items.`);
+
+    // Se há mais produtos, buscar páginas restantes
+    if (totalProducts > limit) {
+      const totalPages = Math.ceil(totalProducts / limit);
+      console.log(`Fetching remaining ${totalPages - 1} pages...`);
       
-      try {
-        // Use the same logic as /api/ml/products which is working
-        const userId = process.env.ML_USER_ID || '669073070';
-        console.log('Using user ID:', userId);
-        
-        // Get token from cache
-        const tokenData = await cache.getUser(`access_token:${userId}`);
-        console.log('Token data found:', !!tokenData);
-        
-        if (tokenData && tokenData.token) {
-          console.log('Token exists, setting up ML API');
-          
-          // Set token in ML API instance
-          mlApi.setAccessToken(
-            tokenData.token, 
-            tokenData.user_id.toString(),
-            tokenData.refresh_token
-          );
-          
-          // Fetch products directly from ML API
-          const mlProducts = await mlApi.syncAllProducts();
-          console.log(`Fetched ${mlProducts.length} products from ML API`);
-          
-          if (mlProducts.length > 0) {
-            // Cache the products for future requests
-            await cache.setAllProducts(mlProducts);
-            
-            // Don't filter by active only - show paused products too for now
-            // Filter only products that have basic info (not failed/deleted)
-            products = mlProducts.filter(p => p.id && p.title && p.price);
-            console.log(`Filtered to ${products.length} valid products (including paused)`);
-          }
-        } else {
-          console.log('No token found in cache for user:', userId);
-          
-          return NextResponse.json(
-            { 
-              error: 'Unauthorized',
-              message: 'Você precisa se autenticar com o Mercado Livre primeiro. Vá para /api/ml/auth para fazer login.',
-              login_url: '/api/ml/auth'
-            },
-            { status: 401 }
-          );
-        }
-      } catch (fallbackError) {
-        console.error('ML API fetch failed:', fallbackError);
-        
-        return NextResponse.json(
-          { 
-            error: 'Failed to fetch products',
-            message: 'Erro ao buscar produtos do Mercado Livre: ' + (fallbackError instanceof Error ? fallbackError.message : 'Unknown error'),
-            suggestion: 'Tente se autenticar novamente em /api/ml/auth'
-          },
-          { status: 500 }
+      const pagePromises = [];
+      for (let page = 1; page < totalPages; page++) {
+        const pageOffset = page * limit;
+        pagePromises.push(
+          fetch(`https://api.mercadolibre.com/users/${knownUserId}/items/search?limit=${limit}&offset=${pageOffset}`, {
+            headers: {
+              "Authorization": `Bearer ${tokenData.access_token}`,
+              "Accept": "application/json"
+            }
+          }).then(res => res.json())
         );
       }
+
+      const pageResults = await Promise.all(pagePromises);
+      pageResults.forEach(pageData => {
+        if (pageData.results) {
+          allProductIds.push(...pageData.results);
+        }
+      });
+    }
+
+    console.log(`Total product IDs collected: ${allProductIds.length}`);
+
+    // Buscar detalhes de todos os produtos em lotes (ML permite até 20 por vez no /items?ids=)
+    let allProductDetails = [];
+    const batchSize = 20;
+    
+    for (let i = 0; i < allProductIds.length; i += batchSize) {
+      const batch = allProductIds.slice(i, i + batchSize);
+      console.log(`Fetching details for batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allProductIds.length/batchSize)} (${batch.length} items)`);
       
-      // If still no products after ML API call
-      if (!products || products.length === 0) {
-        return NextResponse.json({
-          products: [],
-          total: 0,
-          message: 'Nenhum produto ativo encontrado.',
-          last_sync: await cache.getLastSyncTime(),
-          suggestion: 'Verifique se há produtos ativos na sua conta do Mercado Livre.'
+      try {
+        const batchResponse = await fetch(`https://api.mercadolibre.com/items?ids=${batch.join(',')}`, {
+          headers: {
+            "Authorization": `Bearer ${tokenData.access_token}`,
+            "Accept": "application/json"
+          }
         });
+        
+        if (batchResponse.ok) {
+          const batchData = await batchResponse.json();
+          // ML retorna array de objetos com code/body quando multiple IDs
+          const validProducts = batchData
+            .filter((item: any) => item.code === 200 && item.body)
+            .map((item: any) => item.body);
+          
+          allProductDetails.push(...validProducts);
+        } else {
+          console.warn(`Failed to fetch batch starting at index ${i}`);
+        }
+      } catch (err) {
+        console.warn(`Error fetching batch starting at index ${i}:`, err);
       }
     }
 
-    // Transform products for frontend display with high-quality images
-    const transformedProducts = products.map(product => {
-      // Get high-quality image - prefer secure_url from pictures array
+    console.log(`Successfully fetched ${allProductDetails.length} product details out of ${allProductIds.length} total`);
+
+    // Transform products for frontend display - INCLUDE PAUSED PRODUCTS
+    const transformedProducts = allProductDetails.map(product => {
+      // Get high-quality image
       let highQualityImage = product.secure_thumbnail || product.thumbnail;
       let allPictures: Array<{
         id: string;
@@ -110,12 +126,10 @@ export async function GET(request: NextRequest) {
       }> = [];
       
       if (product.pictures && product.pictures.length > 0) {
-        // Use the first high-quality image as main thumbnail
         const firstPicture = product.pictures[0];
         highQualityImage = firstPicture.secure_url || firstPicture.url || highQualityImage;
         
-        // Prepare all pictures with high-quality URLs
-        allPictures = product.pictures.slice(0, 5).map(pic => ({
+        allPictures = product.pictures.slice(0, 5).map((pic: any) => ({
           id: pic.id || '',
           url: pic.url || '',
           secure_url: pic.secure_url || '',
@@ -135,44 +149,51 @@ export async function GET(request: NextRequest) {
         thumbnail: highQualityImage,
         pictures: allPictures,
         permalink: product.permalink,
-        status: product.status,
+        status: product.status, // Include status (paused/active)
         shipping: {
           free_shipping: product.shipping?.free_shipping || false,
           local_pick_up: product.shipping?.local_pick_up || false
         },
-        attributes: product.attributes?.filter(attr => 
+        attributes: product.attributes?.filter((attr: any) => 
           ['BRAND', 'MODEL', 'COLOR', 'SIZE'].includes(attr.id)
-        ).slice(0, 4) || [], // Show more key attributes
+        ).slice(0, 4) || [],
         category_id: product.category_id,
-        // Add additional useful fields
         sold_quantity: product.sold_quantity || 0,
         warranty: product.warranty,
         tags: product.tags || [],
-        // Status indicators for admin
+        // Add status info for admin
         is_active: product.status === 'active',
         is_paused: product.status === 'paused',
-        needs_reactivation: product.available_quantity === 0
+        sub_status: product.sub_status || []
       };
     });
 
-    console.log('Returning', transformedProducts.length, 'transformed products');
+    // Separate active and paused for statistics
+    const activeProducts = transformedProducts.filter(p => p.status === 'active');
+    const pausedProducts = transformedProducts.filter(p => p.status === 'paused');
+    const outOfStockProducts = transformedProducts.filter(p => p.available_quantity === 0);
+    const inStockProducts = transformedProducts.filter(p => p.available_quantity > 0);
 
-    // Calculate statistics for admin
-    const activeCount = transformedProducts.filter(p => p.is_active).length;
-    const pausedCount = transformedProducts.filter(p => p.is_paused).length;
-    const needsReactivationCount = transformedProducts.filter(p => p.needs_reactivation).length;
+    console.log(`Returning ${transformedProducts.length} total products:`);
+    console.log(`- ${activeProducts.length} active`);
+    console.log(`- ${pausedProducts.length} paused`);
+    console.log(`- ${inStockProducts.length} in stock`);
+    console.log(`- ${outOfStockProducts.length} out of stock`);
 
     return NextResponse.json({
-      products: transformedProducts,
+      products: transformedProducts, // Return ALL products (active + paused)
       total: transformedProducts.length,
-      last_sync: await cache.getLastSyncTime(),
       statistics: {
-        total: transformedProducts.length,
-        active: activeCount,
-        paused: pausedCount,
-        needs_reactivation: needsReactivationCount,
-        status_summary: `${activeCount} ativos, ${pausedCount} pausados, ${needsReactivationCount} precisam reativação`
-      }
+        total_products: transformedProducts.length,
+        active_products: activeProducts.length,
+        paused_products: pausedProducts.length,
+        in_stock_products: inStockProducts.length,
+        out_of_stock_products: outOfStockProducts.length,
+        fetched_details: allProductDetails.length,
+        total_found: totalProducts
+      },
+      message: `Carregados ${transformedProducts.length} produtos (${activeProducts.length} ativos, ${pausedProducts.length} pausados)`,
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
