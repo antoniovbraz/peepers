@@ -1,19 +1,23 @@
 import { Product, ProductQuestion } from '@/types/product';
 import { AppError } from '@/core/error';
+import { cache } from '@/lib/cache';
 
 export class MLApiService {
   private accessToken: string | null = null;
+  private refreshToken: string | null = null;
   private userId: string | null = null;
   private readonly baseUrl = 'https://api.mercadolibre.com';
 
   constructor() {
     this.accessToken = process.env.ML_ACCESS_TOKEN || null;
+    this.refreshToken = null;
     this.userId = process.env.ML_USER_ID || null;
   }
 
-  setAccessToken(token: string, userId: string) {
+  setAccessToken(token: string, userId: string, refreshToken: string) {
     this.accessToken = token;
     this.userId = userId;
+    this.refreshToken = refreshToken;
   }
 
   async exchangeCode(code: string) {
@@ -46,14 +50,64 @@ export class MLApiService {
 
     const data = await response.json();
 
-    return {
-      token: data.access_token,
+    const tokenData = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
       user_id: data.user_id,
       expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString(),
     };
+
+    this.setAccessToken(tokenData.access_token, tokenData.user_id, tokenData.refresh_token);
+
+    return tokenData;
   }
 
-  private async fetchWithAuth(endpoint: string, options: RequestInit = {}) {
+  async refreshAccessToken() {
+    if (!this.refreshToken) {
+      throw AppError.unauthorized('No refresh token available');
+    }
+
+    const clientId = process.env.ML_CLIENT_ID;
+    const clientSecret = process.env.ML_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      throw AppError.internal('ML_CLIENT_ID or ML_CLIENT_SECRET not configured');
+    }
+
+    const response = await fetch('https://api.mercadolibre.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: this.refreshToken,
+      }),
+    });
+
+    if (!response.ok) {
+      throw AppError.unauthorized('Failed to refresh access token');
+    }
+
+    const data = await response.json();
+
+    const tokenData = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      user_id: data.user_id ?? this.userId ?? '',
+      expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString(),
+    };
+
+    this.setAccessToken(tokenData.access_token, tokenData.user_id, tokenData.refresh_token);
+    await cache.setUser(tokenData);
+
+    return tokenData;
+  }
+
+  private async fetchWithAuth(endpoint: string, options: RequestInit = {}, retry = true) {
     if (!this.accessToken) {
       throw AppError.unauthorized('No access token available');
     }
@@ -67,6 +121,14 @@ export class MLApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 401 && retry) {
+        try {
+          await this.refreshAccessToken();
+          return this.fetchWithAuth(endpoint, options, false);
+        } catch (err) {
+          throw AppError.unauthorized('Invalid or expired access token');
+        }
+      }
       if (response.status === 401) {
         throw AppError.unauthorized('Invalid or expired access token');
       }

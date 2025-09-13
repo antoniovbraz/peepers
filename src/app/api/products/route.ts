@@ -12,10 +12,12 @@ async function handler(request: NextRequest) {
     if (!products || products.length === 0) {
       console.log('No cached products found, trying ML API fallback...');
       
-      const tokenData = await cache.getUser('access_token');
-      
-      if (tokenData?.token) {
-        mlApi.setAccessToken(tokenData.token, tokenData.user_id);
+      const accessToken = await cache.getUser('access_token');
+      const userId = await cache.getUser('user_id');
+      const refreshToken = await cache.getUser('refresh_token');
+
+      if (accessToken && userId && refreshToken) {
+        mlApi.setAccessToken(accessToken, userId, refreshToken);
         const mlProducts = await mlApi.syncAllProducts();
         
         if (mlProducts.length > 0) {
