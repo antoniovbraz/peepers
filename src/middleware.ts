@@ -6,12 +6,10 @@ import { logger } from '@/lib/logger';
 export async function middleware(request: NextRequest) {
   // Rotas públicas que não precisam de autenticação
   const publicPaths = [
-    '/api/ml/auth',
-    '/api/ml/auth/callback',
-    '/api/ml/webhook',
     '/api/products',
     '/api/health',
-    '/api/cache-debug'
+    '/api/cache-debug',
+    '/api/debug'
   ];
 
   // Se a rota é pública, permite o acesso
@@ -90,8 +88,6 @@ export async function middleware(request: NextRequest) {
 // Configurar em quais rotas o middleware deve ser executado
 export const config = {
   matcher: [
-    '/api/products/:path*',
-    '/api/ml/sync/:path*',
-    '/api/ml/test-token/:path*'
+    '/api/sync/:path*'
   ]
 };

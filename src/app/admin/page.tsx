@@ -29,20 +29,6 @@ function AdminDashboard() {
       icon: '🛍️'
     },
     {
-      name: 'Produtos ML (Backup)',
-      url: '/api/ml/products',
-      status: 'loading',
-      description: 'Endpoint backup direto do ML (primeiros 10 produtos)',
-      icon: '📦'
-    },
-    // {
-    //   name: 'Auth ML',
-    //   url: '/api/ml/auth',
-    //   status: 'loading',
-    //   description: 'Iniciação do OAuth PKCE com Mercado Livre (DESABILITADO)',
-    //   icon: '🔐'
-    // },
-    {
       name: 'Debug Info',
       url: '/api/debug',
       status: 'loading',
@@ -279,11 +265,11 @@ function AdminDashboard() {
               Homepage
             </a>
             <a 
-              href="https://peepers.vercel.app/api/ml/auth" 
+              href="/api/sync" 
               className="flex items-center justify-center bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
             >
-              <span className="mr-2">�</span>
-              OAuth ML
+              <span className="mr-2">🔄</span>
+              Sincronizar Produtos
             </a>
             <a 
               href="https://github.com/antoniovbraz/peepers"
