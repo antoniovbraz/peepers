@@ -54,9 +54,10 @@ export async function GET(request: NextRequest) {
             // Cache the products for future requests
             await cache.setAllProducts(mlProducts);
             
-            // Filter active products
-            products = mlProducts.filter(p => p.status === 'active');
-            console.log(`Filtered to ${products.length} active products`);
+            // Don't filter by active only - show paused products too for now
+            // Filter only products that have basic info (not failed/deleted)
+            products = mlProducts.filter(p => p.id && p.title && p.price);
+            console.log(`Filtered to ${products.length} valid products (including paused)`);
           }
         } else {
           console.log('No token found in cache for user:', userId);
@@ -146,16 +147,32 @@ export async function GET(request: NextRequest) {
         // Add additional useful fields
         sold_quantity: product.sold_quantity || 0,
         warranty: product.warranty,
-        tags: product.tags || []
+        tags: product.tags || [],
+        // Status indicators for admin
+        is_active: product.status === 'active',
+        is_paused: product.status === 'paused',
+        needs_reactivation: product.available_quantity === 0
       };
     });
 
     console.log('Returning', transformedProducts.length, 'transformed products');
 
+    // Calculate statistics for admin
+    const activeCount = transformedProducts.filter(p => p.is_active).length;
+    const pausedCount = transformedProducts.filter(p => p.is_paused).length;
+    const needsReactivationCount = transformedProducts.filter(p => p.needs_reactivation).length;
+
     return NextResponse.json({
       products: transformedProducts,
       total: transformedProducts.length,
-      last_sync: await cache.getLastSyncTime()
+      last_sync: await cache.getLastSyncTime(),
+      statistics: {
+        total: transformedProducts.length,
+        active: activeCount,
+        paused: pausedCount,
+        needs_reactivation: needsReactivationCount,
+        status_summary: `${activeCount} ativos, ${pausedCount} pausados, ${needsReactivationCount} precisam reativação`
+      }
     });
 
   } catch (error) {
