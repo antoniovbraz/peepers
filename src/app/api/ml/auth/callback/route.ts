@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
-import { html } from '@/lib/html';
 import { renderHtml } from '@/lib/render-html';
 import { createMercadoLivreAPI } from '@/lib/ml-api';
 import { logger } from '@/lib/logger';
+import { renderAuthCallback } from '@/lib/templates/auth-callback';
 
 const mlApi = createMercadoLivreAPI(
   { fetch },
@@ -28,8 +28,12 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       logger.error({ error }, 'OAuth error');
-      return NextResponse.json(
-        { error: 'OAuth authorization failed', details: error },
+      return renderHtml(
+        renderAuthCallback({
+          success: false,
+          message: 'Falha na autenticação',
+          details: 'Ocorreu um erro durante o processo de autenticação com o Mercado Livre. Por favor, tente novamente.'
+        }),
         { status: 400 }
       );
     }
