@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
 import { renderHtml } from '@/lib/render-html';
 import { createMercadoLivreAPI } from '@/lib/ml-api';
+import logger from '@/lib/logger';
 
 const mlApi = createMercadoLivreAPI(
   { fetch },
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    console.log('Starting ML sync...');
+    logger.info('Starting ML sync...');
     
     // Check if sync is already in progress
     const lockAcquired = await cache.acquireSyncLock();
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      console.log('Using access token for user:', tokenData.user_id);
+      logger.info('Using access token for user:', tokenData.user_id);
 
       // Set the token in the ML API instance
       mlApi.setAccessToken(tokenData.token, tokenData.user_id.toString());
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
       // Cache the products
       await cache.setAllProducts(products);
       
-      console.log(`Sync completed: ${products.length} products`);
+      logger.info(`Sync completed: ${products.length} products`);
       
       return NextResponse.json({
         success: true,
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
     
   } catch (error) {
-    console.error('Sync failed:', error);
+    logger.error('Sync failed:', error);
     
     // Release lock on error
     await cache.releaseSyncLock();
@@ -207,7 +208,7 @@ export async function GET(request: NextRequest) {
     });
     
   } catch (error) {
-    console.error('Sync status check failed:', error);
+    logger.error('Sync status check failed:', error);
     
     return NextResponse.json(
       { 
@@ -228,12 +229,12 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    console.log('Cron sync triggered');
+    logger.info('Cron sync triggered');
     
     // Check if sync is already in progress
     const lockAcquired = await cache.acquireSyncLock();
     if (!lockAcquired) {
-      console.log('Sync already in progress, skipping cron sync');
+      logger.info('Sync already in progress, skipping cron sync');
       return NextResponse.json({ message: 'Sync already in progress' });
     }
 
@@ -248,7 +249,7 @@ export async function PATCH(request: NextRequest) {
         
         // Only sync if more than 1.5 hours have passed
         if (hoursDiff < 1.5) {
-          console.log(`Last sync was ${hoursDiff.toFixed(1)} hours ago, skipping`);
+          logger.info(`Last sync was ${hoursDiff.toFixed(1)} hours ago, skipping`);
           return NextResponse.json({ 
             message: 'Sync not needed yet',
             last_sync: lastSync,
@@ -261,7 +262,7 @@ export async function PATCH(request: NextRequest) {
       const products = await mlApi.syncAllProducts();
       await cache.setAllProducts(products);
       
-      console.log(`Cron sync completed: ${products.length} products`);
+      logger.info(`Cron sync completed: ${products.length} products`);
       
       return NextResponse.json({
         success: true,
@@ -274,7 +275,7 @@ export async function PATCH(request: NextRequest) {
     }
     
   } catch (error) {
-    console.error('Cron sync failed:', error);
+    logger.error('Cron sync failed:', error);
     await cache.releaseSyncLock();
     
     return NextResponse.json(

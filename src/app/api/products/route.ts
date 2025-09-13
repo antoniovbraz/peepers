@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
 import { createMercadoLivreAPI } from '@/lib/ml-api';
+import logger from '@/lib/logger';
 
 const mlApi = createMercadoLivreAPI(
   { fetch },
@@ -17,15 +18,15 @@ const mlApi = createMercadoLivreAPI(
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Products API called');
+    logger.info('Products API called');
     
     // Try to get products from cache first
     let products = await cache.getActiveProducts();
-    console.log('Products from cache:', products ? products.length : 0);
+    logger.info('Products from cache:', products ? products.length : 0);
 
     // If no cached products, try to fetch from ML API as fallback
     if (!products || products.length === 0) {
-      console.log('No cached products found, trying ML API fallback...');
+      logger.info('No cached products found, trying ML API fallback...');
       
       try {
         // Get access token from cache
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
         if (tokenData && tokenData.token) {
           // Check if token is not expired
           if (!tokenData.expires_at || new Date(tokenData.expires_at) > new Date()) {
-            console.log('Using ML API fallback with valid token');
+            logger.info('Using ML API fallback with valid token');
             
             // Set token in ML API instance
             mlApi.setAccessToken(tokenData.token, tokenData.user_id.toString());
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
             const mlProducts = await mlApi.syncAllProducts();
             
             if (mlProducts.length > 0) {
-              console.log(`Fallback successful: fetched ${mlProducts.length} products from ML API`);
+              logger.info(`Fallback successful: fetched ${mlProducts.length} products from ML API`);
               
               // Cache the products for future requests
               await cache.setAllProducts(mlProducts);
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
           }
         }
       } catch (fallbackError) {
-        console.error('ML API fallback failed:', fallbackError);
+        logger.error('ML API fallback failed:', fallbackError);
       }
       
       // If still no products after fallback, return empty with sync suggestion
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    console.log('Returning', transformedProducts.length, 'transformed products');
+    logger.info('Returning', transformedProducts.length, 'transformed products');
 
     return NextResponse.json({
       products: transformedProducts,
@@ -134,7 +135,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Products API error:', error);
+    logger.error('Products API error:', error);
     
     return NextResponse.json(
       { 
@@ -185,7 +186,7 @@ export async function POST(request: NextRequest) {
     );
     
   } catch (error) {
-    console.error('Products POST API error:', error);
+    logger.error('Products POST API error:', error);
     
     return NextResponse.json(
       { 

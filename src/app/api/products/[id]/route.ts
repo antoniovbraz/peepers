@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
 import { createMercadoLivreAPI } from '@/lib/ml-api';
+import logger from '@/lib/logger';
 
 const mlApi = createMercadoLivreAPI(
   { fetch },
@@ -32,7 +33,7 @@ export async function GET(
     
     // If not in cache, fetch from ML API
     if (!product) {
-      console.log(`Product ${productId} not in cache, fetching from ML API...`);
+      logger.info(`Product ${productId} not in cache, fetching from ML API...`);
       
       try {
         product = await mlApi.getProduct(productId);
@@ -40,9 +41,9 @@ export async function GET(
         // Cache the product
         await cache.setProduct(product);
         
-        console.log(`Cached product: ${productId}`);
+        logger.info(`Cached product: ${productId}`);
       } catch (error) {
-        console.error(`Failed to fetch product ${productId}:`, error);
+        logger.error(`Failed to fetch product ${productId}:`, error);
         
         return NextResponse.json(
           { 
@@ -66,7 +67,7 @@ export async function GET(
         // Cache the questions
         await cache.setProductQuestions(productId, questions);
       } catch (error) {
-        console.error(`Failed to fetch questions for ${productId}:`, error);
+        logger.error(`Failed to fetch questions for ${productId}:`, error);
         questions = []; // Default to empty array
       }
     }
@@ -132,7 +133,7 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Product API error:', error);
+    logger.error('Product API error:', error);
 
     return NextResponse.json(
       {
@@ -194,7 +195,7 @@ export async function POST(
     );
     
   } catch (error) {
-    console.error('Product POST API error:', error);
+    logger.error('Product POST API error:', error);
 
     return NextResponse.json(
       {

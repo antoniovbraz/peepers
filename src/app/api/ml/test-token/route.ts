@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import logger from '@/lib/logger';
 
 export const runtime = 'edge';
 
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Code required' }, { status: 400 });
     }
 
-    console.log('Testing token exchange with code:', code);
+    logger.info('Testing token exchange with code:', code);
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
     // Direct API call to ML
@@ -30,10 +31,10 @@ export async function GET(request: NextRequest) {
       })
     });
 
-    console.log('ML API Response status:', tokenResponse.status);
+    logger.info('ML API Response status:', tokenResponse.status);
     
     const responseText = await tokenResponse.text();
-    console.log('ML API Response body:', responseText);
+    logger.info('ML API Response body:', responseText);
 
     if (!tokenResponse.ok) {
       return NextResponse.json({
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Test token error:', error);
+    logger.error('Test token error:', error);
     
     return NextResponse.json({
       error: 'Test failed',
