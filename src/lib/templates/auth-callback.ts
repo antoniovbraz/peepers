@@ -1,4 +1,5 @@
 import { html } from '@/lib/html';
+import { API_ENDPOINTS, PAGES } from '@/config/routes';
 
 export function renderAuthCallback(options: {
   success: boolean;
@@ -121,11 +122,11 @@ export function renderAuthCallback(options: {
             </a>
             
             ${success ? `
-              <a href="/produtos" class="button button-secondary">
+              <a href="${PAGES.PRODUTOS}" class="button button-secondary">
                 Ver meus produtos
               </a>
             ` : `
-              <a href="/api/ml/auth" class="button button-secondary">
+              <a href="${API_ENDPOINTS.AUTH_ML}" class="button button-secondary">
                 Tentar novamente
               </a>
             `}

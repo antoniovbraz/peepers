@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
+import { PAGES, API_ENDPOINTS } from '@/config/routes';
 
 interface EndpointStatus {
   name: string;
@@ -16,28 +17,28 @@ function AdminDashboard() {
   const [endpoints, setEndpoints] = useState<EndpointStatus[]>([
     {
       name: 'Health Check',
-      url: '/api/health',
+      url: API_ENDPOINTS.HEALTH,
       status: 'loading',
       description: 'Verifica se a aplicação está funcionando',
       icon: '❤️'
     },
     {
       name: 'Produtos (Principal)',
-      url: '/api/products',
+      url: API_ENDPOINTS.PRODUCTS,
       status: 'loading', 
       description: 'Endpoint principal com paginação completa (100+ produtos)',
       icon: '🛍️'
     },
     {
       name: 'Debug Info',
-      url: '/api/debug',
+      url: API_ENDPOINTS.DEBUG,
       status: 'loading',
       description: 'Informações técnicas e debugging',
       icon: '🔍'
     },
     {
       name: 'Cache Debug',
-      url: '/api/cache-debug',
+      url: API_ENDPOINTS.CACHE_DEBUG,
       status: 'loading',
       description: 'Estado do cache Redis e chaves armazenadas',
       icon: '💾'
@@ -251,7 +252,7 @@ function AdminDashboard() {
           <h2 className="text-2xl font-semibold mb-6">⚡ Ações Rápidas</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <a 
-              href="/produtos" 
+              href={PAGES.PRODUTOS} 
               className="flex items-center justify-center bg-teal-600 text-white py-3 px-4 rounded-lg hover:bg-teal-700 transition-colors font-medium"
             >
               <span className="mr-2">🛍️</span>
@@ -265,14 +266,14 @@ function AdminDashboard() {
               Homepage
             </a>
             <a 
-              href="/api/auth/mercado-livre" 
+              href={API_ENDPOINTS.AUTH_ML} 
               className="flex items-center justify-center bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
               <span className="mr-2">🔐</span>
               Autenticar Mercado Livre
             </a>
             <a 
-              href="/api/sync" 
+              href={API_ENDPOINTS.SYNC} 
               className="flex items-center justify-center bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
             >
               <span className="mr-2">🔄</span>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
 import { createMercadoLivreAPI } from '@/lib/ml-api';
+import { CACHE_KEYS, PAGES } from '@/config/routes';
 
 const mlApi = createMercadoLivreAPI(
   { fetch },
@@ -19,14 +20,14 @@ export async function GET(request: NextRequest) {
     
     // Get user ID and token from cache
     const userId = process.env.ML_USER_ID || '669073070';
-    const tokenData = await cache.getUser(`access_token:${userId}`);
+    const tokenData = await cache.getUser(CACHE_KEYS.USER_TOKEN(userId));
     
     if (!tokenData || !tokenData.token) {
       return NextResponse.json(
         { 
           error: 'No authentication found',
           message: 'Configure ML_ACCESS_TOKEN e ML_REFRESH_TOKEN nas variáveis de ambiente',
-          docs_url: '/admin'
+          docs_url: PAGES.ADMIN
         },
         { status: 401 }
       );

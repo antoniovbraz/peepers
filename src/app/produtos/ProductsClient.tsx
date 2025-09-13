@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PeepersLogo from '@/components/PeepersLogo';
 import type { ProductSummary } from '@/types/product';
+import { PAGES, API_ENDPOINTS } from '@/config/routes';
 
 interface ProductsResponse {
   products: ProductSummary[];
@@ -98,7 +99,7 @@ export default function ProductsClient() {
           Fazer Login ML
         </a>
         <a 
-          href="/admin"
+          href={PAGES.ADMIN}
           className="btn-secondary inline-flex items-center"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,7 +228,7 @@ export default function ProductsClient() {
               )}
             </div>
             <Link
-              href={`/produtos/${product.id}`}
+              href={PAGES.PRODUTO_DETALHE(product.id)}
               className="btn-primary w-full text-center group relative overflow-hidden"
             >
               <span className="relative z-10">Comprar no Mercado Livre</span>

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import PeepersLogo from '@/components/PeepersLogo';
 import ProductsClient from './ProductsClient';
+import { PAGES } from '@/config/routes';
 
 // Loading component para produtos
 function ProductsLoading() {
@@ -35,7 +36,7 @@ export default function ProdutosPage() {
               </Link>
             </div>
             <nav className="hidden md:flex space-x-8">
-              <Link href="/produtos" className="text-peepers-primary-600 font-medium border-b-2 border-peepers-primary-600 pb-1">
+              <Link href={PAGES.PRODUTOS} className="text-peepers-primary-600 font-medium border-b-2 border-peepers-primary-600 pb-1">
                 Produtos
               </Link>
               <Link href="/#como-funciona" className="text-peepers-neutral-700 hover:text-peepers-primary-600 transition-colors font-medium">
@@ -257,9 +258,9 @@ export default function ProdutosPage() {
             <div>
               <h4 className="font-semibold mb-4 text-peepers-secondary-400">Produtos</h4>
               <ul className="space-y-2 text-peepers-neutral-400">
-                <li><Link href="/produtos" className="hover:text-peepers-secondary-400 transition-colors">Todos os Produtos</Link></li>
-                <li><Link href="/produtos?condition=new" className="hover:text-peepers-secondary-400 transition-colors">Produtos Novos</Link></li>
-                <li><Link href="/produtos?shipping=free" className="hover:text-peepers-secondary-400 transition-colors">Frete Grátis</Link></li>
+                <li><Link href={PAGES.PRODUTOS} className="hover:text-peepers-secondary-400 transition-colors">Todos os Produtos</Link></li>
+                <li><Link href={`${PAGES.PRODUTOS}?condition=new`} className="hover:text-peepers-secondary-400 transition-colors">Produtos Novos</Link></li>
+                <li><Link href={`${PAGES.PRODUTOS}?shipping=free`} className="hover:text-peepers-secondary-400 transition-colors">Frete Grátis</Link></li>
               </ul>
             </div>
             <div>

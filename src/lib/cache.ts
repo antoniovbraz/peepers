@@ -8,6 +8,7 @@ import {
   CachedCategory,
 } from '@/types/ml';
 import { logger } from './logger';
+import { CACHE_KEYS as GLOBAL_CACHE_KEYS } from '@/config/routes';
 
 let kvClient: ReturnType<typeof createClient> | null = null;
 
@@ -40,11 +41,11 @@ const CACHE_TTL = {
   CATEGORIES: 86400, // 24 hours
 } as const;
 
-// Cache key prefixes
+// Cache key prefixes - use global configuration
 const CACHE_KEYS = {
-  PRODUCTS_ALL: 'products:all',
+  PRODUCTS_ALL: GLOBAL_CACHE_KEYS.PRODUCTS_ALL,
   PRODUCTS_ACTIVE: 'products:active',
-  PRODUCT: 'product:',
+  PRODUCT: GLOBAL_CACHE_KEYS.PRODUCT,
   QUESTIONS: 'questions:',
   USER: 'user:',
   CATEGORIES: 'categories:all',

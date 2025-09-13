@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getKVClient } from '@/lib/cache';
+import { ML_CONFIG, CACHE_KEYS, API_ENDPOINTS } from '@/config/routes';
 
 // Função para gerar code verifier PKCE
 function generateCodeVerifier(): string {
@@ -41,21 +42,21 @@ export async function GET(request: NextRequest) {
 
     // Armazenar code verifier no cache (expira em 10 minutos)
     const kv = getKVClient();
-    await kv.set(`pkce_verifier:${state}`, codeVerifier, { ex: 600 });
+    await kv.set(CACHE_KEYS.PKCE_VERIFIER(state), codeVerifier, { ex: 600 });
     
     console.log('✅ PKCE parâmetros gerados e armazenados');
 
     // Construir URL de autorização
     const baseUrl = request.nextUrl.origin;
-    const authUrl = new URL('https://auth.mercadolivre.com.br/authorization');
+    const authUrl = new URL(ML_CONFIG.AUTH_URL);
     
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('client_id', clientId);
-    authUrl.searchParams.set('redirect_uri', `${baseUrl}/api/auth/mercado-livre/callback`);
+    authUrl.searchParams.set('redirect_uri', `${baseUrl}${API_ENDPOINTS.AUTH_ML_CALLBACK}`);
     authUrl.searchParams.set('code_challenge', codeChallenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');
     authUrl.searchParams.set('state', state);
-    authUrl.searchParams.set('scope', 'read write');
+    authUrl.searchParams.set('scope', ML_CONFIG.SCOPES);
 
     console.log('🔗 URL de autorização gerada:', authUrl.toString());
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
+import { CACHE_KEYS } from '@/config/routes';
 
 export async function GET(request: NextRequest) {
   try {
