@@ -8,7 +8,8 @@ export async function GET(request: NextRequest) {
     // Check different cache keys
     const checks = {
       user_token: await cache.getUser(`access_token:${userId}`),
-      cached_products: await cache.getActiveProducts(),
+      cached_products_all: await cache.getAllProducts(),
+      cached_products_active: await cache.getActiveProducts(),
       last_sync: await cache.getLastSyncTime()
     };
     
@@ -22,7 +23,8 @@ export async function GET(request: NextRequest) {
           token_length: checks.user_token.token?.length || 0,
           has_refresh_token: !!checks.user_token.refresh_token
         } : null,
-        cached_products_count: checks.cached_products?.length || 0,
+        cached_products_all_count: checks.cached_products_all?.length || 0,
+        cached_products_active_count: checks.cached_products_active?.length || 0,
         last_sync: checks.last_sync
       },
       environment: {
