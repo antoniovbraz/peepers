@@ -265,6 +265,13 @@ function AdminDashboard() {
               Homepage
             </a>
             <a 
+              href="/api/auth/mercado-livre" 
+              className="flex items-center justify-center bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              <span className="mr-2">🔐</span>
+              Autenticar Mercado Livre
+            </a>
+            <a 
               href="/api/sync" 
               className="flex items-center justify-center bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
             >

@@ -9,7 +9,9 @@ export async function middleware(request: NextRequest) {
     '/api/products',
     '/api/health',
     '/api/cache-debug',
-    '/api/debug'
+    '/api/debug',
+    '/api/auth/mercado-livre',
+    '/api/auth/mercado-livre/callback'
   ];
 
   // Se a rota é pública, permite o acesso
