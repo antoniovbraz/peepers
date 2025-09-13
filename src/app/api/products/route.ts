@@ -28,30 +28,44 @@ export async function GET(request: NextRequest) {
       console.log('No cached products found, trying ML API fallback...');
       
       try {
-        // Get access token from cache
-        const userId = process.env.ML_USER_ID!;
-        const tokenData = await cache.getUser(`access_token:${userId}`);
+        // Try to find any authenticated user in the cache
+        let tokenData = null;
+        let userId = process.env.ML_USER_ID;
+        
+        if (userId) {
+          tokenData = await cache.getUser(`access_token:${userId}`);
+        }
+        
+        // If no configured user or no token found, try the known user from OAuth
+        if (!tokenData) {
+          const knownUserId = '669073070';
+          tokenData = await cache.getUser(`access_token:${knownUserId}`);
+          if (tokenData) {
+            userId = knownUserId;
+          }
+        }
         
         if (tokenData && tokenData.token) {
-          // Check if token is not expired
-          if (!tokenData.expires_at || new Date(tokenData.expires_at) > new Date()) {
-            console.log('Using ML API fallback with valid token');
+          console.log('Using ML API fallback with token');
+          
+          // Set token in ML API instance with refresh token
+          mlApi.setAccessToken(
+            tokenData.token, 
+            tokenData.user_id.toString(),
+            tokenData.refresh_token
+          );
+          
+          // Fetch products directly from ML API (will auto-refresh if needed)
+          const mlProducts = await mlApi.syncAllProducts();
+          
+          if (mlProducts.length > 0) {
+            console.log(`Fallback successful: fetched ${mlProducts.length} products from ML API`);
             
-            // Set token in ML API instance
-            mlApi.setAccessToken(tokenData.token, tokenData.user_id.toString());
+            // Cache the products for future requests
+            await cache.setAllProducts(mlProducts);
             
-            // Fetch products directly from ML API
-            const mlProducts = await mlApi.syncAllProducts();
-            
-            if (mlProducts.length > 0) {
-              console.log(`Fallback successful: fetched ${mlProducts.length} products from ML API`);
-              
-              // Cache the products for future requests
-              await cache.setAllProducts(mlProducts);
-              
-              // Use the fetched products
-              products = mlProducts.filter(p => p.status === 'active');
-            }
+            // Use the fetched products
+            products = mlProducts.filter(p => p.status === 'active');
           }
         }
       } catch (fallbackError) {

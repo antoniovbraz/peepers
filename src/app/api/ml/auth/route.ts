@@ -1,7 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { logger } from '@/lib/logger';
-
-// Removed edge runtime for consistency with other OAuth routes
+import { NextResponse } from "next/server";
 
 // PKCE helper functions
 function generateCodeVerifier(): string {
@@ -23,66 +20,59 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
     .replace(/=/g, '');
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const clientId = process.env.ML_CLIENT_ID;
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
-    const redirectUri = `${baseUrl}/api/ml/auth/callback`;
-    
     if (!clientId) {
-      return NextResponse.json(
-        { error: 'ML_CLIENT_ID not configured' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "ML_CLIENT_ID not configured" }, { status: 500 });
     }
-
-    // Generate PKCE code_verifier and code_challenge
+    
+    const redirectUri = "https://peepers.vercel.app/api/ml/auth/callback";
+    
+    // Generate PKCE parameters
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = await generateCodeChallenge(codeVerifier);
-
-    // Store code_verifier in a way we can retrieve it (using a simple approach)
     const state = Math.random().toString(36).substring(2, 15);
     
-    // Mercado Livre OAuth URL with PKCE
-    const authUrl = new URL('https://auth.mercadolivre.com.br/authorization');
-    authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('client_id', clientId);
-    authUrl.searchParams.set('redirect_uri', redirectUri);
-    authUrl.searchParams.set('scope', 'read write offline_access');
-    authUrl.searchParams.set('code_challenge', codeChallenge);
-    authUrl.searchParams.set('code_challenge_method', 'S256');
-    authUrl.searchParams.set('state', state);
+    console.log('🔐 ML OAuth with PKCE:', { 
+      codeVerifierLength: codeVerifier.length,
+      codeChallengeLength: codeChallenge.length,
+      state 
+    });
+    
+    const authUrl = new URL("https://auth.mercadolivre.com.br/authorization");
+    authUrl.searchParams.set("response_type", "code");
+    authUrl.searchParams.set("client_id", clientId);
+    authUrl.searchParams.set("redirect_uri", redirectUri);
+    authUrl.searchParams.set("scope", "read write offline_access");
+    authUrl.searchParams.set("code_challenge", codeChallenge);
+    authUrl.searchParams.set("code_challenge_method", "S256");
+    authUrl.searchParams.set("state", state);
 
-    logger.info({ url: authUrl.toString() }, 'Redirecting to ML OAuth with PKCE');
-
-    // Store code_verifier temporarily (in a real app, use secure session storage)
+    // Store code_verifier in cookies for the callback
     const response = NextResponse.redirect(authUrl.toString());
-    response.cookies.set('ml_code_verifier', codeVerifier, { 
-      httpOnly: true, 
+    response.cookies.set('ml_code_verifier', codeVerifier, {
+      httpOnly: true,
       secure: true,
       sameSite: 'lax',
       path: '/',
       maxAge: 600 // 10 minutes
     });
-    response.cookies.set('oauth_state', state, { 
-      httpOnly: true, 
+    response.cookies.set('oauth_state', state, {
+      httpOnly: true,
       secure: true,
-      sameSite: 'lax', 
+      sameSite: 'lax',
       path: '/',
-      maxAge: 600 
+      maxAge: 600
     });
 
     return response;
     
   } catch (error) {
-    logger.error({ err: error }, 'OAuth initiation error');
-    
-    return NextResponse.json(
-      { 
-        error: 'Failed to initiate OAuth',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    console.error('❌ OAuth error:', error);
+    return NextResponse.json({ 
+      error: "Failed to initiate OAuth",
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }

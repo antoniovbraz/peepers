@@ -20,5 +20,15 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/ml/(.*)",
+      "destination": "/api/ml/$1"
+    },
+    {
+      "source": "/api/products(.*)",
+      "destination": "/api/products$1"
+    }
   ]
 }
