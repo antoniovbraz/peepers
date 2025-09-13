@@ -35,14 +35,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${request.nextUrl.origin}${PAGES.ADMIN}?auth_error=missing_credentials`);
     }
 
-    // Recuperar code verifier do cache
+    // SEGURANÇA CRÍTICA: Validar state para prevenir ataques CSRF
     const kv = getKVClient();
-    const codeVerifier = await kv.get<string>(CACHE_KEYS.PKCE_VERIFIER(state));
     
-    if (!codeVerifier) {
-      console.error('❌ Code verifier não encontrado ou expirado');
-      return NextResponse.redirect(`${request.nextUrl.origin}${PAGES.ADMIN}?auth_error=expired_session`);
+    // 1. Verificar se o state existe no cache (prova que foi gerado por nós)
+    const storedVerifier = await kv.get<string>(CACHE_KEYS.PKCE_VERIFIER(state));
+    
+    if (!storedVerifier) {
+      console.error('❌ CSRF DETECTED: State inválido ou expirado:', state);
+      await kv.del(CACHE_KEYS.PKCE_VERIFIER(state)); // Limpar por segurança
+      return NextResponse.redirect(`${request.nextUrl.origin}${PAGES.ADMIN}?auth_error=invalid_state`);
     }
+
+    // 2. Validar formato do state (deve ser string base64url válida)
+    if (!/^[A-Za-z0-9_-]+$/.test(state) || state.length < 32) {
+      console.error('❌ CSRF DETECTED: State com formato inválido:', state);
+      await kv.del(CACHE_KEYS.PKCE_VERIFIER(state));
+      return NextResponse.redirect(`${request.nextUrl.origin}${PAGES.ADMIN}?auth_error=malformed_state`);
+    }
+
+    const codeVerifier = storedVerifier;
+    console.log('✅ State validado com sucesso - CSRF protection OK');
 
     // Trocar código por token
     const tokenData = {

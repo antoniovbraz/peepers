@@ -108,31 +108,66 @@ export class MercadoLivreAPI {
       throw new Error('No refresh token available');
     }
 
-    const response = await this.httpClient.fetch(`${this.baseUrl}/oauth/token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Accept: 'application/json'
-      },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-        refresh_token: this.refreshToken
-      })
-    });
+    try {
+      const response = await this.httpClient.fetch(`${this.baseUrl}/oauth/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Accept: 'application/json'
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          client_id: this.clientId,
+          client_secret: this.clientSecret,
+          refresh_token: this.refreshToken
+        })
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Token refresh failed: ${error.message || error.error}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Token refresh failed: ${error.message || error.error}`);
+      }
+
+      const tokenData = await response.json();
+      
+      // Atualizar instância local
+      this.accessToken = tokenData.access_token;
+      this.refreshToken = tokenData.refresh_token;
+      this.tokenExpiry = Date.now() + tokenData.expires_in * 1000;
+
+      // CRÍTICO: Atualizar cache automaticamente com tokens renovados
+      if (this.userId) {
+        try {
+          const { cache } = await import('@/lib/cache');
+          const { CACHE_KEYS } = await import('@/config/routes');
+          
+          await cache.setUser(CACHE_KEYS.USER_TOKEN(this.userId), {
+            token: tokenData.access_token,
+            refresh_token: tokenData.refresh_token,
+            expires_at: new Date(this.tokenExpiry).toISOString(),
+            user_id: parseInt(this.userId, 10), // Converter para number
+            scope: tokenData.scope || 'read write',
+            token_type: tokenData.token_type || 'Bearer'
+          });
+          
+          console.log('✅ Cache atualizado automaticamente após refresh de token');
+        } catch (cacheError) {
+          console.error('⚠️ Erro ao atualizar cache após refresh:', cacheError);
+          // Não falhar o refresh por causa do cache
+        }
+      }
+
+      return tokenData;
+    } catch (error) {
+      console.error('❌ Erro no refresh de token:', error);
+      
+      // Fallback: limpar tokens inválidos e forçar re-autenticação
+      this.accessToken = undefined;
+      this.refreshToken = undefined;
+      this.tokenExpiry = undefined;
+      
+      throw new Error(`Token refresh failed. Re-authentication required: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-
-    const tokenData = await response.json();
-    this.accessToken = tokenData.access_token;
-    this.refreshToken = tokenData.refresh_token;
-    this.tokenExpiry = Date.now() + tokenData.expires_in * 1000;
-
-    return tokenData;
   }
 
   // API Request Helper with retry logic
@@ -168,6 +203,30 @@ export class MercadoLivreAPI {
           // Token might be expired, try to refresh
           await this.refreshAccessToken();
           continue;
+        }
+
+        // SEGURANÇA CRÍTICA: Tratamento específico para Rate Limiting (HTTP 429)
+        if (response.status === 429) {
+          // Extrair tempo de retry do header Retry-After (se disponível)
+          const retryAfterHeader = response.headers.get('Retry-After');
+          let retryAfterMs = Math.pow(2, i + 1) * 1000; // Backoff padrão: 2s, 4s, 8s, 16s
+          
+          if (retryAfterHeader) {
+            const retryAfterSeconds = parseInt(retryAfterHeader, 10);
+            if (!isNaN(retryAfterSeconds) && retryAfterSeconds > 0) {
+              retryAfterMs = retryAfterSeconds * 1000;
+            }
+          }
+          
+          if (i < retries - 1) {
+            console.warn(`⚠️ Rate limit hit (429) - retry ${i + 1}/${retries} after ${retryAfterMs}ms`);
+            await this.sleep(retryAfterMs);
+            continue;
+          } else {
+            // Circuit breaker: falhar definitivamente após esgotar tentativas
+            console.error(`❌ Rate limit exceeded - circuit breaker activated after ${retries} attempts`);
+            throw new Error(`Rate limit exceeded: Too many requests. Try again later. (HTTP 429)`);
+          }
         }
 
         if (!response.ok) {
@@ -212,7 +271,8 @@ export class MercadoLivreAPI {
     userId?: string,
     status?: 'active' | 'paused' | 'closed',
     limit = 50,
-    offset = 0
+    offset = 0,
+    searchType?: 'scan' // Para volumes +1000 produtos
   ): Promise<{ results: string[]; paging: Paging }> {
     const targetUserId = userId || this.userId;
     if (!targetUserId) {
@@ -222,12 +282,18 @@ export class MercadoLivreAPI {
     const params = new URLSearchParams({
       limit: limit.toString(),
       offset: offset.toString(),
-      ...(status && { status })
+      ...(status && { status }),
+      ...(searchType && { search_type: searchType })
     });
 
-    return this.makeRequest<{ results: string[]; paging: Paging }>(
-      `/users/${targetUserId}/items/search?${params.toString()}`
-    );
+    // OTIMIZAÇÃO: Para grandes volumes, usar search_type=scan que permite +1000 produtos
+    const endpoint = `/users/${targetUserId}/items/search?${params.toString()}`;
+    
+    if (searchType === 'scan') {
+      console.log(`🔍 Using search_type=scan for large volume (${limit} products, offset: ${offset})`);
+    }
+
+    return this.makeRequest<{ results: string[]; paging: Paging }>(endpoint);
   }
 
   async getProduct(productId: string): Promise<MLProduct> {
@@ -356,39 +422,90 @@ export class MercadoLivreAPI {
   // Batch operations for better performance
   async syncAllProducts(): Promise<MLProduct[]> {
     try {
-      logger.info('Starting product sync...');
+      logger.info('Starting optimized product sync...');
 
-      // Get all product IDs
-      const productIds: string[] = [];
-      let offset = 0;
-      const limit = 50;
+      // OTIMIZAÇÃO: Buscar TODOS os produtos (ativos + pausados) em paralelo
+      const productIdsActive: string[] = [];
+      const productIdsPaused: string[] = [];
+      
+      // Função para buscar todos os produtos de um status específico
+      const getAllProductsByStatus = async (status: 'active' | 'paused'): Promise<string[]> => {
+        const allIds: string[] = [];
+        let offset = 0;
+        const limit = 50;
+        let hasMore = true;
+        let useSearchTypeScan = false;
 
-      while (true) {
-        const response = await this.getUserProducts(this.userId, 'active', limit, offset);
-        productIds.push(...response.results);
+        while (hasMore) {
+          // Para volumes > 1000, usar search_type=scan
+          const searchType = useSearchTypeScan ? 'scan' : undefined;
+          
+          const response = await this.getUserProducts(
+            this.userId, 
+            status, 
+            limit, 
+            offset, 
+            searchType
+          );
+          
+          allIds.push(...response.results);
+          
+          // Se obtivemos menos resultados que o limite, terminamos
+          if (response.results.length < limit) {
+            hasMore = false;
+          } else {
+            offset += limit;
+            
+            // OTIMIZAÇÃO: Se temos >1000 produtos, ativar scan mode
+            if (offset >= 1000 && !useSearchTypeScan) {
+              console.log('🚀 Ativando search_type=scan para grandes volumes');
+              useSearchTypeScan = true;
+            }
+          }
+        }
+        
+        return allIds;
+      };
 
-        if (response.results.length < limit) break;
-        offset += limit;
-      }
+      // Buscar produtos ativos e pausados em paralelo
+      console.log('🔄 Buscando produtos ativos e pausados em paralelo...');
+      const [activeIds, pausedIds] = await Promise.all([
+        getAllProductsByStatus('active'),
+        getAllProductsByStatus('paused')
+      ]);
 
-      logger.info({ count: productIds.length }, 'Found products');
+      productIdsActive.push(...activeIds);
+      productIdsPaused.push(...pausedIds);
+      
+      const allProductIds = [...productIdsActive, ...productIdsPaused];
+      
+      logger.info({ 
+        active: productIdsActive.length, 
+        paused: productIdsPaused.length,
+        total: allProductIds.length 
+      }, 'Found products by status');
 
       // Get product details in batches
       const products: MLProduct[] = [];
       const batchSize = 20; // ML API limit for multiget
 
-      for (let i = 0; i < productIds.length; i += batchSize) {
-        const batch = productIds.slice(i, i + batchSize);
+      for (let i = 0; i < allProductIds.length; i += batchSize) {
+        const batch = allProductIds.slice(i, i + batchSize);
         const batchProducts = await this.getMultipleProducts(batch);
         products.push(...batchProducts);
 
         // Rate limiting - wait between batches
-        if (i + batchSize < productIds.length) {
+        if (i + batchSize < allProductIds.length) {
           await this.sleep(100);
         }
       }
 
-      logger.info({ count: products.length }, 'Synced products');
+      logger.info({ 
+        count: products.length,
+        active: products.filter(p => p.status === 'active').length,
+        paused: products.filter(p => p.status === 'paused').length 
+      }, 'Synced products with status breakdown');
+      
       return products;
     } catch (error) {
       logger.error({ err: error }, 'Product sync failed');
