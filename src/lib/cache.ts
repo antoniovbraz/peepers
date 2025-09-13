@@ -7,6 +7,7 @@ import {
   CachedUser,
   CachedCategory,
 } from '@/types/ml';
+import { logger } from './logger';
 
 let kvClient: ReturnType<typeof createClient> | null = null;
 
@@ -91,7 +92,7 @@ class CacheManager {
       // Extract products from nested structure if needed
       return cached.map(product => this.toMLProduct(product));
     } catch (error) {
-      console.error('Cache get error:', error);
+      logger.error({ err: error }, 'Cache get error');
       return null;
     }
   }
@@ -131,9 +132,9 @@ class CacheManager {
       // Update last sync timestamp
       await kv.set(CACHE_KEYS.LAST_SYNC, new Date().toISOString());
       
-      console.log(`Cached ${products.length} products`);
+      logger.info({ count: products.length }, 'Cached products');
     } catch (error) {
-      console.error('Cache set error:', error);
+      logger.error({ err: error }, 'Cache set error');
       throw error;
     }
   }
@@ -159,7 +160,7 @@ class CacheManager {
       // Extract products from nested structure if needed
       return cached.map(product => this.toMLProduct(product));
     } catch (error) {
-      console.error('Cache get error:', error);
+      logger.error({ err: error }, 'Cache get error');
       return null;
     }
   }
@@ -183,7 +184,7 @@ class CacheManager {
       // Extract product from nested structure if needed
       return this.toMLProduct(cached);
     } catch (error) {
-      console.error('Cache get error:', error);
+      logger.error({ err: error }, 'Cache get error');
       return null;
     }
   }
@@ -199,7 +200,7 @@ class CacheManager {
 
       await kv.set(`${CACHE_KEYS.PRODUCT}${product.id}`, cachedProduct, { ex: CACHE_TTL.PRODUCTS });
     } catch (error) {
-      console.error('Cache set error:', error);
+      logger.error({ err: error }, 'Cache set error');
       throw error;
     }
   }
@@ -212,9 +213,9 @@ class CacheManager {
       // Also invalidate the full products cache to trigger refresh
       await this.invalidateProductsCache();
       
-      console.log(`Invalidated cache for product ${productId}`);
+      logger.info({ productId }, 'Invalidated cache for product');
     } catch (error) {
-      console.error('Cache invalidation error:', error);
+      logger.error({ err: error }, 'Cache invalidation error');
     }
   }
 
@@ -226,9 +227,9 @@ class CacheManager {
         kv.del(CACHE_KEYS.PRODUCTS_ACTIVE)
       ]);
       
-      console.log('Invalidated products cache');
+      logger.info('Invalidated products cache');
     } catch (error) {
-      console.error('Cache invalidation error:', error);
+      logger.error({ err: error }, 'Cache invalidation error');
     }
   }
 
@@ -251,7 +252,7 @@ class CacheManager {
       
       return cached.questions;
     } catch (error) {
-      console.error('Cache get error:', error);
+      logger.error({ err: error }, 'Cache get error');
       return null;
     }
   }
@@ -268,7 +269,7 @@ class CacheManager {
 
       await kv.set(`${CACHE_KEYS.QUESTIONS}${productId}`, cachedQuestions, { ex: CACHE_TTL.QUESTIONS });
     } catch (error) {
-      console.error('Cache set error:', error);
+      logger.error({ err: error }, 'Cache set error');
       throw error;
     }
   }
@@ -277,9 +278,9 @@ class CacheManager {
     const kv = getKVClient();
     try {
       await kv.del(`${CACHE_KEYS.QUESTIONS}${productId}`);
-      console.log(`Invalidated questions cache for product ${productId}`);
+      logger.info({ productId }, 'Invalidated questions cache for product');
     } catch (error) {
-      console.error('Cache invalidation error:', error);
+      logger.error({ err: error }, 'Cache invalidation error');
     }
   }
 
@@ -289,7 +290,7 @@ class CacheManager {
     try {
       return await kv.get<CachedUser>(`${CACHE_KEYS.USER}${userId}`);
     } catch (error) {
-      console.error('Cache get error:', error);
+      logger.error({ err: error }, 'Cache get error');
       return null;
     }
   }
@@ -299,7 +300,7 @@ class CacheManager {
     try {
       await kv.set(`${CACHE_KEYS.USER}${userId}`, userData, { ex: CACHE_TTL.USER_DATA });
     } catch (error) {
-      console.error('Cache set error:', error);
+      logger.error({ err: error }, 'Cache set error');
       throw error;
     }
   }
@@ -310,7 +311,7 @@ class CacheManager {
     try {
       return await kv.get<CachedCategory[]>(CACHE_KEYS.CATEGORIES);
     } catch (error) {
-      console.error('Cache get error:', error);
+      logger.error({ err: error }, 'Cache get error');
       return null;
     }
   }
@@ -320,7 +321,7 @@ class CacheManager {
     try {
       await kv.set(CACHE_KEYS.CATEGORIES, categories, { ex: CACHE_TTL.CATEGORIES });
     } catch (error) {
-      console.error('Cache set error:', error);
+      logger.error({ err: error }, 'Cache set error');
       throw error;
     }
   }
@@ -336,7 +337,7 @@ class CacheManager {
       
       return lockAcquired === 'OK';
     } catch (error) {
-      console.error('Lock acquisition error:', error);
+      logger.error({ err: error }, 'Lock acquisition error');
       return false;
     }
   }
@@ -346,7 +347,7 @@ class CacheManager {
     try {
       await kv.del(CACHE_KEYS.SYNC_LOCK);
     } catch (error) {
-      console.error('Lock release error:', error);
+      logger.error({ err: error }, 'Lock release error');
     }
   }
 
@@ -355,7 +356,7 @@ class CacheManager {
     try {
       return await kv.get<string>(CACHE_KEYS.LAST_SYNC);
     } catch (error) {
-      console.error('Cache get error:', error);
+      logger.error({ err: error }, 'Cache get error');
       return null;
     }
   }
@@ -394,9 +395,9 @@ class CacheManager {
         await kv.del(...allKeys);
       }
 
-      console.log(`Cleared ${allKeys.length} cache entries`);
+      logger.info({ count: allKeys.length }, 'Cleared cache entries');
     } catch (error) {
-      console.error('Cache clear error:', error);
+      logger.error({ err: error }, 'Cache clear error');
       throw error;
     }
   }
@@ -422,7 +423,7 @@ class CacheManager {
         lastSync
       };
     } catch (error) {
-      console.error('Cache stats error:', error);
+      logger.error({ err: error }, 'Cache stats error');
       return {
         productsCount: 0,
         questionsCount: 0,
@@ -445,7 +446,7 @@ class CacheManager {
       
       return retrieved === testValue;
     } catch (error) {
-      console.error('Cache health check failed:', error);
+      logger.error({ err: error }, 'Cache health check failed');
       return false;
     }
   }

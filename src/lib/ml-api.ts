@@ -10,6 +10,7 @@ import {
   AnswerResponse,
   Paging
 } from '@/types/ml';
+import { logger } from './logger';
 
 export interface HttpClient {
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
@@ -355,7 +356,7 @@ export class MercadoLivreAPI {
   // Batch operations for better performance
   async syncAllProducts(): Promise<MLProduct[]> {
     try {
-      console.log('Starting product sync...');
+      logger.info('Starting product sync...');
 
       // Get all product IDs
       const productIds: string[] = [];
@@ -370,7 +371,7 @@ export class MercadoLivreAPI {
         offset += limit;
       }
 
-      console.log(`Found ${productIds.length} products`);
+      logger.info({ count: productIds.length }, 'Found products');
 
       // Get product details in batches
       const products: MLProduct[] = [];
@@ -387,10 +388,10 @@ export class MercadoLivreAPI {
         }
       }
 
-      console.log(`Synced ${products.length} products`);
+      logger.info({ count: products.length }, 'Synced products');
       return products;
     } catch (error) {
-      console.error('Product sync failed:', error);
+      logger.error({ err: error }, 'Product sync failed');
       throw error;
     }
   }

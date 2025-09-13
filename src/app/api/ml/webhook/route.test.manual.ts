@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { NextRequest } from 'next/server';
 import crypto from 'node:crypto';
+import { logger } from '@/lib/logger';
 
 const secret = 'test-secret';
 
@@ -41,5 +42,5 @@ function createRequest(body: object, signature?: string) {
   const goodRes = await POST(goodReq);
   assert.equal(goodRes.status, 200);
 
-  console.log('Webhook signature tests passed');
+  logger.info('Webhook signature tests passed');
 })();
