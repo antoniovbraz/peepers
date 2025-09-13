@@ -190,7 +190,7 @@ export default function ProductsClient() {
                 <span className="badge-new">Novo</span>
               </div>
             )}
-            {product.shipping.free_shipping && (
+            {product.shipping?.free_shipping && (
               <div className="absolute top-3 right-3">
                 <span className="badge-shipping">Frete Grátis</span>
               </div>

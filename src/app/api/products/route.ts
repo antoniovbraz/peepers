@@ -27,8 +27,11 @@ export async function GET(request: NextRequest) {
           status: p.status,
           thumbnail: p.secure_thumbnail || p.thumbnail,
           available_quantity: p.available_quantity || 0,
-          condition: p.condition,
-          currency_id: p.currency_id
+          condition: p.condition || 'not_specified',
+          currency_id: p.currency_id,
+          shipping: {
+            free_shipping: p.shipping?.free_shipping || false
+          }
         })),
         source: 'cache',
         message: `${cachedProducts.length} produtos encontrados no cache`
