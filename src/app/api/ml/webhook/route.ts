@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MLWebhook } from '@/types/ml';
-import { mlApi } from '@/lib/ml-api';
 import { cache } from '@/lib/cache';
 import { revalidatePath } from 'next/cache';
 import crypto from 'node:crypto';
+import { createMercadoLivreAPI } from '@/lib/ml-api';
+
+const mlApi = createMercadoLivreAPI(
+  { fetch },
+  {
+    clientId: process.env.ML_CLIENT_ID!,
+    clientSecret: process.env.ML_CLIENT_SECRET!,
+    accessToken: process.env.ML_ACCESS_TOKEN,
+    refreshToken: process.env.ML_REFRESH_TOKEN,
+    userId: process.env.ML_USER_ID
+  }
+);
 
 // revalidatePath requires the Node.js runtime
 export const runtime = 'nodejs';
