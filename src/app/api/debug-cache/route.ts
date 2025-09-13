@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Get sample access token
-    const tokenData = await cache.getUser('access_token:12345');
+    const tokenData = await cache.getUser('12345');
 
     return NextResponse.json({
       success: true,

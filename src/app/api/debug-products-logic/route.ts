@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     
     // Test 3: Check the token separately
     const knownUserId = "669073070";
-    const tokenData = await cache.getUser(`access_token:${knownUserId}`);
+    const tokenData = await cache.getUser(knownUserId);
     console.log('Test 3 - Token check:', {
       hasToken: !!tokenData,
       hasAccessToken: !!tokenData?.access_token,

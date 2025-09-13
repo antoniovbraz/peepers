@@ -21,7 +21,7 @@ export async function GET() {
     // Tentar verificar usuários no cache
     try {
       const knownUserId = '669073070';
-      const tokenData = await cache.getUser(`access_token:${knownUserId}`);
+      const tokenData = await cache.getUser(knownUserId); // Usar método getUser correto
       debug.cache_check.user_token = !!tokenData;
       debug.cache_check.token_has_refresh = !!(tokenData && tokenData.refresh_token);
       debug.cache_check.token_expires_at = tokenData ? tokenData.expires_at : null;

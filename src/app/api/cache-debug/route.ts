@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     
     // Check different cache keys
     const checks = {
-      user_token: await cache.getUser(`access_token:${userId}`),
+      user_token: await cache.getUser(userId),
       cached_products_all: await cache.getAllProducts(),
       cached_products_active: await cache.getActiveProducts(),
       last_sync: await cache.getLastSyncTime()

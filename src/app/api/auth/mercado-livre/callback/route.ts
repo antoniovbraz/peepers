@@ -102,13 +102,13 @@ export async function GET(request: NextRequest) {
     const userData = await userResponse.json();
     console.log('✅ Dados do usuário obtidos:', userData.id);
 
-    // Armazenar tokens no cache
+    // Armazenar tokens no cache usando o método correto
     const userId = userData.id.toString();
-    await cache.setUser(CACHE_KEYS.USER_TOKEN(userId), {
+    await cache.setUser(userId, {
       token: tokenResult.access_token,
       refresh_token: tokenResult.refresh_token,
       expires_at: new Date(Date.now() + (tokenResult.expires_in * 1000)).toISOString(),
-      user_id: userId,
+      user_id: parseInt(userId, 10), // Converter para number
       scope: tokenResult.scope,
       token_type: tokenResult.token_type
     });

@@ -141,7 +141,7 @@ export class MercadoLivreAPI {
           const { cache } = await import('@/lib/cache');
           const { CACHE_KEYS } = await import('@/config/routes');
           
-          await cache.setUser(CACHE_KEYS.USER_TOKEN(this.userId), {
+          await cache.setUser(this.userId, {
             token: tokenData.access_token,
             refresh_token: tokenData.refresh_token,
             expires_at: new Date(this.tokenExpiry).toISOString(),

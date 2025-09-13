@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     
     // Get user ID and token from cache
     const userId = process.env.ML_USER_ID || '669073070';
-    const tokenData = await cache.getUser(CACHE_KEYS.USER_TOKEN(userId));
+    const tokenData = await cache.getUser(userId);
     
     if (!tokenData || !tokenData.token) {
       return NextResponse.json(

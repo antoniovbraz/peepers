@@ -17,8 +17,8 @@ export async function middleware(request: NextRequest) {
     let token: { token?: string; expires_at?: string } | null = null;
 
     if (userId) {
-      // No cache os tokens são salvos via cache.setUser(CACHE_KEYS.USER_TOKEN(userId), { token, expires_at, user_id })
-      token = await cache.getUser(CACHE_KEYS.USER_TOKEN(userId));
+      // No cache os tokens são salvos via cache.setUser(userId, { token, expires_at, user_id })
+      token = await cache.getUser(userId);
     }
 
     // Fallback para token em variáveis de ambiente caso não exista no cache
