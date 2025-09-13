@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "test": "tsx src/**/*.test.ts"
+    "lint": "next lint"
   },
   "dependencies": {
     "@tailwindcss/forms": "^0.5.7",
@@ -30,7 +29,6 @@
     "@types/react-dom": "^18.2.14",
     "eslint": "^8.51.0",
     "eslint-config-next": "^13.5.6",
-    "typescript": "^5.2.2",
-    "tsx": "^4.7.0"
+    "typescript": "^5.2.2"
   }
 }

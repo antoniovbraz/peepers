@@ -1,6 +1,9 @@
-export interface CacheUser {
-  access_token: string;
-  refresh_token: string;
+interface TokenData {
+  token: string;
   user_id: string;
   expires_at: string;
+}
+
+export interface CacheUser {
+  access_token: TokenData;
 }
