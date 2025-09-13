@@ -53,41 +53,59 @@ export async function GET() {
     // Store code_verifier in cookies for the callback
     const response = NextResponse.redirect(authUrl.toString());
     
-    // Robust cookie settings for production - remove domain to avoid issues
+    // Ultra-robust cookie settings for maximum compatibility
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
       path: '/',
-      maxAge: 900, // 15 minutes (increased for better reliability)
+      maxAge: 1800, // 30 minutes for better reliability
     };
     
+    // Set cookies with multiple approaches for better compatibility
     response.cookies.set('ml_code_verifier', codeVerifier, cookieOptions);
     response.cookies.set('oauth_state', state, cookieOptions);
+    
+    // Also set with different paths as fallback
+    response.cookies.set('ml_pkce_verifier', codeVerifier, { ...cookieOptions, path: '/api' });
+    response.cookies.set('ml_oauth_state', state, { ...cookieOptions, path: '/api' });
 
-    // ALSO store in cache as fallback (using state as key)
+    // ALWAYS store in cache as primary storage (using multiple keys for redundancy)
     try {
-      await cache.setUser(`oauth_session:${state}`, {
+      const sessionData = {
         access_token: '', // dummy values to match CachedUser interface
         refresh_token: '',
-        expires_at: '',
-        user_id: 0, // Use number 0 instead of empty string
-        // Store our actual OAuth data in a nested object
+        expires_at: new Date(Date.now() + 1800000).toISOString(), // 30 minutes
+        user_id: 0,
         oauth_data: {
           code_verifier: codeVerifier,
           state: state,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          client_id: clientId
         }
-      } as any); // Type assertion to bypass interface restrictions
+      } as any;
+      
+      // Store with multiple keys for maximum reliability
+      await Promise.all([
+        cache.setUser(`oauth_session:${state}`, sessionData),
+        cache.setUser(`oauth_verifier:${codeVerifier}`, sessionData),
+        cache.setUser(`oauth_backup:${Date.now()}`, sessionData)
+      ]);
+      
+      console.log('✅ OAuth session stored in cache with multiple keys');
     } catch (err) {
-      console.warn('Failed to cache OAuth session (cookies only):', err);
+      console.error('❌ CRITICAL: Failed to cache OAuth session:', err);
+      // Don't fail the request, but log the error prominently
     }
 
     console.log('🍪 Cookies and cache set:', { 
       state,
+      codeVerifierLength: codeVerifier.length,
+      codeChallengeLength: codeChallenge.length,
       secure: cookieOptions.secure,
       sameSite: cookieOptions.sameSite,
-      maxAge: cookieOptions.maxAge 
+      maxAge: cookieOptions.maxAge,
+      timestamp: new Date().toISOString()
     });
 
     return response;

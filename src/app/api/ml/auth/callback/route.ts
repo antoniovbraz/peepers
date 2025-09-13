@@ -19,38 +19,89 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No authorization code" }, { status: 400 });
     }
 
-    // Get PKCE code_verifier from cookies
-    let codeVerifier = request.cookies.get('ml_code_verifier')?.value;
-    let storedState = request.cookies.get('oauth_state')?.value;
+    // Get PKCE code_verifier from multiple sources for maximum reliability
+    let codeVerifier = request.cookies.get('ml_code_verifier')?.value 
+                    || request.cookies.get('ml_pkce_verifier')?.value;
+    let storedState = request.cookies.get('oauth_state')?.value 
+                   || request.cookies.get('ml_oauth_state')?.value;
 
-    console.log('🔐 PKCE verification:', { 
+    console.log('🔐 PKCE verification (initial):', { 
       hasCodeVerifier: !!codeVerifier, 
       hasStoredState: !!storedState,
-      stateMatch: state === storedState
+      stateMatch: state === storedState,
+      receivedState: state,
+      allCookies: Object.fromEntries(request.cookies.getAll().map(c => [c.name, c.value.substring(0, 10) + '...']))
     });
 
-    // If cookies are missing, try to get from cache as fallback
+    // If cookies are missing, try multiple cache lookup strategies
     if (!codeVerifier || !storedState) {
-      console.log('🔄 Cookies missing, trying cache fallback...');
+      console.log('🔄 Cookies missing, trying enhanced cache fallback...');
+      
       try {
-        const cachedSession = await cache.getUser(`oauth_session:${state}`);
-        if (cachedSession && (cachedSession as any).oauth_data) {
-          const oauthData = (cachedSession as any).oauth_data;
-          codeVerifier = oauthData.code_verifier;
-          storedState = oauthData.state;
-          console.log('✅ Retrieved from cache:', { hasCodeVerifier: !!codeVerifier, hasStoredState: !!storedState });
+        // Try multiple cache keys
+        const cacheKeys = [
+          `oauth_session:${state}`,
+          `oauth_verifier:${codeVerifier}`, // if we have partial data
+          // Also try recent backup keys
+        ];
+        
+        // Get all recent oauth backups as last resort
+        const recentBackups = [];
+        const now = Date.now();
+        for (let i = 0; i < 10; i++) {
+          const timestamp = now - (i * 60000); // Check last 10 minutes
+          recentBackups.push(`oauth_backup:${Math.floor(timestamp / 60000) * 60000}`);
         }
+        
+        const allKeys = [...cacheKeys, ...recentBackups].filter(Boolean);
+        
+        for (const key of allKeys) {
+          try {
+            const cachedSession = await cache.getUser(key);
+            if (cachedSession && (cachedSession as any).oauth_data) {
+              const oauthData = (cachedSession as any).oauth_data;
+              
+              // Verify this session matches our state
+              if (oauthData.state === state || !state) {
+                codeVerifier = oauthData.code_verifier;
+                storedState = oauthData.state;
+                console.log('✅ Retrieved from cache key:', key);
+                break;
+              }
+            }
+          } catch (keyErr) {
+            console.warn(`Cache key ${key} failed:`, keyErr instanceof Error ? keyErr.message : 'Unknown error');
+          }
+        }
+        
       } catch (err) {
-        console.warn('Cache lookup failed:', err);
+        console.error('❌ Cache lookup completely failed:', err);
       }
     }
 
     if (!codeVerifier) {
-      console.error('❌ Missing code_verifier in both cookies and cache');
+      console.error('❌ Missing code_verifier after all attempts');
+      console.error('Debug info:', {
+        receivedState: state,
+        cookiesReceived: Object.fromEntries(request.cookies.getAll().map(c => [c.name, '***'])),
+        cacheAttempted: true,
+        timestamp: new Date().toISOString()
+      });
+      
       return NextResponse.json({ 
         error: "Missing code_verifier", 
-        message: "PKCE code_verifier not found in cookies or cache. Please try the authentication again.",
-        suggestion: "Go to /api/ml/auth to restart the authentication process"
+        message: "PKCE code_verifier not found in cookies or cache. This could be due to:",
+        troubleshooting: [
+          "1. Cookies were blocked or deleted by browser",
+          "2. Too much time passed between auth initiation and callback",
+          "3. Cache service (Redis) unavailable",
+          "4. Browser privacy settings blocking cross-site cookies"
+        ],
+        suggestion: "Go to /api/ml/auth to restart the authentication process",
+        debug: {
+          hasState: !!state,
+          cookieCount: request.cookies.getAll().length
+        }
       }, { status: 400 });
     }
 
@@ -102,15 +153,43 @@ export async function GET(request: NextRequest) {
       user_id: tokenData.user_id
     });
 
-    // Clear PKCE cookies (cache will expire automatically)
+    // Clear PKCE cookies and cache entries (comprehensive cleanup)
     const response = NextResponse.json({
       success: true,
       user_id: tokenData.user_id,
       message: "Autenticação realizada com sucesso!"
     });
     
-    response.cookies.delete('ml_code_verifier');
-    response.cookies.delete('oauth_state');
+    // Delete all possible cookie variants
+    const cookiesToDelete = [
+      'ml_code_verifier',
+      'ml_pkce_verifier', 
+      'oauth_state',
+      'ml_oauth_state'
+    ];
+    
+    cookiesToDelete.forEach(cookieName => {
+      response.cookies.delete(cookieName);
+      // Also delete with different paths
+      response.cookies.set(cookieName, '', { 
+        maxAge: 0, 
+        path: '/' 
+      });
+      response.cookies.set(cookieName, '', { 
+        maxAge: 0, 
+        path: '/api' 
+      });
+    });
+
+    // Clean up cache entries
+    try {
+      await Promise.all([
+        cache.setUser(`oauth_session:${state}`, null as any).catch(() => {}),
+        cache.setUser(`oauth_verifier:${codeVerifier}`, null as any).catch(() => {})
+      ]);
+    } catch (cleanupErr) {
+      console.warn('Cache cleanup warning:', cleanupErr);
+    }
 
     return response;
 
