@@ -25,7 +25,9 @@ export async function GET(request: NextRequest) {
           title: p.title,
           price: p.price,
           status: p.status,
-          thumbnail: p.secure_thumbnail || p.thumbnail,
+          thumbnail: p.pictures && p.pictures.length > 0 
+            ? p.pictures[0].secure_url || p.pictures[0].url 
+            : p.secure_thumbnail || p.thumbnail,
           available_quantity: p.available_quantity || 0,
           condition: p.condition || 'not_specified',
           currency_id: p.currency_id,
