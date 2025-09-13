@@ -3,48 +3,17 @@ import { cache } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Products API called');
+    console.log('🚀 Products API called - unified endpoint');
     
-    // First, try to get products from cache
-    console.log('Checking cache for products...');
+    // Always try cache first for better performance
+    console.log('📦 Checking cache for products...');
     const cachedProducts = await cache.getAllProducts();
     
-    console.log('Cache result:', { 
-      hasProducts: !!cachedProducts, 
-      count: cachedProducts?.length || 0,
-      type: typeof cachedProducts 
-    });
-    
     if (cachedProducts && cachedProducts.length > 0) {
-      console.log(`Found ${cachedProducts.length} products in cache, returning cached data`);
+      console.log(`✅ Found ${cachedProducts.length} products in cache, returning cached data`);
       
       // Transform cached products for frontend display
       const transformedProducts = cachedProducts.map((product: any) => {
-        // Get high-quality image
-        let highQualityImage = product.secure_thumbnail || product.thumbnail;
-        let allPictures: Array<{
-          id: string;
-          url: string;
-          secure_url: string;
-          size: string;
-          max_size: string;
-          quality: string;
-        }> = [];
-        
-        if (product.pictures && product.pictures.length > 0) {
-          const firstPicture = product.pictures[0];
-          highQualityImage = firstPicture.secure_url || firstPicture.url || highQualityImage;
-          
-          allPictures = product.pictures.slice(0, 5).map((pic: any) => ({
-            id: pic.id || '',
-            url: pic.url || '',
-            secure_url: pic.secure_url || '',
-            size: pic.size || '',
-            max_size: pic.max_size || '',
-            quality: pic.quality || 'standard'
-          }));
-        }
-
         return {
           id: product.id,
           title: product.title,
@@ -52,140 +21,166 @@ export async function GET(request: NextRequest) {
           currency_id: product.currency_id,
           available_quantity: product.available_quantity,
           condition: product.condition,
-          thumbnail: highQualityImage,
-          pictures: allPictures,
+          thumbnail: product.secure_thumbnail || product.thumbnail,
           permalink: product.permalink,
           status: product.status,
           shipping: {
             free_shipping: product.shipping?.free_shipping || false,
             local_pick_up: product.shipping?.local_pick_up || false
           },
-          attributes: product.attributes?.filter((attr: any) => 
-            ['BRAND', 'MODEL', 'COLOR', 'SIZE'].includes(attr.id)
-          ).slice(0, 4) || [],
           category_id: product.category_id,
           sold_quantity: product.sold_quantity || 0,
           warranty: product.warranty,
-          tags: product.tags || [],
-          installments: product.sale_terms?.find((term: any) => term.id === 'FINANCING')
+          tags: product.tags || []
         };
       });
 
+      // Separate by status for statistics
+      const activeProducts = transformedProducts.filter(p => p.status === 'active');
+      const pausedProducts = transformedProducts.filter(p => p.status === 'paused');
+
       return NextResponse.json({
+        success: true,
         products: transformedProducts,
         total: transformedProducts.length,
+        statistics: {
+          total_products: transformedProducts.length,
+          active_products: activeProducts.length,
+          paused_products: pausedProducts.length,
+        },
         source: 'cache',
-        message: `Carregados ${transformedProducts.length} produtos do cache`,
+        message: `${transformedProducts.length} produtos carregados do cache (${activeProducts.length} ativos, ${pausedProducts.length} pausados)`,
         timestamp: new Date().toISOString()
       });
     }
     
-    // If no cache, fall back to API call but use simpler logic like /api/ml/products
-    console.log('No products in cache, fetching from ML API...');
+    // If no cache, fetch from Mercado Livre API
+    console.log('🌐 No cache found, fetching from Mercado Livre API...');
     
     const knownUserId = "669073070";
     const tokenData = await cache.getUser(`access_token:${knownUserId}`);
     
     if (!tokenData?.access_token) {
       return NextResponse.json({
+        success: false,
         error: "Unauthorized",
         message: "Você precisa se autenticar com o Mercado Livre primeiro.",
         login_url: "/api/ml/auth",
-        suggestion: "Faça login em /api/ml/auth e tente novamente."
+        products: [],
+        total: 0
       }, { status: 401 });
     }
 
-    // Simple fetch like the working /api/ml/products endpoint
-    const productsResponse = await fetch(`https://api.mercadolibre.com/users/${knownUserId}/items/search?limit=50`, {
+    console.log('🔑 Token found, fetching ALL products with pagination...');
+
+    // Fetch ALL products using pagination
+    let allProductIds: string[] = [];
+    let offset = 0;
+    const limit = 50; // ML max per request
+    let totalProducts = 0;
+
+    // First request to get total count
+    const firstResponse = await fetch(`https://api.mercadolibre.com/users/${knownUserId}/items/search?limit=${limit}&offset=${offset}`, {
       headers: {
         "Authorization": `Bearer ${tokenData.access_token}`,
         "Accept": "application/json"
       }
     });
 
-    if (!productsResponse.ok) {
-      const errorData = await productsResponse.json();
+    if (!firstResponse.ok) {
+      const errorData = await firstResponse.json();
       return NextResponse.json({
+        success: false,
         error: "Failed to fetch products",
         message: "Erro ao buscar produtos do Mercado Livre",
-        details: errorData
-      }, { status: productsResponse.status });
+        details: errorData,
+        products: [],
+        total: 0
+      }, { status: firstResponse.status });
     }
 
-    const productsData = await productsResponse.json();
+    const firstData = await firstResponse.json();
+    totalProducts = firstData.paging?.total || firstData.results?.length || 0;
+    allProductIds.push(...(firstData.results || []));
     
-    // Fetch details in smaller batches to avoid timeouts
-    let allProductDetails = [];
-    
-    if (productsData.results && productsData.results.length > 0) {
-      console.log(`Fetching details for ${productsData.results.length} products...`);
+    console.log(`📊 Found ${totalProducts} total products. Fetching all pages...`);
+
+    // Fetch remaining pages if there are more products
+    if (totalProducts > limit) {
+      const totalPages = Math.ceil(totalProducts / limit);
+      console.log(`📄 Fetching ${totalPages - 1} additional pages...`);
       
-      // Process in smaller batches to avoid timeouts
-      const batchSize = 10;
-      for (let i = 0; i < productsData.results.length; i += batchSize) {
-        const batch = productsData.results.slice(i, i + batchSize);
-        
-        const batchPromises = batch.map(async (productId: string) => {
-          try {
-            const detailResponse = await fetch(`https://api.mercadolibre.com/items/${productId}`, {
-              headers: {
-                "Authorization": `Bearer ${tokenData.access_token}`,
-                "Accept": "application/json"
-              }
-            });
-            
-            if (detailResponse.ok) {
-              return await detailResponse.json();
+      const pagePromises = [];
+      for (let page = 1; page < totalPages; page++) {
+        const pageOffset = page * limit;
+        pagePromises.push(
+          fetch(`https://api.mercadolibre.com/users/${knownUserId}/items/search?limit=${limit}&offset=${pageOffset}`, {
+            headers: {
+              "Authorization": `Bearer ${tokenData.access_token}`,
+              "Accept": "application/json"
             }
-            return null;
-          } catch (err) {
-            console.warn(`Error fetching product ${productId}:`, err);
-            return null;
+          }).then(res => res.json())
+        );
+      }
+
+      const pageResults = await Promise.all(pagePromises);
+      pageResults.forEach(pageData => {
+        if (pageData.results) {
+          allProductIds.push(...pageData.results);
+        }
+      });
+    }
+
+    console.log(`📋 Total product IDs collected: ${allProductIds.length}`);
+
+    // Fetch product details in batches to avoid API limits
+    let allProductDetails = [];
+    const batchSize = 20; // ML allows up to 20 IDs per request with /items?ids=
+    
+    for (let i = 0; i < allProductIds.length; i += batchSize) {
+      const batch = allProductIds.slice(i, i + batchSize);
+      console.log(`🔄 Fetching batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allProductIds.length/batchSize)} (${batch.length} items)`);
+      
+      try {
+        const batchResponse = await fetch(`https://api.mercadolibre.com/items?ids=${batch.join(',')}`, {
+          headers: {
+            "Authorization": `Bearer ${tokenData.access_token}`,
+            "Accept": "application/json"
           }
         });
-
-        const batchResults = await Promise.all(batchPromises);
-        const validProducts = batchResults.filter(product => product !== null);
-        allProductDetails.push(...validProducts);
         
-        // Small delay between batches to avoid rate limiting
-        if (i + batchSize < productsData.results.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+        if (batchResponse.ok) {
+          const batchData = await batchResponse.json();
+          // ML returns array of objects with code/body when multiple IDs
+          const validProducts = batchData
+            .filter((item: any) => item.code === 200 && item.body)
+            .map((item: any) => item.body);
+          
+          allProductDetails.push(...validProducts);
+        } else {
+          console.warn(`⚠️ Failed to fetch batch starting at index ${i}`);
         }
+      } catch (err) {
+        console.warn(`❌ Error fetching batch starting at index ${i}:`, err);
       }
       
-      // Store in cache for next time
-      if (allProductDetails.length > 0) {
-        await cache.setAllProducts(allProductDetails);
+      // Small delay to avoid rate limiting
+      if (i + batchSize < allProductIds.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
+    }
+
+    console.log(`✅ Successfully fetched ${allProductDetails.length} product details out of ${allProductIds.length} total`);
+
+    // Store ALL products in cache for future requests
+    if (allProductDetails.length > 0) {
+      console.log(`💾 Storing ${allProductDetails.length} products in cache...`);
+      await cache.setAllProducts(allProductDetails);
+      console.log('✅ Products stored in cache successfully');
     }
 
     // Transform products for frontend
     const transformedProducts = allProductDetails.map((product: any) => {
-      let highQualityImage = product.secure_thumbnail || product.thumbnail;
-      let allPictures: Array<{
-        id: string;
-        url: string;
-        secure_url: string;
-        size: string;
-        max_size: string;
-        quality: string;
-      }> = [];
-      
-      if (product.pictures && product.pictures.length > 0) {
-        const firstPicture = product.pictures[0];
-        highQualityImage = firstPicture.secure_url || firstPicture.url || highQualityImage;
-        
-        allPictures = product.pictures.slice(0, 5).map((pic: any) => ({
-          id: pic.id || '',
-          url: pic.url || '',
-          secure_url: pic.secure_url || '',
-          size: pic.size || '',
-          max_size: pic.max_size || '',
-          quality: pic.quality || 'standard'
-        }));
-      }
-
       return {
         id: product.id,
         title: product.title,
@@ -193,17 +188,13 @@ export async function GET(request: NextRequest) {
         currency_id: product.currency_id,
         available_quantity: product.available_quantity,
         condition: product.condition,
-        thumbnail: highQualityImage,
-        pictures: allPictures,
+        thumbnail: product.secure_thumbnail || product.thumbnail,
         permalink: product.permalink,
         status: product.status,
         shipping: {
           free_shipping: product.shipping?.free_shipping || false,
           local_pick_up: product.shipping?.local_pick_up || false
         },
-        attributes: product.attributes?.filter((attr: any) => 
-          ['BRAND', 'MODEL', 'COLOR', 'SIZE'].includes(attr.id)
-        ).slice(0, 4) || [],
         category_id: product.category_id,
         sold_quantity: product.sold_quantity || 0,
         warranty: product.warranty,
@@ -211,25 +202,39 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // Statistics
+    const activeProducts = transformedProducts.filter(p => p.status === 'active');
+    const pausedProducts = transformedProducts.filter(p => p.status === 'paused');
+
+    console.log(`📈 Returning ${transformedProducts.length} total products:`);
+    console.log(`   - ${activeProducts.length} active`);
+    console.log(`   - ${pausedProducts.length} paused`);
+
     return NextResponse.json({
+      success: true,
       products: transformedProducts,
       total: transformedProducts.length,
+      statistics: {
+        total_products: transformedProducts.length,
+        active_products: activeProducts.length,
+        paused_products: pausedProducts.length,
+        fetched_from_api: allProductDetails.length,
+        total_found: totalProducts
+      },
       source: 'api',
-      message: `Carregados ${transformedProducts.length} produtos da API`,
+      message: `${transformedProducts.length} produtos carregados da API (${activeProducts.length} ativos, ${pausedProducts.length} pausados)`,
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('Products API error:', error);
+    console.error('❌ Products API error:', error);
     
-    return NextResponse.json(
-      { 
-        error: 'Failed to load products',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        products: [],
-        total: 0
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to load products',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      products: [],
+      total: 0
+    }, { status: 500 });
   }
 }
