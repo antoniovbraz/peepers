@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { cache } from '@/lib/cache';
 import { renderHtml } from '@/lib/render-html';
 import { createMercadoLivreAPI } from '@/lib/ml-api';
@@ -20,7 +21,24 @@ export const maxDuration = 30;
 export async function POST(request: NextRequest) {
   // Require admin token for manual sync
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
+  const adminSecret = process.env.ADMIN_SECRET;
+  const token = authHeader?.replace(/^Bearer\s+/i, '') || '';
+
+  if (!adminSecret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const tokenBuffer = Buffer.from(token);
+    const secretBuffer = Buffer.from(adminSecret);
+    const match =
+      tokenBuffer.length === secretBuffer.length &&
+      timingSafeEqual(tokenBuffer, secretBuffer);
+
+    if (!match) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+  } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
