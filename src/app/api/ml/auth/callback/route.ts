@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     const tokenData = await mlApi.exchangeCode(code);
-    await cache.setUser({ access_token: tokenData });
+    await cache.setUser(tokenData);
 
     return new NextResponse(`
       <!DOCTYPE html>
