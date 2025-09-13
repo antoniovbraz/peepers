@@ -35,13 +35,13 @@ function AdminDashboard() {
       description: 'Endpoint backup direto do ML (primeiros 10 produtos)',
       icon: '📦'
     },
-    {
-      name: 'Auth ML',
-      url: '/api/ml/auth',
-      status: 'loading',
-      description: 'Iniciação do OAuth PKCE com Mercado Livre',
-      icon: '🔐'
-    },
+    // {
+    //   name: 'Auth ML',
+    //   url: '/api/ml/auth',
+    //   status: 'loading',
+    //   description: 'Iniciação do OAuth PKCE com Mercado Livre (DESABILITADO)',
+    //   icon: '🔐'
+    // },
     {
       name: 'Debug Info',
       url: '/api/debug',

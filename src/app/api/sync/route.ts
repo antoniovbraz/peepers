@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { 
           error: 'No authentication found',
-          message: 'Por favor, faça login primeiro em /api/ml/auth',
-          login_url: '/api/ml/auth'
+          message: 'Configure ML_ACCESS_TOKEN e ML_REFRESH_TOKEN nas variáveis de ambiente',
+          docs_url: '/admin'
         },
         { status: 401 }
       );

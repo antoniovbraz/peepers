@@ -3,7 +3,7 @@ import { cache } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🚀 Products API called - FIXED SIMPLE VERSION');
+    console.log('🚀 MINIMAL Products API called');
     
     // Test 1: Check cache
     const cachedProducts = await cache.getAllProducts();
@@ -16,22 +16,13 @@ export async function GET(request: NextRequest) {
     if (cachedProducts && cachedProducts.length > 0) {
       console.log('✅ Returning first 3 products without transformation');
       
-      // Return comprehensive response for frontend
+      // Return raw cache data without any transformation
       return NextResponse.json({
         success: true,
         total: cachedProducts.length,
-        products: cachedProducts.slice(0, 50).map(p => ({ // Limit to 50 for performance
-          id: p.id,
-          title: p.title,
-          price: p.price,
-          status: p.status,
-          thumbnail: p.secure_thumbnail || p.thumbnail,
-          available_quantity: p.available_quantity || 0,
-          condition: p.condition,
-          currency_id: p.currency_id
-        })),
-        source: 'cache',
-        message: `${cachedProducts.length} produtos encontrados no cache`
+        products: cachedProducts.slice(0, 3), // Just first 3 without transformation
+        source: 'cache_raw',
+        message: `Found ${cachedProducts.length} products in cache`
       });
     }
     
