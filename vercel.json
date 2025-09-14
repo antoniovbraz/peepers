@@ -3,16 +3,16 @@
     "NEXT_PUBLIC_APP_URL": "https://peepers.vercel.app"
   },
   "functions": {
-    "src/app/api/ml/webhook/route.ts": {
+    "src/app/api/webhook/mercado-livre/route.ts": {
       "maxDuration": 10
     },
-    "src/app/api/ml/sync/route.ts": {
+    "src/app/api/sync/route.ts": {
       "maxDuration": 30
     }
   },
   "headers": [
     {
-      "source": "/api/ml/webhook",
+      "source": "/api/webhook/mercado-livre",
       "headers": [
         {
           "key": "Cache-Control",
@@ -23,8 +23,8 @@
   ],
   "rewrites": [
     {
-      "source": "/api/ml/(.*)",
-      "destination": "/api/ml/$1"
+      "source": "/api/webhook/(.*)",
+      "destination": "/api/webhook/$1"
     },
     {
       "source": "/api/products(.*)",
