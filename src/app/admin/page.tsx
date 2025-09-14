@@ -1,7 +1,9 @@
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
+import Link from 'next/link';
 import { PAGES, API_ENDPOINTS } from '@/config/routes';
+import BackupManager from '@/components/BackupManager';
 
 interface EndpointStatus {
   name: string;
@@ -258,13 +260,13 @@ function AdminDashboard() {
               <span className="mr-2">🛍️</span>
               Ver Loja
             </a>
-            <a 
+            <Link 
               href="/" 
               className="flex items-center justify-center bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
               <span className="mr-2">🏠</span>
               Homepage
-            </a>
+            </Link>
             <a 
               href={API_ENDPOINTS.AUTH_ML} 
               className="flex items-center justify-center bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
@@ -289,6 +291,11 @@ function AdminDashboard() {
               GitHub
             </a>
           </div>
+        </div>
+
+        {/* Backup Manager */}
+        <div className="mt-8">
+          <BackupManager />
         </div>
       </div>
     </div>
