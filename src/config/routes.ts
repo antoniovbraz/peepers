@@ -79,7 +79,12 @@ export const MIDDLEWARE_CONFIG = {
   // Rotas que SÃO protegidas (precisam de auth)
   PROTECTED_PATHS: [
     API_ENDPOINTS.SYNC
-  ]
+  ],
+  
+  // Middleware matchers
+  MATCHERS: {
+    SYNC_API: '/api/sync/:path*'
+  }
 } as const;
 
 // ==================== CACHE KEYS ====================

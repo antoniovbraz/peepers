@@ -81,6 +81,6 @@ export async function middleware(request: NextRequest) {
 // Configurar em quais rotas o middleware deve ser executado
 export const config = {
   matcher: [
-    '/api/sync/:path*'
+    MIDDLEWARE_CONFIG.MATCHERS.SYNC_API
   ]
 };

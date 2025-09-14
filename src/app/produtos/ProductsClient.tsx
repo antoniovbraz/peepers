@@ -28,7 +28,7 @@ export default function ProductsClient() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/products', {
+      const response = await fetch(API_ENDPOINTS.PRODUCTS, {
         cache: 'no-store'
       });
       
@@ -90,7 +90,7 @@ export default function ProductsClient() {
           Faça login com sua conta do Mercado Livre para sincronizar os produtos.
         </p>
         <a 
-          href="/api/auth/mercado-livre"
+          href={API_ENDPOINTS.AUTH_ML}
           className="btn-primary inline-flex items-center mr-4"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
