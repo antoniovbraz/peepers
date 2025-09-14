@@ -1,9 +1,12 @@
 'use client';
 
+'use client';
+
 import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PAGES, API_ENDPOINTS } from '@/config/routes';
 import BackupManager from '@/components/BackupManager';
+import Header from '@/components/Header';
 
 interface EndpointStatus {
   name: string;
@@ -127,6 +130,8 @@ function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      <Header />
+
       <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
@@ -298,6 +303,7 @@ function AdminDashboard() {
           <BackupManager />
         </div>
       </div>
+
     </div>
   );
 }

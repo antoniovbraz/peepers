@@ -1,5 +1,8 @@
+'use client';
+
 import Link from 'next/link';
 import { Suspense } from 'react';
+import Header from '@/components/Header';
 import PeepersLogo from '@/components/PeepersLogo';
 import ProductsClient from './ProductsClient';
 import { PAGES } from '@/config/routes';
@@ -26,29 +29,7 @@ function ProductsLoading() {
 export default function ProdutosPage() {
   return (
     <div className="min-h-screen bg-peepers-neutral-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-peepers-neutral-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-                <PeepersLogo variant="full" size="md" />
-              </Link>
-            </div>
-            <nav className="hidden md:flex space-x-8">
-              <Link href={PAGES.PRODUTOS} className="text-peepers-primary-600 font-medium border-b-2 border-peepers-primary-600 pb-1">
-                Produtos
-              </Link>
-              <Link href="/#como-funciona" className="text-peepers-neutral-700 hover:text-peepers-primary-600 transition-colors font-medium">
-                Como Funciona
-              </Link>
-              <Link href="/contato" className="text-peepers-neutral-700 hover:text-peepers-primary-600 transition-colors font-medium">
-                Contato
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Breadcrumb */}
       <div className="bg-white border-b border-peepers-neutral-200">
