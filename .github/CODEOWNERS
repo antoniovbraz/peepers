@@ -1,0 +1,19 @@
+# Global owners
+* @antoniovbraz
+
+# Backend/API
+src/app/api/ @antoniovbraz
+src/lib/ @antoniovbraz
+
+# Frontend
+src/app/ @antoniovbraz
+src/components/ @antoniovbraz
+
+# Configuration
+.github/ @antoniovbraz
+*.config.* @antoniovbraz
+*.json @antoniovbraz
+
+# Documentation
+*.md @antoniovbraz
+docs/ @antoniovbraz
