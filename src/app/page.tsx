@@ -59,24 +59,31 @@ async function FeaturedProducts() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {featuredProducts.map((product: MLProduct, index: number) => {
-          if (!product || !product.id) {
+          // Enhanced validation to prevent crashes
+          if (!product || !product.id || typeof product.id !== 'string') {
             return null; // Skip invalid products
           }
-          return (
-            <ProductCard
-              key={product.id || `product-${index}`}
-              id={product.id}
-              title={product.title || 'Produto sem título'}
-              price={product.price || 0}
-              image={product.thumbnail || '/api/placeholder/300/300'}
-              mercadoLivreLink={getMercadoLivreUrl(product)}
-              rating={4.5}
-              reviewCount={product.id ? (parseInt(product.id.toString().slice(-2), 10) || 0) + 50 : 50}
-              badge={product.shipping?.free_shipping ? "Frete Grátis" : undefined}
-              imageFit="contain"
-            />
-          );
-        })}
+          
+          try {
+            return (
+              <ProductCard
+                key={product.id || `product-${index}`}
+                id={product.id}
+                title={product.title || 'Produto sem título'}
+                price={typeof product.price === 'number' ? product.price : 0}
+                image={product.thumbnail || '/api/placeholder/300/300'}
+                mercadoLivreLink={getMercadoLivreUrl(product)}
+                rating={4.5}
+                reviewCount={product.id ? (parseInt(product.id.toString().slice(-2), 10) || 0) + 50 : 50}
+                badge={product.shipping?.free_shipping ? "Frete Grátis" : undefined}
+                imageFit="contain"
+              />
+            );
+          } catch (error) {
+            console.warn('Error rendering product:', product.id, error);
+            return null; // Skip problematic products
+          }
+        }).filter(Boolean)} {/* Filter out null values */}
       </div>
     );
   } catch {

@@ -47,9 +47,18 @@ export function isValidProduct(product: unknown): product is MLProduct {
  * @returns Mercado Livre product URL
  */
 export function getMercadoLivreUrl(product: MLProduct): string {
-  // Use permalink if available, otherwise construct URL from ID
-  if (product.permalink) {
+  // Use permalink if available
+  if (product.permalink && typeof product.permalink === 'string') {
     return product.permalink;
   }
-  return `https://produto.mercadolivre.com.br/MLB-${product.id}`;
+  
+  // Fallback: construct URL from ID
+  if (product.id && typeof product.id === 'string') {
+    // Handle different ID formats
+    const cleanId = product.id.replace(/^MLB-?/, ''); // Remove MLB prefix if present
+    return `https://produto.mercadolivre.com.br/MLB-${cleanId}`;
+  }
+  
+  // Last resort: fallback to general ML URL
+  return 'https://www.mercadolivre.com.br';
 }

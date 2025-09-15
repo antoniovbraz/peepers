@@ -58,6 +58,20 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // Force cache invalidation for all pages
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, must-revalidate",
+          },
+          {
+            key: "X-Cache-Bust",
+            value: "2025-09-15-19-40", // Timestamp for cache busting
+          },
+        ],
+      },
     ];
   },
 };
