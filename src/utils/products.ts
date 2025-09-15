@@ -40,3 +40,16 @@ export function generateReviewCount(productId?: string): number {
 export function isValidProduct(product: unknown): product is MLProduct {
   return !!(product && typeof product === 'object' && 'id' in product && 'title' in product);
 }
+
+/**
+ * Generates correct Mercado Livre product URL
+ * @param product - Product with id and optional permalink
+ * @returns Mercado Livre product URL
+ */
+export function getMercadoLivreUrl(product: MLProduct): string {
+  // Use permalink if available, otherwise construct URL from ID
+  if (product.permalink) {
+    return product.permalink;
+  }
+  return `https://produto.mercadolivre.com.br/MLB-${product.id}`;
+}

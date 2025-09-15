@@ -6,6 +6,7 @@ import ProductCard from '@/components/ProductCard';
 import ProductsLoading from '@/components/ProductsLoading';
 import ProductsError from '@/components/ProductsError';
 import { API_ENDPOINTS } from '@/config/routes';
+import { getMercadoLivreUrl } from '@/utils/products';
 import type { MLProduct } from '@/types/ml';
 
 // Componente para mostrar produtos em destaque
@@ -68,7 +69,7 @@ async function FeaturedProducts() {
               title={product.title || 'Produto sem título'}
               price={product.price || 0}
               image={product.thumbnail || '/api/placeholder/300/300'}
-              mercadoLivreLink={product.permalink || `https://www.mercadolivre.com.br/pagina/peepersshop`}
+              mercadoLivreLink={getMercadoLivreUrl(product)}
               rating={4.5}
               reviewCount={product.id ? (parseInt(product.id.toString().slice(-2), 10) || 0) + 50 : 50}
               badge={product.shipping?.free_shipping ? "Frete Grátis" : undefined}
