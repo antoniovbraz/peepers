@@ -1,6 +1,6 @@
-import { PAGES } from '@/config/routes';
 'use client';
 
+import { PAGES } from '@/config/routes';
 import Link from 'next/link';
 import { 
   MagnifyingGlassIcon, 
