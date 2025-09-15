@@ -115,21 +115,100 @@
 - ❌ Operadores recebem erro `invalid_operator_user_id`
 - ✅ Uma aplicação por conta proprietária
 
-### 🧪 Testes e Desenvolvimento
+### 🧪 Testes em Produção
 
-**Contas de teste:**
+### ✅ Teste Rápido de Todos os Endpoints
 
-- Use usuários de teste do Mercado Livre
-- Configure aplicação em sandbox
-- Teste todos os fluxos antes da produção
+```bash
+# Testar todos os endpoints automaticamente
+npm run test:prod all
 
-**Debugging:**
+# Testar endpoint específico
+npm run test:prod products-public  # Produtos públicos
+npm run test:prod health           # Health check
+npm run test:prod products         # Produtos autenticados
+npm run test:prod auth-me          # Status de autenticação
+```
 
-- Verifique sempre os headers de resposta
-- Use ferramentas como Postman para testes
-- Monitore logs de erro detalhados
+### 📊 Status Atual dos Endpoints
 
-## 📋 Checklist de Configuração da Aplicação
+| Endpoint | Status | Descrição |
+|----------|--------|-----------|
+| `/api/health` | ✅ OK | Health check funcionando |
+| `/api/products-public` | ✅ OK | 50 produtos retornados |
+| `/api/products` | ✅ OK | Proteção de autenticação ativa |
+| `/api/auth/me` | ✅ OK | Redirecionamento correto |
+
+### 🔍 Teste Manual com cURL
+
+```bash
+# Produtos públicos (sempre funciona)
+curl -X GET https://peepers.vercel.app/api/products-public
+
+# Health check
+curl -X GET https://peepers.vercel.app/api/health
+
+# Produtos autenticados (requer login)
+curl -X GET https://peepers.vercel.app/api/products
+```
+
+### 📈 Monitoramento em Produção
+
+- ✅ **50 produtos** sendo exibidos na homepage
+- ✅ **Proteção de autenticação** funcionando
+- ✅ **Health check** ativo
+- ✅ **Cache Redis** operacional
+- ✅ **Rate limiting** ativo
+
+## � Desenvolvimento Local (Sem HTTPS)
+
+### ✅ Abordagem Recomendada: Mocks Locais
+
+Para desenvolvimento diário, use mocks locais que não dependem do Mercado Livre:
+
+```bash
+# Desenvolvimento com mocks (recomendado)
+npm run dev:mock
+
+# Testar endpoint local
+npm run test:local
+```
+
+**Vantagens:**
+
+- ✅ Não precisa configurar HTTPS
+- ✅ Não precisa alterar URLs no Mercado Livre
+- ✅ Desenvolvimento mais rápido
+- ✅ Dados consistentes para testes
+- ✅ Funciona offline
+
+### 🔧 Funcionalidades com Mocks
+
+- **Homepage**: Mostra produtos de teste automaticamente
+- **API Pública**: `/api/products-public` retorna dados mockados
+- **Cache**: Simula comportamento do Redis localmente
+- **UI**: Interface completa funcionando
+
+### 🌐 Quando Usar HTTPS
+
+Use HTTPS apenas quando precisar testar a integração real com Mercado Livre:
+
+```bash
+# Para testes reais com Mercado Livre
+npm run dev
+# Em outro terminal:
+npm run tunnel
+# Configure a URL HTTPS no Mercado Livre
+```
+
+### 📋 Fluxo de Desenvolvimento
+
+1. **Desenvolvimento**: `npm run dev:mock`
+2. **Teste UI**: Acesse `http://localhost:3000`
+3. **Teste API**: `npm run test:local`
+4. **Deploy**: Configure HTTPS apenas para produção
+
+## �📋 Checklist de Configuração da Aplicação
 
 ### ✅ Pré-requisitos
 
