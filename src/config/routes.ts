@@ -41,6 +41,8 @@ export const PAGES = {
   HOME: '/',
   PRODUTOS: '/produtos',
   ADMIN: '/admin',
+  LOGIN: '/login',
+  ACESSO_NEGADO: '/acesso-negado',
   PRODUTO_DETALHE: (id: string) => `/produtos/${id}`
 } as const;
 
@@ -73,7 +75,8 @@ export const MIDDLEWARE_CONFIG = {
     API_ENDPOINTS.DEBUG,
     API_ENDPOINTS.AUTH_ML,
     API_ENDPOINTS.AUTH_ML_CALLBACK,
-    API_ENDPOINTS.WEBHOOK_ML
+    API_ENDPOINTS.WEBHOOK_ML,
+    PAGES.ACESSO_NEGADO
   ],
   
   // Rotas que SÃO protegidas (precisam de auth)

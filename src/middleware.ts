@@ -22,7 +22,8 @@ export async function middleware(request: NextRequest) {
     const allowedUserIds = process.env.ALLOWED_USER_IDS?.split(',') || [];
     if (allowedUserIds.length > 0 && !allowedUserIds.includes(userId)) {
       logger.warn(`Unauthorized user attempt: ${userId}`);
-      return NextResponse.redirect(new URL('/login', request.url));
+      // Usuário autenticado mas não autorizado - redirecionar para página de vendas
+      return NextResponse.redirect(new URL('/acesso-negado', request.url));
     }    // Verificar se o token existe no cache
     const tokenData = await cache.getUser(userId);
 
