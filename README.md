@@ -1,6 +1,224 @@
 # Peepers - Mercado Livre Integration
 
-This is a **single-tenant e-commerce platform** for Mercado Livre sellers, bootstrapped with [`create-next-app`](https://next.js.org/docs/app/api-reference/cli/create-next-app).
+## ⚠️ REQUISITOS CRÍTICOS PARA FUNCIONAMENTO
+
+### 🔒 HTTPS é OBRIGATÓRIO
+
+**O Mercado Livre EXIGE HTTPS para TODAS as operações:**
+
+- ✅ **URLs de redirecionamento OAuth** - Devem usar HTTPS
+- ✅ **URLs de webhook/notificações** - Devem usar HTTPS
+- ✅ **Todas as chamadas API** - Devem usar HTTPS
+- ❌ **HTTP local** - NÃO funciona para produção
+
+### 🌐 Configuração da Aplicação no Mercado Livre
+
+**Antes de qualquer desenvolvimento, você DEVE:**
+
+1. **Criar aplicação no DevCenter:**
+   - Acesse: https://developers.mercadolivre.com.br/
+   - Crie apenas 1 aplicação por conta
+   - Use conta do proprietário (não operador)
+
+2. **Configurar URLs HTTPS:**
+
+   ```text
+   Redirect URI: https://seudominio.com/api/auth/mercado-livre/callback
+   Webhook URL: https://seudominio.com/api/webhook/mercado-livre
+   ```
+
+3. **Habilitar PKCE:**
+   - ✅ Recomendado para segurança
+   - Evita ataques CSRF e injeção de código
+
+4. **Configurar escopos:**
+   - Leitura: para consultar dados
+   - Escrita: para modificar dados
+
+### 🚫 O QUE NÃO PODE FAZER
+
+**Erros comuns que quebram a integração:**
+
+- ❌ Usar HTTP em produção
+- ❌ URLs de redirecionamento com parâmetros variáveis
+- ❌ Usuários operadores (apenas administradores)
+- ❌ Compartilhar Client Secret
+- ❌ Fazer chamadas sem HTTPS
+- ❌ Usar redirect_uri diferente do configurado
+- ❌ Não validar PKCE quando habilitado
+
+### ✅ O QUE PODE FAZER
+
+**Desenvolvimento local com HTTPS:**
+
+1. **Usar túnel HTTPS:**
+
+   ```bash
+   npm install -g localtunnel
+   npm run tunnel  # Cria https://xxxxx.loca.lt
+   ```
+
+2. **Configurar ambiente:**
+
+   ```bash
+   NEXT_PUBLIC_APP_URL=https://xxxxx.loca.lt
+   ```
+
+3. **Testar OAuth:**
+   - Use a URL HTTPS do túnel
+   - Configure no Mercado Livre temporariamente
+   - Teste o fluxo completo
+
+### 🔄 Fluxo OAuth 2.0 + PKCE
+
+```text
+1. Usuário clica "Login" → Redirecionamento HTTPS
+2. Mercado Livre autentica → Autorização concedida
+3. Callback HTTPS → Recebe code
+4. Troca code por token → Armazenamento seguro
+5. API calls com Bearer token
+```
+
+### 🔔 Notificações (Webhooks)
+
+**Requisitos para webhooks:**
+
+- ✅ URL HTTPS pública
+- ✅ Resposta HTTP 200 em até 5 segundos
+- ✅ Processamento assíncrono para operações longas
+- ✅ Validação do tópico e resource_id
+
+**Tópicos disponíveis:**
+
+- `orders_v2` - Pedidos
+- `items` - Produtos
+- `messages` - Mensagens
+- `shipments` - Envios
+
+### 🛡️ Segurança e Limitações
+
+**Rate Limits:**
+
+- 1000 chamadas/hora por aplicação
+- 5000 chamadas/dia por usuário
+- Respeite os limites para evitar bloqueio
+
+**Tokens:**
+
+- Expiração: 6 meses (renovação automática)
+- Renovação: Use refresh_token
+- Revogação: Possível pelo usuário
+
+**Usuários:**
+
+- ✅ Apenas administradores podem autorizar
+- ❌ Operadores recebem erro `invalid_operator_user_id`
+- ✅ Uma aplicação por conta proprietária
+
+### 🧪 Testes e Desenvolvimento
+
+**Contas de teste:**
+
+- Use usuários de teste do Mercado Livre
+- Configure aplicação em sandbox
+- Teste todos os fluxos antes da produção
+
+**Debugging:**
+
+- Verifique sempre os headers de resposta
+- Use ferramentas como Postman para testes
+- Monitore logs de erro detalhados
+
+## 📋 Checklist de Configuração da Aplicação
+
+### ✅ Pré-requisitos
+
+- [ ] Conta proprietária no Mercado Livre (não operador)
+- [ ] Domínio com HTTPS configurado
+- [ ] Certificado SSL válido
+
+### ✅ Criação da Aplicação
+
+1. [ ] Acesse https://developers.mercadolivre.com.br/
+2. [ ] Clique "Criar uma aplicação"
+3. [ ] Preencha:
+   - Nome da aplicação
+   - Nome curto
+   - Descrição
+   - Logo (opcional)
+
+### ✅ Configuração Técnica
+
+4. [ ] **URLs de redirecionamento:**
+
+   ```
+   https://seudominio.com/api/auth/mercado-livre/callback
+   ```
+
+5. [ ] **Habilitar PKCE:** ✅ Ativado
+6. [ ] **Escopos:** Leitura e Escrita
+7. [ ] **URL de notificações:**
+
+   ```
+   https://seudominio.com/api/webhook/mercado-livre
+   ```
+
+8. [ ] **Tópicos de notificação:**
+   - [ ] orders_v2
+   - [ ] items
+   - [ ] messages
+
+### ✅ Configuração do Ambiente
+
+9. [ ] **Variáveis de ambiente:**
+
+   ```bash
+   ML_CLIENT_ID=seu_app_id
+   ML_CLIENT_SECRET=seu_client_secret
+   NEXT_PUBLIC_APP_URL=https://seudominio.com
+   ```
+
+10. [ ] **Teste a aplicação:**
+    - [ ] Login OAuth funciona
+    - [ ] Webhooks recebem notificações
+    - [ ] API calls retornam dados
+
+### 🚨 Possíveis Problemas
+
+**Erro: "redirect_uri mismatch"**
+- ✅ Verifique se a URL no Mercado Livre é exatamente igual
+- ✅ Não use parâmetros variáveis na URL
+- ✅ Use HTTPS (não HTTP)
+
+**Erro: "invalid_operator_user_id"**
+- ✅ Use conta de administrador (não operador)
+- ✅ Verifique permissões da conta
+
+**Erro: "PKCE verification failed"**
+- ✅ Certifique-se que PKCE está habilitado na aplicação
+- ✅ Verifique implementação do code_challenge
+
+**Webhook não funciona:**
+- ✅ URL deve ser HTTPS
+- ✅ Deve responder em até 5 segundos
+- ✅ Deve retornar HTTP 200
+
+### 🔧 Desenvolvimento Local
+
+Para desenvolvimento local, use:
+
+```bash
+# Instalar localtunnel
+npm install -g localtunnel
+
+# Criar túnel HTTPS
+npm run tunnel
+
+# Configurar temporariamente no Mercado Livre
+# Usar a URL https://xxxxx.loca.lt gerada
+```
+
+**⚠️ Importante:** Sempre configure a URL de produção no Mercado Livre. Use túnel apenas para testes locais.
 
 ## Business Model
 
