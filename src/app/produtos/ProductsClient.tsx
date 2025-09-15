@@ -215,7 +215,7 @@ export default function ProductsClient() {
               {new Intl.NumberFormat('pt-BR', {
                 style: 'currency',
                 currency: 'BRL'
-              }).format(product.price)}
+              }).format(product.price || 0)}
             </p>
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm text-peepers-neutral-600">
