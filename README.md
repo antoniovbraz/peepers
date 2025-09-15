@@ -22,25 +22,66 @@ This is a **single-tenant e-commerce platform** for Mercado Livre sellers, boots
 This instance is configured exclusively for **Mercado Livre seller ID: 669073070**.
 Other sellers will see an "Access Denied" page with sales information.his is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+## 🚀 Getting Started
 
-First, run the development server:
+### Local Development with HTTPS
+
+Since Mercado Livre requires HTTPS for OAuth and webhooks, use these steps for local development:
+
+1. **Install localtunnel:**
+
+   ```bash
+   npm install -g localtunnel
+   ```
+
+2. **Start the development server:**
+
+   ```bash
+   npm run dev
+   ```
+
+3. **In another terminal, create HTTPS tunnel:**
+
+   ```bash
+   npm run tunnel
+   ```
+
+   This will give you a URL like: `https://xxxxx.loca.lt`
+
+4. **Update environment variables:**
+   Create/update `.env.local`:
+
+   ```bash
+   NEXT_PUBLIC_APP_URL=https://your-tunnel-url.loca.lt
+   ```
+
+5. **Configure Mercado Livre:**
+   - Use the HTTPS tunnel URL as your redirect URI
+   - Use the HTTPS tunnel URL for webhook endpoint
+
+### Quick Start with HTTPS (Recommended)
+
+For the fastest setup with HTTPS:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Executar script automatizado (Linux/Mac)
+./dev-https.sh
+
+# Ou manualmente no Windows PowerShell:
+# Terminal 1: npm run dev
+# Terminal 2: npm run tunnel
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The script will:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- ✅ Install localtunnel if needed
+- ✅ Start Next.js development server
+- ✅ Create HTTPS tunnel
+- ✅ Display configuration instructions
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Manual Setup
+
+If you prefer manual setup, follow the steps above.
 
 ## Learn More
 

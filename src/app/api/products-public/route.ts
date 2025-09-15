@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
+import { MLProduct } from '@/types/ml';
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🚀 Public Products API called');
 
     // Buscar apenas produtos do cache (não requer autenticação)
-    const cachedProducts = await cache.getAllProducts();
+    const cachedProducts = await cache.getActiveProducts();
     console.log('Cache check:', {
       exists: !!cachedProducts,
       length: cachedProducts?.length,
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Retornar produtos públicos (limitados para performance)
-    const publicProducts = cachedProducts.slice(0, 50).map(p => ({
+    const publicProducts = cachedProducts.slice(0, 50).map((p: MLProduct) => ({
       id: p.id,
       title: p.title,
       price: p.price || 0,

@@ -4,10 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:https": "next dev --experimental-https",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run --coverage"
+    "test": "vitest run --coverage",
+    "tunnel": "lt --port 3000"
   },
   "dependencies": {
     "@tailwindcss/forms": "^0.5.10",

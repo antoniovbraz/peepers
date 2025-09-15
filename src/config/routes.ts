@@ -11,7 +11,7 @@
 // ==================== BASE URLS ====================
 export const BASE_URLS = {
   PRODUCTION: 'https://peepers.vercel.app',
-  LOCAL: 'http://localhost:3000'
+  LOCAL: 'https://eight-brooms-invent.loca.lt'
 } as const;
 
 // ==================== API ENDPOINTS - PÚBLICOS ====================
