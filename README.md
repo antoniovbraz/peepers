@@ -1,6 +1,26 @@
 # Peepers - Mercado Livre Integration
 
-This is a [Next.js](https://next.js.org) project for Mercado Livre store integration, bootstrapped with [`create-next-app`](https://next.js.org/docs/app/api-reference/cli/create-next-app).his is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is a **single-tenant e-commerce platform** for Mercado Livre sellers, bootstrapped with [`create-next-app`](https://next.js.org/docs/app/api-reference/cli/create-next-app).
+
+## Business Model
+
+**Single-Tenant Architecture**: Each instance serves exactly one Mercado Livre seller account. This ensures:
+
+- Complete data isolation between sellers
+- Customized configurations per store
+- Enhanced security and performance
+- Dedicated support and maintenance
+
+**Access Control**:
+
+- **Public**: Product catalog (`/produtos`) - accessible to all visitors
+- **Restricted**: Admin panel (`/admin`) - only the configured seller account
+- **Sales Funnel**: Unauthorized sellers see professional sales page with contact info
+
+## Current Configuration
+
+This instance is configured exclusively for **Mercado Livre seller ID: 669073070**.
+Other sellers will see an "Access Denied" page with sales information.his is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
 
