@@ -17,6 +17,18 @@ export default function Header() {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
+  // Safe function to handle mobile menu clicks
+  const handleMobileMenuClick = (callback?: () => void) => {
+    try {
+      setIsMobileMenuOpen(false);
+      if (callback && typeof callback === 'function') {
+        callback();
+      }
+    } catch (error) {
+      console.error('[Header] Mobile menu error:', error);
+    }
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="container mx-auto px-4">
@@ -84,6 +96,7 @@ export default function Header() {
             <button 
               className="md:hidden p-2 rounded-full hover:bg-gray-100 transition-colors"
               onClick={toggleMobileMenu}
+              aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
             >
               {isMobileMenuOpen ? (
                 <XMarkIcon className="h-5 w-5 text-gray-700" />
@@ -112,14 +125,14 @@ export default function Header() {
               <Link 
                 href={PAGES.PRODUTOS} 
                 className="text-gray-700 hover:text-primary transition-colors font-medium py-2"
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={() => handleMobileMenuClick()}
               >
                 Produtos
               </Link>
               <Link 
                 href="/categorias" 
                 className="text-gray-700 hover:text-primary transition-colors font-medium py-2"
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={() => handleMobileMenuClick()}
               >
                 Categorias
               </Link>
@@ -128,14 +141,14 @@ export default function Header() {
                 target="_blank"
                 rel="noopener noreferrer" 
                 className="text-primary font-semibold hover:text-primary-dark transition-colors py-2"
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={() => handleMobileMenuClick()}
               >
                 Nossa Loja ML
               </a>
               <Link 
                 href={PAGES.LOGIN} 
                 className="text-gray-700 hover:text-primary transition-colors font-medium py-2 sm:hidden"
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={() => handleMobileMenuClick()}
               >
                 Login
               </Link>

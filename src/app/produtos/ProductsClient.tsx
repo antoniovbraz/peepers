@@ -30,9 +30,22 @@ export default function ProductsClient() {
       setLoading(true);
       setError(null);
       
+      // Adicionar timeout e headers específicos para mobile
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      
       const response = await fetch(API_ENDPOINTS.PRODUCTS, {
-        cache: 'no-store'
+        cache: 'no-store',
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
+      
+      clearTimeout(timeoutId);
       
       if (response.status === 401) {
         setNeedsAuth(true);
@@ -42,15 +55,34 @@ export default function ProductsClient() {
       }
       
       if (!response.ok) {
-        throw new Error('Falha ao carregar produtos');
+        throw new Error(`Falha ao carregar produtos (${response.status})`);
       }
       
       const data: ProductsResponse = await response.json();
-      setProducts(data.products || []);
+      
+      // Validar dados antes de usar
+      if (!data || typeof data !== 'object') {
+        throw new Error('Resposta inválida do servidor');
+      }
+      
+      setProducts(Array.isArray(data.products) ? data.products : []);
       setNeedsAuth(false);
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+      console.error('[ProductsClient] Fetch error:', err);
+      
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          setError('Tempo limite excedido. Verifique sua conexão.');
+        } else if (err.message.includes('NetworkError') || err.message.includes('Failed to fetch')) {
+          setError('Erro de conexão. Verifique sua internet.');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('Erro desconhecido ao carregar produtos');
+      }
+      
       setProducts([]);
     } finally {
       setLoading(false);
@@ -58,7 +90,32 @@ export default function ProductsClient() {
   };
 
   useEffect(() => {
-    fetchProducts();
+    // Adicionar verificação de ambiente e delay para evitar problemas de hydration
+    let isMounted = true;
+    
+    const loadProducts = async () => {
+      // Pequeno delay para garantir que o componente foi montado completamente
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (isMounted) {
+        await fetchProducts();
+      }
+    };
+    
+    // Verificar se estamos no browser antes de fazer fetch
+    if (typeof window !== 'undefined') {
+      loadProducts().catch(err => {
+        console.error('[ProductsClient] useEffect error:', err);
+        if (isMounted) {
+          setError('Erro ao inicializar produtos');
+          setLoading(false);
+        }
+      });
+    }
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Loading state

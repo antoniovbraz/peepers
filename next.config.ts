@@ -5,6 +5,16 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   serverExternalPackages: ["redis"],
+  // Melhorar compatibilidade com mobile e performance
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
+  // Configuração de compilação mais robusta
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production" ? {
+      exclude: ["error", "warn"],
+    } : false,
+  },
   images: {
     remotePatterns: [
       {
@@ -38,6 +48,10 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
     ],
+    // Melhor configuração para mobile
+    formats: ['image/webp', 'image/avif'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   async rewrites() {
     return [
@@ -49,16 +63,7 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
-      {
-        source: "/api/ml/webhook",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "no-cache, no-store, must-revalidate",
-          },
-        ],
-      },
-      // Force cache invalidation for all pages
+      // Headers específicos para mobile compatibility
       {
         source: "/(.*)",
         headers: [
@@ -67,8 +72,51 @@ const nextConfig: NextConfig = {
             value: "public, max-age=0, must-revalidate",
           },
           {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "X-XSS-Protection",
+            value: "1; mode=block",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+          // Mobile-specific headers
+          {
+            key: "X-UA-Compatible",
+            value: "IE=edge",
+          },
+          {
             key: "X-Cache-Bust",
-            value: "2025-09-15-19-40", // Timestamp for cache busting
+            value: `${new Date().getTime()}`, // Dynamic cache busting
+          },
+        ],
+      },
+      // API routes headers
+      {
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+          {
+            key: "Pragma",
+            value: "no-cache",
+          },
+          {
+            key: "Expires",
+            value: "0",
           },
         ],
       },

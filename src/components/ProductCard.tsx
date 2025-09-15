@@ -1,9 +1,8 @@
 'use client';
 
-// ProductCard updated for object-contain default - 2025-09-15T19:35:00Z
+// Force cache invalidation - Updated: 2025-09-15T20:00:00Z
+import React from 'react';
 import Image from 'next/image';
-import { StarIcon, HeartIcon } from '@heroicons/react/24/outline';
-import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
 import { useState } from 'react';
 
 interface ProductCardProps {
@@ -14,11 +13,11 @@ interface ProductCardProps {
   image: string;
   rating?: number;
   reviewCount?: number;
-  mercadoLivreLink: string;
   badge?: string;
   isFavorite?: boolean;
   onToggleFavorite?: (id: string) => void;
-  imageFit?: 'cover' | 'contain'; // New prop to control image fit
+  mercadoLivreLink?: string;
+  imageFit?: 'cover' | 'contain';
 }
 
 export default function ProductCard({
@@ -27,46 +26,87 @@ export default function ProductCard({
   price,
   originalPrice,
   image,
-  rating = 0,
+  rating = 4.5,
   reviewCount = 0,
-  mercadoLivreLink,
   badge,
   isFavorite = false,
   onToggleFavorite,
+  mercadoLivreLink,
   imageFit = 'contain' // Default to contain for better product image display
 }: ProductCardProps) {
   const [isImageLoading, setIsImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
-  
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(price);
-  };
 
-  const calculateDiscount = () => {
-    if (originalPrice && originalPrice > price) {
-      const discount = ((originalPrice - price) / originalPrice) * 100;
-      return Math.round(discount);
-    }
-    return 0;
-  };
-
-  const handleFavoriteClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (onToggleFavorite) {
-      onToggleFavorite(id);
-    }
-  };
-
+  // Safe handlers para evitar crashes
   const handleImageLoad = () => {
-    setIsImageLoading(false);
+    try {
+      setIsImageLoading(false);
+    } catch (error) {
+      console.error('[ProductCard] Image load error:', error);
+    }
   };
 
   const handleImageError = () => {
-    setIsImageLoading(false);
-    setImageError(true);
+    try {
+      setImageError(true);
+      setIsImageLoading(false);
+    } catch (error) {
+      console.error('[ProductCard] Image error handler failed:', error);
+    }
+  };
+
+  // Validações de segurança
+  const safeTitle = title || 'Produto indisponível';
+  const safePrice = typeof price === 'number' && price >= 0 ? price : 0;
+  const safeImage = image || '/api/placeholder/300/300';
+  const safeId = id || 'unknown';
+  
+  // Determinar o fit da imagem de forma segura
+  const imageFitClass = imageFit === 'cover' ? 'object-cover' : 'object-contain';
+  
+  const formatPrice = (price: number) => {
+    try {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(price);
+    } catch (error) {
+      console.error('[ProductCard] Format price error:', error);
+      return `R$ ${price.toFixed(2)}`;
+    }
+  };
+
+  const calculateDiscount = () => {
+    try {
+      if (originalPrice && originalPrice > safePrice) {
+        const discount = ((originalPrice - safePrice) / originalPrice) * 100;
+        return Math.round(discount);
+      }
+      return 0;
+    } catch (error) {
+      console.error('[ProductCard] Calculate discount error:', error);
+      return 0;
+    }
+  };
+
+  const handleToggleFavorite = () => {
+    try {
+      if (onToggleFavorite) {
+        onToggleFavorite(safeId);
+      }
+    } catch (error) {
+      console.error('[ProductCard] Toggle favorite error:', error);
+    }
+  };
+
+  const handleMercadoLivreClick = () => {
+    try {
+      if (mercadoLivreLink) {
+        window.open(mercadoLivreLink, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      console.error('[ProductCard] Mercado Livre click error:', error);
+    }
   };
 
   return (
@@ -89,111 +129,107 @@ export default function ProductCard({
             </span>
           </div>
         )}
-        
+
         {/* Favorite Button */}
-        <button
-          onClick={handleFavoriteClick}
-          className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white transition-colors"
-          style={{ marginTop: calculateDiscount() > 0 ? '32px' : '0' }}
-        >
-          {isFavorite ? (
-            <HeartSolidIcon className="w-5 h-5 text-accent" />
-          ) : (
-            <HeartIcon className="w-5 h-5 text-gray-600 hover:text-accent transition-colors" />
-          )}
-        </button>
-        
-        {/* Product Image */}
-        <div className="relative w-full h-full">
-          {!imageError ? (
-            <>
-              <Image
-                src={image}
-                alt={title}
-                fill
-                className={`object-${imageFit} group-hover:scale-105 transition-transform duration-300 ${
-                  isImageLoading ? 'opacity-0' : 'opacity-100'
-                }`}
-                onLoad={handleImageLoad}
-                onError={handleImageError}
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        {onToggleFavorite && (
+          <button
+            onClick={handleToggleFavorite}
+            className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-white"
+            aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+          >
+            <svg 
+              className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-400'}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
               />
-              {isImageLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-              <div className="text-center text-gray-400">
-                <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <p className="text-sm">Imagem não disponível</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      
-      {/* Product Info */}
-      <div className="p-4">
-        {/* Title */}
-        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-          {title}
-        </h3>
-        
-        {/* Rating */}
-        {rating > 0 && (
-          <div className="flex items-center space-x-1 mb-3">
-            <div className="flex space-x-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <StarIcon
-                  key={star}
-                  className={`w-4 h-4 ${
-                    star <= rating ? 'text-secondary fill-current' : 'text-gray-300'
-                  }`}
-                />
-              ))}
-            </div>
-            <span className="text-sm text-gray-600">({reviewCount})</span>
-          </div>
-        )}
-        
-        {/* Price */}
-        <div className="mb-4">
-          <div className="flex items-center space-x-2">
-            <span className="text-2xl font-bold text-gray-900">
-              {formatPrice(price)}
-            </span>
-            {originalPrice && originalPrice > price && (
-              <span className="text-sm text-gray-500 line-through">
-                {formatPrice(originalPrice)}
-              </span>
-            )}
-          </div>
-          
-          {/* Payment Options */}
-          <p className="text-sm text-gray-600 mt-1">
-            ou até 12x de {formatPrice(price / 12)}
-          </p>
-        </div>
-        
-        {/* CTA Button */}
-        <a
-          href={mercadoLivreLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full"
-        >
-          <button className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2">
-            <span>Comprar no ML</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>
           </button>
-        </a>
+        )}
+
+        {/* Loading Overlay */}
+        {isImageLoading && (
+          <div className="absolute inset-0 bg-gray-100 animate-pulse flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+
+        {/* Image */}
+        {!imageError ? (
+          <Image
+            src={safeImage}
+            alt={safeTitle}
+            fill
+            className={`${imageFitClass} group-hover:scale-105 transition-transform duration-300 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+            priority={false}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-100">
+            <div className="text-center">
+              <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p className="text-xs text-gray-500">Imagem indisponível</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        {/* Title */}
+        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 text-sm">
+          {safeTitle}
+        </h3>
+
+        {/* Rating */}
+        {rating && (
+          <div className="flex items-center mb-2">
+            <div className="flex">
+              {[...Array(5)].map((_, i) => (
+                <svg
+                  key={i}
+                  className={`w-3 h-3 ${i < Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'}`}
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              ))}
+            </div>
+            <span className="text-xs text-gray-500 ml-1">({reviewCount})</span>
+          </div>
+        )}
+
+        {/* Price */}
+        <div className="mb-3">
+          {originalPrice && originalPrice > safePrice && (
+            <span className="text-xs text-gray-500 line-through mr-2">
+              {formatPrice(originalPrice)}
+            </span>
+          )}
+          <span className="text-lg font-bold text-primary">
+            {formatPrice(safePrice)}
+          </span>
+        </div>
+
+        {/* Mercado Livre Button */}
+        <button
+          onClick={handleMercadoLivreClick}
+          className="w-full bg-primary text-white py-2 px-4 rounded-lg font-semibold hover:bg-primary-dark transition-colors duration-200 text-sm"
+          disabled={!mercadoLivreLink}
+        >
+          Ver no Mercado Livre
+        </button>
       </div>
     </div>
   );

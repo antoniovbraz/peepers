@@ -5,6 +5,7 @@ import HeroSection from '@/components/HeroSection';
 import ProductCard from '@/components/ProductCard';
 import ProductsLoading from '@/components/ProductsLoading';
 import ProductsError from '@/components/ProductsError';
+import ServiceWorkerProvider from '@/components/ServiceWorkerProvider';
 import { API_ENDPOINTS } from '@/config/routes';
 import { getMercadoLivreUrl } from '@/utils/products';
 import type { MLProduct } from '@/types/ml';
@@ -15,18 +16,37 @@ async function FeaturedProducts() {
     // Buscar produtos públicos (não requer autenticação)
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
     const response = await fetch(`${baseUrl}${API_ENDPOINTS.PRODUCTS_PUBLIC}`, {
-      cache: 'no-store' // Sempre buscar dados atualizados
+      cache: 'no-store', // Sempre buscar dados atualizados
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
     });
     
     if (!response.ok) {
-      throw new Error('Falha ao carregar produtos');
+      console.error('[FeaturedProducts] API Error:', response.status, response.statusText);
+      throw new Error(`Falha ao carregar produtos: ${response.status}`);
     }
     
     const data = await response.json();
-    const products = data.products || [];
     
-    // Limitar a 6 produtos para destaque
-    const featuredProducts = products.slice(0, 6);
+    // Validação robusta dos dados
+    if (!data || typeof data !== 'object') {
+      throw new Error('Resposta inválida da API');
+    }
+    
+    const products = Array.isArray(data.products) ? data.products : [];
+    
+    // Limitar a 6 produtos para destaque e filtrar produtos válidos
+    const featuredProducts = products
+      .filter((product: MLProduct) => {
+        return product && 
+               product.id && 
+               product.title && 
+               typeof product.price === 'number' && 
+               product.price > 0;
+      })
+      .slice(0, 6);
 
     if (featuredProducts.length === 0) {
       return (
@@ -86,7 +106,8 @@ async function FeaturedProducts() {
         }).filter(Boolean)} {/* Filter out null values */}
       </div>
     );
-  } catch {
+  } catch (error) {
+    console.error('[FeaturedProducts] Error:', error);
     return <ProductsError />;
   }
 }
@@ -97,6 +118,9 @@ async function FeaturedProducts() {
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Service Worker Provider */}
+      <ServiceWorkerProvider />
+      
       {/* Header */}
       <Header />
 

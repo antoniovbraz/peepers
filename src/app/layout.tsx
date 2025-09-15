@@ -1,15 +1,18 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: 'swap', // Melhor performance para fontes
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -66,41 +69,16 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Peepers" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="format-detection" content="telephone=no" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <ServiceWorkerRegistration />
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
       </body>
     </html>
-  );
-}
-
-// Componente para registrar Service Worker
-function ServiceWorkerRegistration() {
-  return (
-    <script
-      dangerouslySetInnerHTML={{
-        __html: `
-          if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-              navigator.serviceWorker.register('/sw.js')
-                .then(function(registration) {
-                  console.log('[SW] Registered successfully:', registration.scope);
-
-                  // Limpar cache periodicamente
-                  setInterval(() => {
-                    registration.active?.postMessage({ type: 'CLEAN_CACHE' });
-                  }, 30 * 60 * 1000); // A cada 30 minutos
-                })
-                .catch(function(error) {
-                  console.log('[SW] Registration failed:', error);
-                });
-            });
-          }
-        `,
-      }}
-    />
   );
 }
