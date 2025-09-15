@@ -118,10 +118,89 @@ ALLOWED_USER_IDS=123456789,987654321
 
 **Correct admin routes**:
 
+- ✅ `GET /api/products-public` - Public product catalog (homepage)
 - ✅ `POST /api/sync` - Synchronize products
-- ✅ `GET /api/products` - List products (requires auth)
+- ✅ `GET /api/products` - Authenticated product management
 - ✅ `GET /api/auth/me` - Get current user session
 
 ## Runtime Requirements
 
 The `/api/ml/webhook` endpoint uses `revalidatePath` to update ISR pages and therefore runs on the Node.js runtime rather than the Edge runtime.
+
+## 🔒 Security Architecture
+
+### OAuth 2.0 with PKCE Flow
+
+- **Secure Authorization**: Code flow with PKCE protection
+- **HTTP-only Cookies**: Session management without client-side access
+- **Middleware Protection**: Route-level access control
+- **Single User Architecture**: Exclusive admin access with sales funnel
+
+### Access Control Model
+
+- **Public Routes**: Homepage, product catalog, login page
+- **Protected Routes**: Admin dashboard, authenticated APIs
+- **API Separation**: Public vs authenticated endpoints
+- **Session Validation**: Automatic token refresh and validation
+
+### Security Features Implemented
+
+- ✅ CSRF Protection via HTTP-only cookies
+- ✅ XSS Prevention with proper sanitization
+- ✅ Secure redirect handling
+- ✅ Rate limiting on sensitive endpoints
+- ✅ Input validation and sanitization
+
+## 🔧 Troubleshooting & Maintenance
+
+### Common Issues
+
+**Products not loading on homepage:**
+
+```bash
+# Check public API endpoint
+curl -X GET http://localhost:3000/api/products-public
+
+# Verify middleware configuration
+npm run build
+```
+
+**Authentication issues:**
+
+```bash
+# Clear cookies and retry login
+# Check OAuth configuration in Mercado Livre
+# Verify environment variables
+```
+
+**Build failures:**
+
+```bash
+# Clean install dependencies
+rm -rf node_modules package-lock.json
+npm install
+
+# Clear Next.js cache
+rm -rf .next
+npm run build
+```
+
+### Maintenance Tasks
+
+**Weekly:**
+
+- Monitor error logs in Vercel dashboard
+- Check Mercado Livre API rate limits
+- Review authentication success rates
+
+**Monthly:**
+
+- Update dependencies: `npm audit fix`
+- Review and rotate API credentials
+- Backup configuration and data
+
+**Security:**
+
+- Monitor for OAuth token leaks
+- Review access logs for suspicious activity
+- Update security dependencies promptly
