@@ -6,6 +6,15 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🚀 Products API called - Enhanced version with API fallback');
     
+    // Verificar autenticação via cookies
+    const userId = request.cookies.get('user_id')?.value;
+    if (!userId) {
+      return NextResponse.json({
+        error: 'Unauthorized',
+        message: 'Você precisa estar autenticado para acessar os produtos'
+      }, { status: 401 });
+    }
+    
     // Test 1: Check cache first
     const cachedProducts = await cache.getAllProducts();
     console.log('Cache check:', {
@@ -14,36 +23,9 @@ export async function GET(request: NextRequest) {
       type: typeof cachedProducts
     });
     
-    if (cachedProducts && cachedProducts.length > 0) {
-      console.log('✅ Returning products from cache');
-      
-      return NextResponse.json({
-        success: true,
-        total: cachedProducts.length,
-        products: cachedProducts.slice(0, 50).map(p => ({
-          id: p.id,
-          title: p.title,
-          price: p.price,
-          status: p.status,
-          thumbnail: p.pictures && p.pictures.length > 0 
-            ? p.pictures[0].secure_url || p.pictures[0].url 
-            : p.secure_thumbnail || p.thumbnail,
-          available_quantity: p.available_quantity || 0,
-          condition: p.condition || 'not_specified',
-          currency_id: p.currency_id,
-          shipping: {
-            free_shipping: p.shipping?.free_shipping || false
-          }
-        })),
-        source: 'cache',
-        message: `${cachedProducts.length} produtos encontrados no cache`
-      });
-    }
-    
     // Test 2: Cache is empty, check if user is authenticated
     console.log('📭 Cache is empty, checking authentication...');
     
-    const userId = '669073070'; // Known user ID
     const tokenData = await cache.getUser(userId);
     
     if (!tokenData || !tokenData.token) {

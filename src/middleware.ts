@@ -11,66 +11,42 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    // Verifica se tem token de acesso válido
-    // O token pode estar no cache (salvo como `access_token:{userId}`) ou em variáveis de ambiente
-    const userId = process.env.ML_USER_ID;
-    let token: { token?: string; expires_at?: string } | null = null;
+    // Verificar se existe cookie de sessão
+    const sessionToken = request.cookies.get('session_token')?.value;
+    const userId = request.cookies.get('user_id')?.value;
 
-    if (userId) {
-      // No cache os tokens são salvos via cache.setUser(userId, { token, expires_at, user_id })
-      token = await cache.getUser(userId);
+    if (!sessionToken || !userId) {
+      logger.warn('No session cookies found');
+      return NextResponse.redirect(new URL('/login', request.url));
+    }    // Verificar se o usuário está na lista de autorizados
+    const allowedUserIds = process.env.ALLOWED_USER_IDS?.split(',') || [];
+    if (allowedUserIds.length > 0 && !allowedUserIds.includes(userId)) {
+      logger.warn(`Unauthorized user attempt: ${userId}`);
+      return NextResponse.redirect(new URL('/login', request.url));
+    }    // Verificar se o token existe no cache
+    const tokenData = await cache.getUser(userId);
+
+    if (!tokenData || !tokenData.token) {
+      logger.warn({ userId }, 'No token found in cache for user');
+      return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    // Fallback para token em variáveis de ambiente caso não exista no cache
-    if ((!token || !token.token) && process.env.ML_ACCESS_TOKEN) {
-      token = {
-        token: process.env.ML_ACCESS_TOKEN,
-        // Se não houver expiry explícito em env, considera um prazo longo para não bloquear chamadas internas
-        expires_at: process.env.ML_ACCESS_TOKEN_EXPIRES_AT ?? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-      };
-    }
-
-    if (!token || !token.token) {
-      logger.warn('No access token found');
-      return new NextResponse(
-        JSON.stringify({ 
-          error: 'Unauthorized',
-          message: 'Você precisa se autenticar com o Mercado Livre'
-        }),
-        { 
-          status: 401,
-          headers: { 'content-type': 'application/json' }
-        }
-      );
-    }
-
-    // Verifica se o token está expirado
-    const expiresAt = token.expires_at ? new Date(token.expires_at) : null;
+    // Verificar se o token está expirado
+    const expiresAt = tokenData.expires_at ? new Date(tokenData.expires_at) : null;
     if (expiresAt && expiresAt < new Date()) {
-      logger.warn('Access token expired');
-      return new NextResponse(
-        JSON.stringify({ 
-          error: 'Token Expired',
-          message: 'Sua sessão expirou. Por favor, faça login novamente.'
-        }),
-        { 
-          status: 401,
-          headers: { 'content-type': 'application/json' }
-        }
-      );
-    }
-
-    // Se chegou aqui, está tudo ok
+      logger.warn({ userId }, 'Token expired for user');
+      return NextResponse.redirect(new URL('/login', request.url));
+    }    // Se chegou aqui, está tudo ok
     return NextResponse.next();
 
   } catch (error) {
     logger.error({ error }, 'Middleware error');
     return new NextResponse(
-      JSON.stringify({ 
+      JSON.stringify({
         error: 'Internal Server Error',
         message: 'Ocorreu um erro ao verificar sua autenticação'
       }),
-      { 
+      {
         status: 500,
         headers: { 'content-type': 'application/json' }
       }
@@ -81,6 +57,9 @@ export async function middleware(request: NextRequest) {
 // Configurar em quais rotas o middleware deve ser executado
 export const config = {
   matcher: [
-    '/api/sync/:path*'
+    '/admin/:path*',
+    '/api/sync/:path*',
+    '/api/products/:path*',
+    '/api/auth/logout'
   ]
 };

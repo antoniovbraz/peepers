@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { PAGES, API_ENDPOINTS } from '@/config/routes';
 import BackupManager from '@/components/BackupManager';
 import CompanyProfileCard from '@/components/admin/CompanyProfileCard';
+import AuthCheck from '@/components/AuthCheck';
 
 interface EndpointStatus {
   name: string;
@@ -127,13 +128,50 @@ function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation Bar */}
+      <nav className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-8">
+              <h1 className="text-xl font-bold text-gray-900">Peepers Admin</h1>
+              <div className="hidden md:flex space-x-6">
+                <button className="text-blue-600 border-b-2 border-blue-600 pb-1 font-medium">
+                  Dashboard
+                </button>
+                <button className="text-gray-500 hover:text-gray-700 font-medium">
+                  Sincronizar Produtos
+                </button>
+                <button className="text-gray-500 hover:text-gray-700 font-medium">
+                  Gerenciar Backup
+                </button>
+                <button className="text-gray-500 hover:text-gray-700 font-medium">
+                  Perfil da Loja
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">Produção</span>
+              <button
+                onClick={async () => {
+                  await fetch('/api/auth/logout', { method: 'POST' });
+                  window.location.href = '/';
+                }}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+              >
+                Sair
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            🔧 Peepers Admin Dashboard
-          </h1>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            🔧 Dashboard Administrativo
+          </h2>
           <p className="text-gray-600 mb-4">
             Monitoramento completo dos endpoints da API • Produção: https://peepers.vercel.app/
           </p>
@@ -310,15 +348,17 @@ function AdminDashboard() {
 
 export default function AdminPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-4">⏳</div>
-          <div className="text-lg">Carregando Dashboard...</div>
+    <AuthCheck>
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-4xl mb-4">⏳</div>
+            <div className="text-lg">Carregando Dashboard...</div>
+          </div>
         </div>
-      </div>
-    }>
-      <AdminDashboard />
-    </Suspense>
+      }>
+        <AdminDashboard />
+      </Suspense>
+    </AuthCheck>
   );
 }

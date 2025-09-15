@@ -118,8 +118,36 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ Autenticação OAuth concluída com sucesso');
 
-    // Redirecionar para admin com sucesso
-    return NextResponse.redirect(`${request.nextUrl.origin}${PAGES.ADMIN}?auth_success=true&user_id=${userId}`);
+    // Criar resposta com cookies seguros
+    const response = NextResponse.redirect(`${request.nextUrl.origin}${PAGES.ADMIN}?auth_success=true&user_id=${userId}`);
+
+    // Cookie de sessão (token aleatório para validar sessão)
+    const sessionToken = crypto.randomUUID();
+    response.cookies.set('session_token', sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60, // 24 horas
+      path: '/'
+    });
+
+    // Cookie com user_id
+    response.cookies.set('user_id', userId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60, // 24 horas
+      path: '/'
+    });
+
+    // Armazenar session token no cache para validação
+    const existingUserData = await cache.getUser(userId) || { user_id: parseInt(userId, 10) };
+    await cache.setUser(userId, {
+      ...existingUserData,
+      session_token: sessionToken
+    });
+
+    return response;
 
   } catch (error) {
     console.error('❌ Erro no callback OAuth:', error);

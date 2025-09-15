@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Peepers - Mercado Livre Integration
+
+This is a [Next.js](https://next.js.org) project for Mercado Livre store integration, bootstrapped with [`create-next-app`](https://next.js.org/docs/app/api-reference/cli/create-next-app).his is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
 
@@ -49,18 +51,56 @@ Set the following variable to configure absolute URLs used in API calls and OAut
 
 ## API Authentication
 
-Sensitive API routes require a bearer token for access. Set the `ADMIN_SECRET` environment variable and include it in requests using the `Authorization` header:
+### Authentication Flow
 
+1. **Login**: Users authenticate via Mercado Livre OAuth at `/api/auth/mercado-livre`
+2. **Callback**: OAuth tokens are exchanged and stored securely at `/api/auth/mercado-livre/callback`
+3. **Session**: Secure HTTP-only cookies are created for session management
+4. **Verification**: All protected routes verify session cookies via middleware
+
+### Protected Routes
+
+The following routes require authentication:
+
+- `/admin` - Administrative dashboard
+- `/api/sync/*` - Product synchronization
+- `/api/products` - Product data access
+- `/api/auth/logout` - Session termination
+
+### Security Features
+
+- **HTTP-only Cookies**: Session tokens cannot be accessed via JavaScript
+- **Secure Cookies**: HTTPS-only in production
+- **Session Validation**: Server-side session verification
+- **User Authorization**: Configurable allowed user IDs via `ALLOWED_USER_IDS` env var
+- **Token Expiration**: Automatic session cleanup
+
+### Required Environment Variables
+
+Set the following variables for authentication:
+
+```bash
+# Mercado Livre OAuth
+ML_CLIENT_ID=your_client_id
+ML_CLIENT_SECRET=your_client_secret
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+
+# Security (optional)
+ALLOWED_USER_IDS=123456789,987654321
 ```
-Authorization: Bearer <your token>
-```
 
-This token is required when calling:
+### Admin Routes
 
-- `POST /api/ml/sync`
-- `POST /api/products/[id]`
+**Note**: Routes mentioned in the original documentation that don't exist:
 
-Requests without the correct token will receive a `401 Unauthorized` response.
+- ❌ `POST /api/ml/sync` (use `POST /api/sync` instead)
+- ❌ `POST /api/products/[id]` (use `GET /api/products` for listing)
+
+**Correct admin routes**:
+
+- ✅ `POST /api/sync` - Synchronize products
+- ✅ `GET /api/products` - List products (requires auth)
+- ✅ `GET /api/auth/me` - Get current user session
 
 ## Runtime Requirements
 

@@ -48,9 +48,11 @@ interface SessionInfo {
 }
 
 interface CompanyData {
-  success: boolean;
+  authenticated?: boolean;
+  success?: boolean;
   company: CompanyProfile;
   session: SessionInfo;
+  error?: string;
 }
 
 export function useCompany() {
@@ -68,10 +70,10 @@ export function useCompany() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/auth/session');
+      const response = await fetch('/api/auth/me');
       const data: CompanyData = await response.json();
 
-      if (data.success && data.company) {
+      if (data.authenticated && data.company) {
         setCompany(data.company);
         setSession(data.session);
       } else {

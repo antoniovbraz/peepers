@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getKVClient } from '@/lib/cache';
+import { CACHE_KEYS } from '@/config/routes';
 
 export async function POST(request: NextRequest) {
   try {
-    // Simular logout - em produção isso invalidaria tokens/sessões
-    console.log('Logout realizado com sucesso');
+    // Obter user_id do cookie
+    const userId = request.cookies.get('user_id')?.value;
+    
+    if (userId) {
+      // Invalidar tokens no cache
+      const kv = getKVClient();
+      await kv.del(CACHE_KEYS.USER_TOKEN(userId));
+      console.log(`✅ Tokens invalidated for user: ${userId}`);
+    }
 
     // Criar resposta com limpeza de cookies
     const response = NextResponse.json({
@@ -12,7 +21,7 @@ export async function POST(request: NextRequest) {
       redirect: '/'
     });
 
-    // Limpar cookies de sessão (se existirem)
+    // Limpar cookies de sessão
     response.cookies.set('session_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
