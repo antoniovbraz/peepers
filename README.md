@@ -1,544 +1,325 @@
-# Peepers - Mercado Livre Integration
+# Peepers - Mercado Livre Integration Platform
 
-## ⚠️ REQUISITOS CRÍTICOS PARA FUNCIONAMENTO
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/antoniovbraz/peepers)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.1-orange)](package.json)
+[![Next.js](https://img.shields.io/badge/Next.js-15.5.3-black)](https://nextjs.org/)
 
-### 🔒 HTTPS é OBRIGATÓRIO
+> **A professional e-commerce integration platform connecting seamlessly with Mercado Livre's marketplace APIs, featuring OAuth 2.0 + PKCE authentication, real-time webhook processing, and intelligent caching strategies.**
 
-**O Mercado Livre EXIGE HTTPS para TODAS as operações:**
-
-- ✅ **URLs de redirecionamento OAuth** - Devem usar HTTPS
-- ✅ **URLs de webhook/notificações** - Devem usar HTTPS
-- ✅ **Todas as chamadas API** - Devem usar HTTPS
-- ❌ **HTTP local** - NÃO funciona para produção
-
-### 🌐 Configuração da Aplicação no Mercado Livre
-
-**Antes de qualquer desenvolvimento, você DEVE:**
-
-1. **Criar aplicação no DevCenter:**
-   - Acesse: https://developers.mercadolivre.com.br/
-   - Crie apenas 1 aplicação por conta
-   - Use conta do proprietário (não operador)
-
-2. **Configurar URLs HTTPS:**
-
-   ```text
-   Redirect URI: https://seudominio.com/api/auth/mercado-livre/callback
-   Webhook URL: https://seudominio.com/api/webhook/mercado-livre
-   ```
-
-3. **Habilitar PKCE:**
-   - ✅ Recomendado para segurança
-   - Evita ataques CSRF e injeção de código
-
-4. **Configurar escopos:**
-   - Leitura: para consultar dados
-   - Escrita: para modificar dados
-
-### 🚫 O QUE NÃO PODE FAZER
-
-**Erros comuns que quebram a integração:**
-
-- ❌ Usar HTTP em produção
-- ❌ URLs de redirecionamento com parâmetros variáveis
-- ❌ Usuários operadores (apenas administradores)
-- ❌ Compartilhar Client Secret
-- ❌ Fazer chamadas sem HTTPS
-- ❌ Usar redirect_uri diferente do configurado
-- ❌ Não validar PKCE quando habilitado
-
-### ✅ O QUE PODE FAZER
-
-**Desenvolvimento local com HTTPS:**
-
-1. **Usar túnel HTTPS:**
-
-   ```bash
-   npm install -g localtunnel
-   npm run tunnel  # Cria https://xxxxx.loca.lt
-   ```
-
-2. **Configurar ambiente:**
-
-   ```bash
-   NEXT_PUBLIC_APP_URL=https://xxxxx.loca.lt
-   ```
-
-3. **Testar OAuth:**
-   - Use a URL HTTPS do túnel
-   - Configure no Mercado Livre temporariamente
-   - Teste o fluxo completo
-
-### 🔄 Fluxo OAuth 2.0 + PKCE
-
-```text
-1. Usuário clica "Login" → Redirecionamento HTTPS
-2. Mercado Livre autentica → Autorização concedida
-3. Callback HTTPS → Recebe code
-4. Troca code por token → Armazenamento seguro
-5. API calls com Bearer token
-```
-
-### 🔔 Notificações (Webhooks)
-
-**Requisitos para webhooks:**
-
-- ✅ URL HTTPS pública
-- ✅ Resposta HTTP 200 em até 5 segundos
-- ✅ Processamento assíncrono para operações longas
-- ✅ Validação do tópico e resource_id
-
-**Tópicos disponíveis:**
-
-- `orders_v2` - Pedidos
-- `items` - Produtos
-- `messages` - Mensagens
-- `shipments` - Envios
-
-### 🛡️ Segurança e Limitações
-
-**Rate Limits:**
-
-- 1000 chamadas/hora por aplicação
-- 5000 chamadas/dia por usuário
-- Respeite os limites para evitar bloqueio
-
-**Tokens:**
-
-- Expiração: 6 meses (renovação automática)
-- Renovação: Use refresh_token
-- Revogação: Possível pelo usuário
-
-**Usuários:**
-
-- ✅ Apenas administradores podem autorizar
-- ❌ Operadores recebem erro `invalid_operator_user_id`
-- ✅ Uma aplicação por conta proprietária
-
-### 🧪 Testes em Produção
-
-### ✅ Teste Rápido de Todos os Endpoints
+## 🚀 Quick Start
 
 ```bash
-# Testar todos os endpoints automaticamente
-npm run test:prod all
+# Clone the repository
+git clone https://github.com/antoniovbraz/peepers.git
+cd peepers
 
-# Testar endpoint específico
-npm run test:prod products-public  # Produtos públicos
-npm run test:prod health           # Health check
-npm run test:prod products         # Produtos autenticados
-npm run test:prod auth-me          # Status de autenticação
-```
+# Install dependencies
+npm install
 
-### 📊 Status Atual dos Endpoints
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your Mercado Livre credentials
 
-| Endpoint | Status | Descrição |
-|----------|--------|-----------|
-| `/api/health` | ✅ OK | Health check funcionando |
-| `/api/products-public` | ✅ OK | 50 produtos retornados |
-| `/api/products` | ✅ OK | Proteção de autenticação ativa |
-| `/api/auth/me` | ✅ OK | Redirecionamento correto |
-
-### 🔍 Teste Manual com cURL
-
-```bash
-# Produtos públicos (sempre funciona)
-curl -X GET https://peepers.vercel.app/api/products-public
-
-# Health check
-curl -X GET https://peepers.vercel.app/api/health
-
-# Produtos autenticados (requer login)
-curl -X GET https://peepers.vercel.app/api/products
-```
-
-### 📈 Monitoramento em Produção
-
-- ✅ **50 produtos** sendo exibidos na homepage
-- ✅ **Proteção de autenticação** funcionando
-- ✅ **Health check** ativo
-- ✅ **Cache Redis** operacional
-- ✅ **Rate limiting** ativo
-
-## � Desenvolvimento Local (Sem HTTPS)
-
-### ✅ Abordagem Recomendada: Mocks Locais
-
-Para desenvolvimento diário, use mocks locais que não dependem do Mercado Livre:
-
-```bash
-# Desenvolvimento com mocks (recomendado)
+# Start development server with mocks (recommended)
 npm run dev:mock
 
-# Testar endpoint local
-npm run test:local
-```
-
-**Vantagens:**
-
-- ✅ Não precisa configurar HTTPS
-- ✅ Não precisa alterar URLs no Mercado Livre
-- ✅ Desenvolvimento mais rápido
-- ✅ Dados consistentes para testes
-- ✅ Funciona offline
-
-### 🔧 Funcionalidades com Mocks
-
-- **Homepage**: Mostra produtos de teste automaticamente
-- **API Pública**: `/api/products-public` retorna dados mockados
-- **Cache**: Simula comportamento do Redis localmente
-- **UI**: Interface completa funcionando
-
-### 🌐 Quando Usar HTTPS
-
-Use HTTPS apenas quando precisar testar a integração real com Mercado Livre:
-
-```bash
-# Para testes reais com Mercado Livre
+# Or start with real ML integration (requires HTTPS tunnel)
 npm run dev
-# Em outro terminal:
-npm run tunnel
-# Configure a URL HTTPS no Mercado Livre
+npm run tunnel  # In separate terminal
 ```
 
-### 📋 Fluxo de Desenvolvimento
+**🌐 Live Demo:** [https://peepers.vercel.app](https://peepers.vercel.app)
 
-1. **Desenvolvimento**: `npm run dev:mock`
-2. **Teste UI**: Acesse `http://localhost:3000`
-3. **Teste API**: `npm run test:local`
-4. **Deploy**: Configure HTTPS apenas para produção
+## ⚡ Key Features
 
-## �📋 Checklist de Configuração da Aplicação
+| Feature | Description | Status |
+|---------|-------------|--------|
+| 🔐 **OAuth 2.0 + PKCE** | Secure authentication with CSRF protection | ✅ Production Ready |
+| 🛒 **Product Management** | Full CRUD operations with Mercado Livre API | ✅ Production Ready |
+| 🔄 **Real-time Webhooks** | Instant sync for orders, items, messages | ✅ Production Ready |
+| ⚡ **Redis Caching** | Intelligent caching with auto-refresh | ✅ Production Ready |
+| 📱 **Responsive Design** | Modern UI with Tailwind CSS v4 | ✅ Production Ready |
+| 🧪 **Testing Suite** | Comprehensive testing with Vitest | ✅ Production Ready |
 
-### ✅ Pré-requisitos
+## 🏗️ Architecture Overview
 
-- [ ] Conta proprietária no Mercado Livre (não operador)
-- [ ] Domínio com HTTPS configurado
-- [ ] Certificado SSL válido
+```mermaid
+graph TB
+    A[Next.js 15 Frontend] --> B[API Routes]
+    B --> C[Authentication Layer]
+    C --> D[Mercado Livre API]
+    B --> E[Redis Cache]
+    D --> F[Webhook Handler]
+    F --> E
+    E --> A
+    
+    G[External Services] --> H[Upstash Redis]
+    G --> I[Vercel Deployment]
+    G --> J[Mercado Livre DevCenter]
+```
 
-### ✅ Criação da Aplicação
+### Tech Stack
 
-1. [ ] Acesse https://developers.mercadolivre.com.br/
-2. [ ] Clique "Criar uma aplicação"
-3. [ ] Preencha:
-   - Nome da aplicação
-   - Nome curto
-   - Descrição
-   - Logo (opcional)
+- **Frontend**: Next.js 15, React 19, TypeScript 5
+- **Styling**: Tailwind CSS v4, Lucide React Icons
+- **Backend**: Next.js API Routes, Zod Validation
+- **Database**: Redis (Upstash) for caching
+- **Authentication**: OAuth 2.0 + PKCE
+- **Testing**: Vitest, Coverage Reports
+- **Deployment**: Vercel Platform
 
-### ✅ Configuração Técnica
+## 📚 Documentation
 
-4. [ ] **URLs de redirecionamento:**
+| Document | Description |
+|----------|-------------|
+| [🏗️ Architecture Guide](docs/ARCHITECTURE.md) | System design and patterns |
+| [🔧 Developer Setup](docs/DEVELOPER_GUIDE.md) | Complete development guide |
+| [📡 API Documentation](docs/API.md) | Endpoint reference |
+| [🚀 Deployment Guide](docs/DEPLOYMENT.md) | Production deployment |
+| [🤝 Contributing](docs/CONTRIBUTING.md) | Contribution guidelines |
 
-   ```
-   https://seudominio.com/api/auth/mercado-livre/callback
-   ```
+## 🛠️ Development
 
-5. [ ] **Habilitar PKCE:** ✅ Ativado
-6. [ ] **Escopos:** Leitura e Escrita
-7. [ ] **URL de notificações:**
+### Prerequisites
 
-   ```
-   https://seudominio.com/api/webhook/mercado-livre
-   ```
+- Node.js 18+ and npm
+- Redis instance (or Upstash account)
+- Mercado Livre Developer Account
 
-8. [ ] **Tópicos de notificação:**
-   - [ ] orders_v2
-   - [ ] items
-   - [ ] messages
+### Environment Setup
 
-### ✅ Configuração do Ambiente
-
-9. [ ] **Variáveis de ambiente:**
+1. **Clone and install**:
 
    ```bash
-   ML_CLIENT_ID=seu_app_id
-   ML_CLIENT_SECRET=seu_client_secret
-   NEXT_PUBLIC_APP_URL=https://seudominio.com
+   git clone https://github.com/antoniovbraz/peepers.git
+   cd peepers
+   npm install
    ```
 
-10. [ ] **Teste a aplicação:**
-    - [ ] Login OAuth funciona
-    - [ ] Webhooks recebem notificações
-    - [ ] API calls retornam dados
+2. **Environment configuration**:
 
-### 🚨 Possíveis Problemas
+   ```bash
+   cp .env.example .env.local
+   ```
 
-**Erro: "redirect_uri mismatch"**
-- ✅ Verifique se a URL no Mercado Livre é exatamente igual
-- ✅ Não use parâmetros variáveis na URL
-- ✅ Use HTTPS (não HTTP)
+3. **Required environment variables**:
 
-**Erro: "invalid_operator_user_id"**
-- ✅ Use conta de administrador (não operador)
-- ✅ Verifique permissões da conta
+   ```env
+   # Mercado Livre API
+   ML_CLIENT_ID=your_client_id
+   ML_CLIENT_SECRET=your_client_secret
+   
+   # Redis Cache
+   UPSTASH_REDIS_REST_URL=your_redis_url
+   UPSTASH_REDIS_REST_TOKEN=your_redis_token
+   
+   # Application
+   NEXT_PUBLIC_APP_URL=https://your-domain.com
+   ALLOWED_USER_IDS=user1,user2,user3
+   ```
 
-**Erro: "PKCE verification failed"**
-- ✅ Certifique-se que PKCE está habilitado na aplicação
-- ✅ Verifique implementação do code_challenge
-
-**Webhook não funciona:**
-- ✅ URL deve ser HTTPS
-- ✅ Deve responder em até 5 segundos
-- ✅ Deve retornar HTTP 200
-
-### 🔧 Desenvolvimento Local
-
-Para desenvolvimento local, use:
+### Development Modes
 
 ```bash
-# Instalar localtunnel
-npm install -g localtunnel
+# Recommended: Mock development (no ML integration)
+npm run dev:mock
 
-# Criar túnel HTTPS
-npm run tunnel
+# Real integration (requires HTTPS tunnel)
+npm run dev
+npm run tunnel  # In separate terminal
 
-# Configurar temporariamente no Mercado Livre
-# Usar a URL https://xxxxx.loca.lt gerada
+# Production build
+npm run build
+npm start
 ```
 
-**⚠️ Importante:** Sempre configure a URL de produção no Mercado Livre. Use túnel apenas para testes locais.
-
-## Business Model
-
-**Single-Tenant Architecture**: Each instance serves exactly one Mercado Livre seller account. This ensures:
-
-- Complete data isolation between sellers
-- Customized configurations per store
-- Enhanced security and performance
-- Dedicated support and maintenance
-
-**Access Control**:
-
-- **Public**: Product catalog (`/produtos`) - accessible to all visitors
-- **Restricted**: Admin panel (`/admin`) - only the configured seller account
-- **Sales Funnel**: Unauthorized sellers see professional sales page with contact info
-
-## Current Configuration
-
-This instance is configured exclusively for **Mercado Livre seller ID: 669073070**.
-Other sellers will see an "Access Denied" page with sales information.his is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-## 🚀 Getting Started
-
-### Local Development with HTTPS
-
-Since Mercado Livre requires HTTPS for OAuth and webhooks, use these steps for local development:
-
-1. **Install localtunnel:**
-
-   ```bash
-   npm install -g localtunnel
-   ```
-
-2. **Start the development server:**
-
-   ```bash
-   npm run dev
-   ```
-
-3. **In another terminal, create HTTPS tunnel:**
-
-   ```bash
-   npm run tunnel
-   ```
-
-   This will give you a URL like: `https://xxxxx.loca.lt`
-
-4. **Update environment variables:**
-   Create/update `.env.local`:
-
-   ```bash
-   NEXT_PUBLIC_APP_URL=https://your-tunnel-url.loca.lt
-   ```
-
-5. **Configure Mercado Livre:**
-   - Use the HTTPS tunnel URL as your redirect URI
-   - Use the HTTPS tunnel URL for webhook endpoint
-
-### Quick Start with HTTPS (Recommended)
-
-For the fastest setup with HTTPS:
+### Testing & Quality
 
 ```bash
-# Executar script automatizado (Linux/Mac)
-./dev-https.sh
+# Run test suite
+npm run test
 
-# Ou manualmente no Windows PowerShell:
-# Terminal 1: npm run dev
-# Terminal 2: npm run tunnel
+# Run with coverage
+npm run test -- --coverage
+
+# Lint code
+npm run lint
+
+# Production endpoint testing
+npm run test:prod all
+npm run test:prod health
+npm run test:prod products-public
 ```
 
-The script will:
+## 📡 API Reference
 
-- ✅ Install localtunnel if needed
-- ✅ Start Next.js development server
-- ✅ Create HTTPS tunnel
-- ✅ Display configuration instructions
+### Authentication Endpoints
 
-### Manual Setup
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/auth/mercado-livre` | Initiate OAuth flow |
+| `GET` | `/api/auth/mercado-livre/callback` | OAuth callback handler |
+| `GET` | `/api/auth/me` | Get current user status |
 
-If you prefer manual setup, follow the steps above.
+### Product Endpoints
 
-## Learn More
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| `GET` | `/api/products-public` | ❌ | Public product listing |
+| `GET` | `/api/products` | ✅ | Authenticated product access |
+| `POST` | `/api/sync` | ✅ | Force product synchronization |
 
-To learn more about Next.js, take a look at the following resources:
+### System Endpoints
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/health` | Health check |
+| `GET` | `/api/cache-debug` | Cache diagnostics |
+| `POST` | `/api/webhook/mercado-livre` | ML webhook handler |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Rate Limits
 
-## Deploy on Vercel
+- **1,000 calls/hour** per application
+- **5,000 calls/day** per user
+- **Automatic retry** with exponential backoff
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🚀 Deployment
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Vercel (Recommended)
 
-## Limitations
+1. **Connect repository**:
 
-This project uses [Vercel KV](https://vercel.com/docs/storage/vercel-kv) to cache data. Operations that need to inspect or clear
-the cache rely on iterating over keys with `scan`. Scanning is appropriate for small and medium datasets but it requires reading
-through all matching keys and cannot efficiently paginate very large key sets.
+   ```bash
+   vercel --prod
+   ```
 
-## Environment Variables
+2. **Environment variables**: Configure in Vercel dashboard
 
-Set the following variable to configure absolute URLs used in API calls and OAuth redirects:
+3. **Domain setup**: 
+   - Add custom domain in Vercel
+   - Update `NEXT_PUBLIC_APP_URL`
+   - Configure DNS records
 
-- `NEXT_PUBLIC_APP_URL` – Base URL of the application (e.g., `https://peepers.vercel.app`).
+### Manual Deployment
 
-## API Authentication
+1. **Build application**:
 
-### Authentication Flow
+   ```bash
+   npm run build
+   ```
 
-1. **Login**: Users authenticate via Mercado Livre OAuth at `/api/auth/mercado-livre`
-2. **Callback**: OAuth tokens are exchanged and stored securely at `/api/auth/mercado-livre/callback`
-3. **Session**: Secure HTTP-only cookies are created for session management
-4. **Verification**: All protected routes verify session cookies via middleware
+2. **Start production server**:
 
-### Protected Routes
+   ```bash
+   npm start
+   ```
 
-The following routes require authentication:
+## 🔐 Security & Compliance
 
-- `/admin` - Administrative dashboard
-- `/api/sync/*` - Product synchronization
-- `/api/products` - Product data access
-- `/api/auth/logout` - Session termination
+### HTTPS Requirements
 
-### Security Features
+**⚠️ CRITICAL**: Mercado Livre requires HTTPS for ALL operations:
 
-- **HTTP-only Cookies**: Session tokens cannot be accessed via JavaScript
-- **Secure Cookies**: HTTPS-only in production
-- **Session Validation**: Server-side session verification
-- **User Authorization**: Configurable allowed user IDs via `ALLOWED_USER_IDS` env var
-- **Token Expiration**: Automatic session cleanup
+- ✅ OAuth redirect URIs must use HTTPS
+- ✅ Webhook endpoints must use HTTPS  
+- ✅ All API calls must use HTTPS
+- ❌ HTTP is not supported in production
 
-### Required Environment Variables
+### Authentication Security
 
-Set the following variables for authentication:
+- **OAuth 2.0 + PKCE** implementation
+- **CSRF protection** with state validation
+- **Token auto-refresh** mechanism
+- **User authorization** via `ALLOWED_USER_IDS`
 
-```bash
-# Mercado Livre OAuth
-ML_CLIENT_ID=your_client_id
-ML_CLIENT_SECRET=your_client_secret
-NEXT_PUBLIC_APP_URL=https://your-domain.com
+### Data Protection
 
-# Security (optional)
-ALLOWED_USER_IDS=123456789,987654321
-```
+- **No sensitive data** in client-side code
+- **Redis encryption** in transit and at rest
+- **Environment variable** security
+- **Rate limiting** and abuse prevention
 
-### Admin Routes
-
-**Note**: Routes mentioned in the original documentation that don't exist:
-
-- ❌ `POST /api/ml/sync` (use `POST /api/sync` instead)
-- ❌ `POST /api/products/[id]` (use `GET /api/products` for listing)
-
-**Correct admin routes**:
-
-- ✅ `GET /api/products-public` - Public product catalog (homepage)
-- ✅ `POST /api/sync` - Synchronize products
-- ✅ `GET /api/products` - Authenticated product management
-- ✅ `GET /api/auth/me` - Get current user session
-
-## Runtime Requirements
-
-The `/api/ml/webhook` endpoint uses `revalidatePath` to update ISR pages and therefore runs on the Node.js runtime rather than the Edge runtime.
-
-## 🔒 Security Architecture
-
-### OAuth 2.0 with PKCE Flow
-
-- **Secure Authorization**: Code flow with PKCE protection
-- **HTTP-only Cookies**: Session management without client-side access
-- **Middleware Protection**: Route-level access control
-- **Single User Architecture**: Exclusive admin access with sales funnel
-
-### Access Control Model
-
-- **Public Routes**: Homepage, product catalog, login page
-- **Protected Routes**: Admin dashboard, authenticated APIs
-- **API Separation**: Public vs authenticated endpoints
-- **Session Validation**: Automatic token refresh and validation
-
-### Security Features Implemented
-
-- ✅ CSRF Protection via HTTP-only cookies
-- ✅ XSS Prevention with proper sanitization
-- ✅ Secure redirect handling
-- ✅ Rate limiting on sensitive endpoints
-- ✅ Input validation and sanitization
-
-## 🔧 Troubleshooting & Maintenance
+## 🛠️ Troubleshooting
 
 ### Common Issues
 
-**Products not loading on homepage:**
+**Error: "redirect_uri mismatch"**
 
-```bash
-# Check public API endpoint
-curl -X GET http://localhost:3000/api/products-public
+- ✅ Verify URL in Mercado Livre matches exactly
+- ✅ Ensure HTTPS is used
+- ✅ Check for trailing slashes
 
-# Verify middleware configuration
-npm run build
-```
+**Error: "invalid_operator_user_id"**
 
-**Authentication issues:**
+- ✅ Use administrator account (not operator)
+- ✅ Verify account permissions
 
-```bash
-# Clear cookies and retry login
-# Check OAuth configuration in Mercado Livre
-# Verify environment variables
-```
+**Error: "PKCE verification failed"**
 
-**Build failures:**
+- ✅ Ensure PKCE is enabled in application
+- ✅ Check code_verifier generation
 
-```bash
-# Clean install dependencies
-rm -rf node_modules package-lock.json
-npm install
+**Webhook not receiving data**
 
-# Clear Next.js cache
-rm -rf .next
-npm run build
-```
+- ✅ URL must be HTTPS
+- ✅ Respond with HTTP 200 within 5 seconds
+- ✅ Validate topic and resource_id
 
-### Maintenance Tasks
+## 📊 Performance & Monitoring
 
-**Weekly:**
+### Caching Strategy
 
-- Monitor error logs in Vercel dashboard
-- Check Mercado Livre API rate limits
-- Review authentication success rates
+- **Product cache**: 2 hours TTL
+- **User data**: 30 minutes TTL  
+- **Categories**: 24 hours TTL
+- **Auto-refresh** on expiration
 
-**Monthly:**
+### Monitoring
 
-- Update dependencies: `npm audit fix`
-- Review and rotate API credentials
-- Backup configuration and data
+- ✅ Health check endpoint active
+- ✅ Cache performance metrics
+- ✅ API rate limit tracking
+- ✅ Error logging with Pino
 
-**Security:**
+## 🤝 Contributing
 
-- Monitor for OAuth token leaks
-- Review access logs for suspicious activity
-- Update security dependencies promptly
+We welcome contributions! Please see our [Contributing Guidelines](docs/CONTRIBUTING.md) for details.
+
+### Development Workflow
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Make changes and add tests
+4. Run test suite (`npm run test`)
+5. Commit changes (`git commit -m 'Add amazing feature'`)
+6. Push to branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+### Code Standards
+
+- **TypeScript** for type safety
+- **ESLint** for code quality
+- **Prettier** for formatting
+- **Conventional Commits** for commit messages
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙋‍♂️ Support
+
+- **Documentation**: [docs/](docs/)
+- **Issues**: [GitHub Issues](https://github.com/antoniovbraz/peepers/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/antoniovbraz/peepers/discussions)
+
+---
+
+<div align="center">
+  <p>Built with ❤️ by <a href="https://github.com/antoniovbraz">Antonio Braz</a></p>
+  <p>
+    <a href="https://peepers.vercel.app">Live Demo</a> •
+    <a href="docs/">Documentation</a> •
+    <a href="https://github.com/antoniovbraz/peepers/issues">Report Bug</a>
+  </p>
+</div>

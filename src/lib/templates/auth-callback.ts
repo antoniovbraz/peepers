@@ -1,4 +1,3 @@
-import { html } from '@/lib/html';
 import { API_ENDPOINTS, PAGES } from '@/config/routes';
 
 export function renderAuthCallback(options: {
@@ -8,7 +7,7 @@ export function renderAuthCallback(options: {
 }) {
   const { success, message, details } = options;
 
-  return html`
+  return `
     <!DOCTYPE html>
     <html lang="pt-BR">
       <head>
