@@ -1,21 +1,27 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
-import PeepersLogo from '@/components/PeepersLogo';
+import Header from '@/components/Header';
+import ProductCard from '@/components/ProductCard';
 import ProductsClient from './ProductsClient';
 import { PAGES } from '@/config/routes';
 
 // Loading component para produtos
 function ProductsLoading() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {[...Array(8)].map((_, i) => (
-        <div key={i} className="card-peepers animate-pulse">
-          <div className="aspect-square bg-peepers-neutral-200 rounded-t-lg"></div>
+        <div key={i} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 animate-pulse">
+          <div className="aspect-square bg-gray-200"></div>
           <div className="p-4">
-            <div className="h-4 bg-peepers-neutral-200 rounded mb-2"></div>
-            <div className="h-4 bg-peepers-neutral-200 rounded w-2/3 mb-2"></div>
-            <div className="h-6 bg-peepers-neutral-200 rounded w-1/2 mb-3"></div>
-            <div className="h-10 bg-peepers-neutral-200 rounded-lg"></div>
+            <div className="h-4 bg-gray-200 rounded mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded w-2/3 mb-3"></div>
+            <div className="flex items-center space-x-1 mb-3">
+              {[...Array(5)].map((_, j) => (
+                <div key={j} className="w-4 h-4 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+            <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
           </div>
         </div>
       ))}
@@ -25,46 +31,25 @@ function ProductsLoading() {
 
 export default function ProdutosPage() {
   return (
-    <div className="min-h-screen bg-peepers-neutral-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-peepers-neutral-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-                <PeepersLogo variant="full" size="md" />
-              </Link>
-            </div>
-            <nav className="hidden md:flex space-x-8">
-              <Link href={PAGES.PRODUTOS} className="text-peepers-primary-600 font-medium border-b-2 border-peepers-primary-600 pb-1">
-                Produtos
-              </Link>
-              <Link href="/#como-funciona" className="text-peepers-neutral-700 hover:text-peepers-primary-600 transition-colors font-medium">
-                Como Funciona
-              </Link>
-              <Link href="/contato" className="text-peepers-neutral-700 hover:text-peepers-primary-600 transition-colors font-medium">
-                Contato
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Breadcrumb */}
-      <div className="bg-white border-b border-peepers-neutral-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+      <div className="bg-white border-b border-gray-200">
+        <div className="container mx-auto px-4 py-3">
           <nav className="flex" aria-label="Breadcrumb">
             <ol className="flex items-center space-x-4">
               <li>
-                <Link href="/" className="text-peepers-neutral-500 hover:text-peepers-primary-600 transition-colors">
+                <Link href="/" className="text-gray-500 hover:text-primary transition-colors">
                   Início
                 </Link>
               </li>
               <li>
-                <span className="text-peepers-neutral-400">/</span>
+                <span className="text-gray-400">/</span>
               </li>
               <li>
-                <span className="text-peepers-neutral-900 font-medium">Produtos</span>
+                <span className="text-gray-900 font-medium">Produtos</span>
               </li>
             </ol>
           </nav>
@@ -72,15 +57,28 @@ export default function ProdutosPage() {
       </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="container mx-auto px-4 py-8">
         {/* Page Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-peepers-neutral-900 mb-4">
+        <div className="mb-12 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
             Nossos Produtos
           </h1>
-          <p className="text-lg text-peepers-neutral-600 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Confira nossa seleção completa de produtos com qualidade garantida e preços especiais.
           </p>
+          <div className="mt-6 flex justify-center">
+            <a
+              href="https://www.mercadolivre.com.br/pagina/peepersshop"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-6 py-3 bg-primary text-white font-semibold rounded-full hover:bg-primary-dark transition-colors"
+            >
+              Visitar Nossa Loja ML
+              <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
         </div>
 
         {/* Search and Filters Section */}
@@ -244,44 +242,50 @@ export default function ProdutosPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-peepers-neutral-900 text-white mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <footer className="bg-gray-900 text-white mt-16">
+        <div className="container mx-auto px-4 py-16">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <div className="mb-4">
-                <PeepersLogo variant="full" size="md" className="brightness-0 invert" />
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center mr-2">
+                  <span className="text-white font-bold text-sm">P</span>
+                </div>
+                <span className="text-xl font-bold">Peepers</span>
               </div>
-              <p className="text-peepers-neutral-400 leading-relaxed">
-                Sua loja oficial com produtos de qualidade e segurança garantida. Conectando você aos melhores produtos do Mercado Livre.
+              <p className="text-gray-400 mb-4">
+                Sua loja oficial com produtos de qualidade e segurança garantida pelo Mercado Livre.
               </p>
             </div>
             <div>
-              <h4 className="font-semibold mb-4 text-peepers-secondary-400">Produtos</h4>
-              <ul className="space-y-2 text-peepers-neutral-400">
-                <li><Link href={PAGES.PRODUTOS} className="hover:text-peepers-secondary-400 transition-colors">Todos os Produtos</Link></li>
-                <li><Link href={`${PAGES.PRODUTOS}?condition=new`} className="hover:text-peepers-secondary-400 transition-colors">Produtos Novos</Link></li>
-                <li><Link href={`${PAGES.PRODUTOS}?shipping=free`} className="hover:text-peepers-secondary-400 transition-colors">Frete Grátis</Link></li>
+              <h4 className="font-bold mb-6">Produtos</h4>
+              <ul className="space-y-3 text-gray-400">
+                <li><Link href="/produtos" className="hover:text-white transition-colors">Todos os Produtos</Link></li>
+                <li><Link href="/produtos?condition=new" className="hover:text-white transition-colors">Produtos Novos</Link></li>
+                <li><Link href="/produtos?shipping=free" className="hover:text-white transition-colors">Frete Grátis</Link></li>
+                <li><a href="https://www.mercadolivre.com.br/pagina/peepersshop" target="_blank" className="hover:text-white transition-colors">Loja no ML</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4 text-peepers-secondary-400">Empresa</h4>
-              <ul className="space-y-2 text-peepers-neutral-400">
-                <li><Link href="/sobre" className="hover:text-peepers-secondary-400 transition-colors">Sobre Nós</Link></li>
-                <li><Link href="/contato" className="hover:text-peepers-secondary-400 transition-colors">Contato</Link></li>
-                <li><Link href="/blog" className="hover:text-peepers-secondary-400 transition-colors">Blog</Link></li>
+              <h4 className="font-bold mb-6">Empresa</h4>
+              <ul className="space-y-3 text-gray-400">
+                <li><Link href="/sobre" className="hover:text-white transition-colors">Sobre Nós</Link></li>
+                <li><Link href="/contato" className="hover:text-white transition-colors">Contato</Link></li>
+                <li><Link href="/blog" className="hover:text-white transition-colors">Blog</Link></li>
+                <li><Link href="/carreiras" className="hover:text-white transition-colors">Carreiras</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4 text-peepers-secondary-400">Suporte</h4>
-              <ul className="space-y-2 text-peepers-neutral-400">
-                <li><Link href="/ajuda" className="hover:text-peepers-secondary-400 transition-colors">Central de Ajuda</Link></li>
-                <li><Link href="/termos" className="hover:text-peepers-secondary-400 transition-colors">Termos de Uso</Link></li>
-                <li><Link href="/privacidade" className="hover:text-peepers-secondary-400 transition-colors">Privacidade</Link></li>
+              <h4 className="font-bold mb-6">Suporte</h4>
+              <ul className="space-y-3 text-gray-400">
+                <li><Link href="/ajuda" className="hover:text-white transition-colors">Central de Ajuda</Link></li>
+                <li><Link href="/termos" className="hover:text-white transition-colors">Termos de Uso</Link></li>
+                <li><Link href="/privacidade" className="hover:text-white transition-colors">Privacidade</Link></li>
+                <li><Link href="/devolucoes" className="hover:text-white transition-colors">Devoluções</Link></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-peepers-neutral-800 mt-8 pt-8 text-center text-peepers-neutral-400">
-            <p>&copy; 2025 Peepers. Todos os direitos reservados.</p>
+          <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
+            <p>&copy; 2025 Peepers. Todos os direitos reservados. | Loja oficial no Mercado Livre</p>
           </div>
         </div>
       </footer>

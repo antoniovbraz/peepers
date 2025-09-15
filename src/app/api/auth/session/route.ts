@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       country: 'BR',
       user_type: 'brand',
       site_id: 'MLB',
-      permalink: 'https://perfil.mercadolivre.com.br/PEEPERS+SHOP',
+      permalink: 'https://www.mercadolivre.com.br/pagina/peepersshop',
       seller_reputation: {
         level_id: '5_green',
         power_seller_status: 'platinum',
