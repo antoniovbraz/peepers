@@ -1,7 +1,9 @@
 'use client';
 
+// Force cache invalidation - Updated: 2025-09-15T19:30:00Z
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import PeepersLogo from '@/components/PeepersLogo';
 import type { ProductSummary } from '@/types/product';
 import { PAGES, API_ENDPOINTS } from '@/config/routes';
@@ -185,11 +187,12 @@ export default function ProductsClient() {
         <div key={product.id} className="card-peepers group">
           <div className="aspect-square bg-peepers-neutral-100 relative overflow-hidden rounded-t-lg">
             {product.thumbnail ? (
-              <img
+              <Image
                 src={product.thumbnail}
                 alt={product.title}
-                className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 p-2"
-                loading="lazy"
+                fill
+                className="object-contain group-hover:scale-105 transition-transform duration-300 p-2"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
