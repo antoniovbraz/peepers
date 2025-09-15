@@ -1,7 +1,7 @@
 'use client';
 
+// ProductCard updated for object-contain default - 2025-09-15T19:35:00Z
 import Image from 'next/image';
-import Link from 'next/link';
 import { StarIcon, HeartIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
 import { useState } from 'react';
@@ -33,7 +33,7 @@ export default function ProductCard({
   badge,
   isFavorite = false,
   onToggleFavorite,
-  imageFit = 'cover' // Default to cover for backward compatibility
+  imageFit = 'contain' // Default to contain for better product image display
 }: ProductCardProps) {
   const [isImageLoading, setIsImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
