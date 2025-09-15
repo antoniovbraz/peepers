@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PAGES, API_ENDPOINTS } from '@/config/routes';
 import BackupManager from '@/components/BackupManager';
+import CompanyProfileCard from '@/components/admin/CompanyProfileCard';
 
 interface EndpointStatus {
   name: string;
@@ -140,12 +141,17 @@ function AdminDashboard() {
             onClick={testAllEndpoints}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
-            � Testar Todos os Endpoints
+            🔄 Testar Todos os Endpoints
           </button>
         </div>
 
+        {/* Company Profile Card */}
+        <div className="mb-8">
+          <CompanyProfileCard />
+        </div>
+
         {/* Endpoints Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
           {endpoints.map((endpoint) => (
             <div key={endpoint.url} className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-blue-500">
               <div className="flex items-center justify-between mb-4">
@@ -200,7 +206,7 @@ function AdminDashboard() {
         </div>
 
         {/* Summary Section */}
-        <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-6 flex items-center">
             📊 Resumo do Sistema
           </h2>
@@ -250,7 +256,7 @@ function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-6">⚡ Ações Rápidas</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <a 
@@ -294,7 +300,7 @@ function AdminDashboard() {
         </div>
 
         {/* Backup Manager */}
-        <div className="mt-8">
+        <div className="bg-white rounded-lg shadow-lg p-6">
           <BackupManager />
         </div>
       </div>
