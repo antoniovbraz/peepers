@@ -18,6 +18,7 @@ interface ProductCardProps {
   badge?: string;
   isFavorite?: boolean;
   onToggleFavorite?: (id: string) => void;
+  imageFit?: 'cover' | 'contain'; // New prop to control image fit
 }
 
 export default function ProductCard({
@@ -31,7 +32,8 @@ export default function ProductCard({
   mercadoLivreLink,
   badge,
   isFavorite = false,
-  onToggleFavorite
+  onToggleFavorite,
+  imageFit = 'cover' // Default to cover for backward compatibility
 }: ProductCardProps) {
   const [isImageLoading, setIsImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
@@ -109,7 +111,7 @@ export default function ProductCard({
                 src={image}
                 alt={title}
                 fill
-                className={`object-cover group-hover:scale-105 transition-transform duration-300 ${
+                className={`object-${imageFit} group-hover:scale-105 transition-transform duration-300 ${
                   isImageLoading ? 'opacity-0' : 'opacity-100'
                 }`}
                 onLoad={handleImageLoad}
@@ -150,7 +152,7 @@ export default function ProductCard({
                 <StarIcon
                   key={star}
                   className={`w-4 h-4 ${
-                    star <= rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                    star <= rating ? 'text-secondary fill-current' : 'text-gray-300'
                   }`}
                 />
               ))}
