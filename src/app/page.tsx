@@ -71,6 +71,7 @@ async function FeaturedProducts() {
               rating={4.5}
               reviewCount={product.id ? (parseInt(product.id.toString().slice(-2), 10) || 0) + 50 : 50}
               badge={product.shipping?.free_shipping ? "Frete Grátis" : undefined}
+              imageFit="contain"
             />
           );
         })}
