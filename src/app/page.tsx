@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import PeepersLogo from '@/components/PeepersLogo';
+import { API_ENDPOINTS } from '@/config/routes';
 
 // Componente para mostrar produtos em destaque
 async function FeaturedProducts() {
   try {
-    // Buscar produtos reais da API
+    // Buscar produtos públicos (não requer autenticação)
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
-    const response = await fetch(`${baseUrl}/api/products`, {
+    const response = await fetch(`${baseUrl}${API_ENDPOINTS.PRODUCTS_PUBLIC}`, {
       cache: 'no-store' // Sempre buscar dados atualizados
     });
     

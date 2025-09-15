@@ -23,6 +23,7 @@ export const API_ENDPOINTS = {
   
   // Produtos (público)
   PRODUCTS: '/api/products',
+  PRODUCTS_PUBLIC: '/api/products-public',
   PRODUCT_BY_ID: (id: string) => `/api/products/${id}`,
   
   // Autenticação OAuth (público)
@@ -69,6 +70,7 @@ export const ML_CONFIG = {
 export const MIDDLEWARE_CONFIG = {
   // Rotas que NÃO precisam de autenticação
   PUBLIC_PATHS: [
+    API_ENDPOINTS.PRODUCTS_PUBLIC,
     API_ENDPOINTS.PRODUCTS,
     API_ENDPOINTS.HEALTH,
     API_ENDPOINTS.CACHE_DEBUG,
