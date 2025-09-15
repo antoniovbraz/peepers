@@ -1,3 +1,4 @@
+import { PAGES } from '@/config/routes';
 'use client';
 
 import Link from 'next/link';
@@ -66,7 +67,7 @@ export default function HeroSection({
             </a>
             
             <Link
-              href="/produtos"
+              href={PAGES.PRODUTOS}
               className="btn-secondary border-2 border-white text-white hover:bg-white hover:text-primary font-semibold px-8 py-4 rounded-full text-lg transition-all duration-300"
             >
               Ver Produtos

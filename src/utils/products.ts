@@ -1,0 +1,42 @@
+import { API_ENDPOINTS } from '@/config/routes';
+import type { MLProduct } from '@/types/ml';
+
+/**
+ * Fetches products from the public API
+ * @param limit - Maximum number of products to fetch
+ * @returns Promise with products array
+ */
+export async function fetchProducts(limit?: number): Promise<MLProduct[]> {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const response = await fetch(`${baseUrl}${API_ENDPOINTS.PRODUCTS_PUBLIC}`, {
+    cache: 'no-store'
+  });
+  
+  if (!response.ok) {
+    throw new Error('Falha ao carregar produtos');
+  }
+  
+  const data = await response.json();
+  const products = data.products || [];
+  
+  return limit ? products.slice(0, limit) : products;
+}
+
+/**
+ * Generates a review count based on product ID
+ * @param productId - Product ID string
+ * @returns Generated review count
+ */
+export function generateReviewCount(productId?: string): number {
+  if (!productId) return 50;
+  return (parseInt(productId.toString().slice(-2), 10) || 0) + 50;
+}
+
+/**
+ * Validates if a product has required fields
+ * @param product - Product object to validate
+ * @returns Boolean indicating if product is valid
+ */
+export function isValidProduct(product: unknown): product is MLProduct {
+  return !!(product && typeof product === 'object' && 'id' in product && 'title' in product);
+}

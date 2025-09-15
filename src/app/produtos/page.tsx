@@ -1,9 +1,8 @@
+import { PAGES } from '@/config/routes';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import Header from '@/components/Header';
-import ProductCard from '@/components/ProductCard';
 import ProductsClient from './ProductsClient';
-import { PAGES } from '@/config/routes';
 
 // Loading component para produtos
 function ProductsLoading() {
@@ -259,7 +258,7 @@ export default function ProdutosPage() {
             <div>
               <h4 className="font-bold mb-6">Produtos</h4>
               <ul className="space-y-3 text-gray-400">
-                <li><Link href="/produtos" className="hover:text-white transition-colors">Todos os Produtos</Link></li>
+                <li><Link href={PAGES.PRODUTOS} className="hover:text-white transition-colors">Todos os Produtos</Link></li>
                 <li><Link href="/produtos?condition=new" className="hover:text-white transition-colors">Produtos Novos</Link></li>
                 <li><Link href="/produtos?shipping=free" className="hover:text-white transition-colors">Frete Grátis</Link></li>
                 <li><a href="https://www.mercadolivre.com.br/pagina/peepersshop" target="_blank" className="hover:text-white transition-colors">Loja no ML</a></li>

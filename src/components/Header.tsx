@@ -1,3 +1,4 @@
+import { PAGES } from '@/config/routes';
 'use client';
 
 import Link from 'next/link';
@@ -46,7 +47,7 @@ export default function Header() {
           {/* Navegação Principal - Desktop */}
           <nav className="hidden md:flex items-center space-x-8">
             <Link 
-              href="/produtos" 
+              href={PAGES.PRODUTOS} 
               className="text-gray-700 hover:text-primary transition-colors font-medium"
             >
               Produtos
@@ -75,7 +76,7 @@ export default function Header() {
             </button>
             
             {/* Login */}
-            <Link href="/login" className="hidden sm:block p-2 rounded-full hover:bg-gray-100 transition-colors">
+            <Link href={PAGES.LOGIN} className="hidden sm:block p-2 rounded-full hover:bg-gray-100 transition-colors">
               <UserIcon className="h-5 w-5 text-gray-700" />
             </Link>
             
@@ -109,7 +110,7 @@ export default function Header() {
               
               {/* Links de Navegação */}
               <Link 
-                href="/produtos" 
+                href={PAGES.PRODUTOS} 
                 className="text-gray-700 hover:text-primary transition-colors font-medium py-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -132,7 +133,7 @@ export default function Header() {
                 Nossa Loja ML
               </a>
               <Link 
-                href="/login" 
+                href={PAGES.LOGIN} 
                 className="text-gray-700 hover:text-primary transition-colors font-medium py-2 sm:hidden"
                 onClick={() => setIsMobileMenuOpen(false)}
               >

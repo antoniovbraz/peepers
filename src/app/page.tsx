@@ -1,9 +1,12 @@
+import { PAGES } from '@/config/routes';
 import { Suspense } from 'react';
-import Link from 'next/link';
 import Header from '@/components/Header';
 import HeroSection from '@/components/HeroSection';
 import ProductCard from '@/components/ProductCard';
+import ProductsLoading from '@/components/ProductsLoading';
+import ProductsError from '@/components/ProductsError';
 import { API_ENDPOINTS } from '@/config/routes';
+import type { MLProduct } from '@/types/ml';
 
 // Componente para mostrar produtos em destaque
 async function FeaturedProducts() {
@@ -52,14 +55,12 @@ async function FeaturedProducts() {
         </div>
       );
     }
-
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {featuredProducts.map((product: any, index: number) => {
+        {featuredProducts.map((product: MLProduct, index: number) => {
           if (!product || !product.id) {
             return null; // Skip invalid products
           }
-          
           return (
             <ProductCard
               key={product.id || `product-${index}`}
@@ -77,54 +78,13 @@ async function FeaturedProducts() {
         })}
       </div>
     );
-  } catch (error) {
-    return (
-      <div className="text-center py-12">
-        <div className="max-w-md mx-auto">
-          <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro ao carregar produtos</h3>
-          <p className="text-gray-600 mb-4">
-            Ocorreu um problema ao buscar os produtos. Tente novamente em alguns instantes.
-          </p>
-          <Link
-            href="/"
-            className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-          >
-            Tentar novamente
-          </Link>
-        </div>
-      </div>
-    );
+  } catch {
+    return <ProductsError />;
   }
 }
 
 // Loading component
-function ProductsLoading() {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 animate-pulse">
-          <div className="aspect-square bg-gray-200"></div>
-          <div className="p-4">
-            <div className="h-4 bg-gray-200 rounded mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-2/3 mb-3"></div>
-            <div className="flex items-center space-x-1 mb-3">
-              {[...Array(5)].map((_, j) => (
-                <div key={j} className="w-4 h-4 bg-gray-200 rounded"></div>
-              ))}
-            </div>
-            <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
-            <div className="h-10 bg-gray-200 rounded"></div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+// ...existing code...
 
 export default function HomePage() {
   return (
@@ -151,7 +111,7 @@ export default function HomePage() {
             <div className="text-center group">
               <div className="bg-primary/10 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:bg-primary/20 transition-colors">
                 <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Qualidade Garantida</h3>
@@ -279,7 +239,7 @@ export default function HomePage() {
           
           <div className="text-center mt-16">
             <a
-              href="/produtos"
+              href={PAGES.PRODUTOS}
               className="inline-flex items-center px-8 py-4 bg-primary text-white font-semibold rounded-full hover:bg-primary-dark transition-all duration-300 hover:scale-105"
             >
               Ver Todos os Produtos
@@ -326,7 +286,7 @@ export default function HomePage() {
             <div>
               <h4 className="font-bold mb-6">Produtos</h4>
               <ul className="space-y-3 text-gray-400">
-                <li><a href="/produtos" className="hover:text-white transition-colors">Todos os Produtos</a></li>
+                <li><a href={PAGES.PRODUTOS} className="hover:text-white transition-colors">Todos os Produtos</a></li>
                 <li><a href="/produtos?condition=new" className="hover:text-white transition-colors">Produtos Novos</a></li>
                 <li><a href="/produtos?shipping=free" className="hover:text-white transition-colors">Frete Grátis</a></li>
                 <li><a href="https://www.mercadolivre.com.br/pagina/peepersshop" target="_blank" className="hover:text-white transition-colors">Loja no ML</a></li>
