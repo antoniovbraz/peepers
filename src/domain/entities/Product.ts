@@ -77,5 +77,4 @@ export interface ProductEvents {
   PRODUCT_UPDATED: 'product_updated';
   PRODUCT_DELETED: 'product_deleted';
   PRODUCTS_SYNCED: 'products_synced';
-}</content>
-<parameter name="filePath">c:\Users\anton\OneDrive\Documents\Cline\peepers\src\domain\entities\Product.ts
+}

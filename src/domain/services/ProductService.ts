@@ -20,7 +20,7 @@ export class ProductService {
         products: processedProducts
       };
     } catch (error) {
-      throw new Error(`Failed to get products: ${error.message}`);
+      throw new Error(`Failed to get products: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -37,7 +37,7 @@ export class ProductService {
         products: processedProducts
       };
     } catch (error) {
-      throw new Error(`Failed to get public products: ${error.message}`);
+      throw new Error(`Failed to get public products: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -51,7 +51,7 @@ export class ProductService {
 
       return this.applyBusinessRules([product])[0];
     } catch (error) {
-      throw new Error(`Failed to get product: ${error.message}`);
+      throw new Error(`Failed to get product: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -93,5 +93,4 @@ export class ProductService {
       includeDetails: false
     };
   }
-}</content>
-<parameter name="filePath">c:\Users\anton\OneDrive\Documents\Cline\peepers\src\domain\services\ProductService.ts
+}

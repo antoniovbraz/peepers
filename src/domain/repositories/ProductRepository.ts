@@ -30,5 +30,4 @@ export interface ProductRepository {
   exists(id: string): Promise<boolean>;
 
   count(query?: Partial<ProductQuery>): Promise<number>;
-}</content>
-<parameter name="filePath">c:\Users\anton\OneDrive\Documents\Cline\peepers\src\domain\repositories\ProductRepository.ts
+}
