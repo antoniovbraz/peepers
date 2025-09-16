@@ -2,10 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
 import { MLProduct } from '@/types/ml';
 import { MOCK_PRODUCTS } from '@/lib/mocks';
+import { checkRateLimit } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🚀 Public Products API called');
+
+    // Rate limiting: 500 requests per 15 minutes per IP
+    const clientIP = request.headers.get('x-forwarded-for') ||
+                     request.headers.get('x-real-ip') ||
+                     'unknown';
+    const rateLimit = await checkRateLimit(`public-products:${clientIP}`, 500, 15 * 60 * 1000);
+
+    if (!rateLimit.allowed) {
+      console.warn(`Rate limit exceeded for ${clientIP}`);
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': Math.ceil((rateLimit.resetTime - Date.now()) / 1000).toString(),
+            'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+            'X-RateLimit-Reset': rateLimit.resetTime.toString(),
+          }
+        }
+      );
+    }
 
     // Buscar apenas produtos do cache (não requer autenticação)
     let cachedProducts = await cache.getActiveProducts();

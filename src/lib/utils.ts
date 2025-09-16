@@ -187,3 +187,46 @@ export function handleApiError(error: any): AppError {
     'INTERNAL_ERROR'
   );
 }
+
+// Rate limiting utility
+export async function checkRateLimit(
+  identifier: string,
+  limit: number = 100,
+  windowMs: number = 15 * 60 * 1000 // 15 minutes
+): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
+  const { getKVClient } = await import('@/lib/cache');
+  const kv = getKVClient();
+
+  const key = `ratelimit:${identifier}`;
+  const now = Date.now();
+  const windowStart = now - windowMs;
+
+  try {
+    // Get current requests in window
+    const requests = await kv.lrange(key, 0, -1);
+    const validRequests = requests
+      .map((timestamp: string) => parseInt(timestamp))
+      .filter((timestamp: number) => timestamp > windowStart);
+
+    const currentCount = validRequests.length;
+    const remaining = Math.max(0, limit - currentCount);
+    const allowed = currentCount < limit;
+
+    if (allowed) {
+      // Add current request timestamp
+      await kv.lpush(key, now.toString());
+      // Keep only requests within window
+      await kv.ltrim(key, 0, limit - 1);
+      // Set expiration
+      await kv.expire(key, Math.ceil(windowMs / 1000));
+    }
+
+    const resetTime = windowStart + windowMs;
+
+    return { allowed, remaining: remaining - 1, resetTime };
+  } catch (error) {
+    // If rate limiting fails, allow request to prevent blocking legitimate traffic
+    console.warn('Rate limiting check failed:', error);
+    return { allowed: true, remaining: limit - 1, resetTime: now + windowMs };
+  }
+}

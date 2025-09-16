@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set('session_token', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 24 * 60 * 60, // 24 horas
       path: '/'
     });
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set('user_id', userId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 24 * 60 * 60, // 24 horas
       path: '/'
     });
