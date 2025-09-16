@@ -2,6 +2,8 @@
 
 /**
  * Script para testar endpoints em produção
+ * ⚠️  IMPORTANTE: Este script SEMPRE testa no Vercel (produção)
+ * Mercado Livre NÃO aceita URLs locais ou HTTP - apenas HTTPS pré-configurado
  * Funciona em Windows, Linux e Mac
  */
 
@@ -10,6 +12,10 @@ const https = require('https');
 const PROD_URL = 'https://peepers.vercel.app';
 const endpoint = process.argv[2] || 'products-public';
 
+console.log('🚨 ATENÇÃO: Testando APENAS no Vercel (Produção)');
+console.log('🌐 Mercado Livre requer HTTPS e URLs pré-configuradas');
+console.log('❌ NÃO é possível testar localmente com ML API');
+console.log('');
 console.log(`🧪 Testando endpoint: ${endpoint}`);
 console.log(`🌐 URL: ${PROD_URL}/api/${endpoint}`);
 console.log('');
@@ -58,6 +64,16 @@ async function testEndpoint() {
                 }
                 break;
 
+            case 'v1/products':
+                console.log('🆕 Produtos API v1 (unificado):');
+                if (response.data.success) {
+                    console.log(`✅ Endpoint funcionando - ${response.data.message}`);
+                    console.log(`📊 Status: ${response.data.success ? 'OK' : 'Erro'}`);
+                } else {
+                    console.log('❌ Resposta inesperada:', response.data);
+                }
+                break;
+
             case 'products':
                 console.log('🔒 Produtos autenticados:');
                 console.log(JSON.stringify(response.data, null, 2));
@@ -79,7 +95,7 @@ async function testEndpoint() {
             case 'all':
                 console.log('🔍 Testando todos os endpoints...\n');
 
-                const endpoints = ['health', 'products-public', 'products', 'auth-me'];
+                const endpoints = ['health', 'products-public', 'v1/products', 'products', 'auth-me'];
 
                 for (const ep of endpoints) {
                     console.log(`${endpoints.indexOf(ep) + 1}. Testando ${ep}:`);
@@ -88,6 +104,8 @@ async function testEndpoint() {
 
                     if (ep === 'products-public' && testResponse.data.products) {
                         console.log(`   ✅ ${testResponse.data.total} produtos`);
+                    } else if (ep === 'v1/products' && testResponse.data.success) {
+                        console.log(`   ✅ Endpoint v1 funcionando`);
                     } else if (ep === 'auth-me') {
                         console.log(`   ✅ Status: ${testResponse.statusCode}`);
                     } else {
@@ -102,6 +120,7 @@ async function testEndpoint() {
                 console.log('\n📋 Endpoints disponíveis:');
                 console.log('  health          - Health check');
                 console.log('  products-public - Produtos públicos');
+                console.log('  v1/products     - Produtos API v1 (unificado)');
                 console.log('  products        - Produtos autenticados');
                 console.log('  auth-me         - Status de autenticação');
                 console.log('  sync            - Sincronização de produtos');

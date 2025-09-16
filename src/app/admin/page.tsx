@@ -56,6 +56,8 @@ function AdminDashboard() {
   const [isTestingAll, setIsTestingAll] = useState(false);
   const [urlProcessed, setUrlProcessed] = useState(false);
   const [authSuccessMessage, setAuthSuccessMessage] = useState<string | null>(null);
+  const [hasRunInitialTest, setHasRunInitialTest] = useState(false);
+  const [showAds, setShowAds] = useState(true);
 
   // Processar parâmetros da URL apenas uma vez
   useEffect(() => {
@@ -155,21 +157,18 @@ function AdminDashboard() {
 
   // Executar teste inicial apenas uma vez após processamento da URL
   useEffect(() => {
-    if (!urlProcessed) return; // Aguardar processamento da URL
-    
-    // Prevenir execução se já estiver testando
-    if (isTestingAll) return;
+    if (!urlProcessed || hasRunInitialTest) return; // Aguardar processamento da URL e prevenir reexecução
     
     console.log('⏰ Agendando teste inicial dos endpoints...');
     const timer = setTimeout(() => {
-      // Verificação adicional antes de executar
-      if (!isTestingAll && urlProcessed) {
+      if (urlProcessed && !hasRunInitialTest) {
         testAllEndpoints();
+        setHasRunInitialTest(true); // Marcar como executado
       }
     }, 1500); // Delay maior para permitir carregamento completo
     
     return () => clearTimeout(timer);
-  }, [urlProcessed, isTestingAll, testAllEndpoints]);
+  }, [urlProcessed, hasRunInitialTest, testAllEndpoints]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -412,17 +411,49 @@ function AdminDashboard() {
           <p className="text-gray-600 mb-4 text-sm sm:text-base">
             Monitoramento completo dos endpoints da API • Produção: https://peepers.vercel.app/
           </p>
-          <button
-            onClick={testAllEndpoints}
-            disabled={isTestingAll}
-            className={`py-2 rounded-lg font-medium text-sm sm:text-base w-full sm:w-auto px-4 sm:px-6 transition-colors ${
-              isTestingAll 
-                ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            {isTestingAll ? '⏳ Testando...' : '🔄 Testar Todos os Endpoints'}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center">
+            <button
+              onClick={testAllEndpoints}
+              disabled={isTestingAll}
+              className={`py-2 rounded-lg font-medium text-sm sm:text-base w-full sm:w-auto px-4 sm:px-6 transition-colors ${
+                isTestingAll 
+                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              {isTestingAll ? '⏳ Testando...' : '🔄 Testar Todos os Endpoints'}
+            </button>
+            
+            {/* Toggle de Anúncios */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAds(!showAds)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  showAds 
+                    ? 'bg-green-600 text-white hover:bg-green-700' 
+                    : 'bg-gray-600 text-white hover:bg-gray-700'
+                }`}
+                title={showAds ? 'Ocultar anúncios' : 'Mostrar anúncios'}
+              >
+                {showAds ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    Anúncios Visíveis
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                    </svg>
+                    Anúncios Ocultos
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Authentication Status */}

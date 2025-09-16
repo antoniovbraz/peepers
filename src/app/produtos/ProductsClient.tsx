@@ -482,6 +482,29 @@ export default function ProductsClient() {
                   <div className="absolute inset-0 bg-peepers-primary-700 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
                 </Link>
                 
+                {/* Botão de notificação para produtos fora de estoque */}
+                {product.available_quantity === 0 && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      alert(`🔔 Notificação configurada! Você será avisado quando "${product.title}" estiver disponível novamente.`);
+                      // Aqui você pode implementar a lógica para salvar a notificação no backend
+                    }}
+                    className="btn-secondary w-full text-center mt-2 group relative overflow-hidden"
+                    title="Receber notificação quando o produto estiver disponível"
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7v5l-5 5V7h5z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2a10 10 0 100 20 10 10 0 000-20z" />
+                      </svg>
+                      Avisar quando chegar
+                    </span>
+                    <div className="absolute inset-0 bg-peepers-secondary-700 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+                  </button>
+                )}
+                
                 {/* Compatibilidade */}
                 {product.compatibility && product.compatibility.length > 0 && (
                   <p className="text-xs text-center text-peepers-neutral-500 mt-2">

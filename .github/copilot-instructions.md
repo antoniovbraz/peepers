@@ -44,12 +44,14 @@ npm run dev:mock
 npm run dev
 npm run tunnel  # In separate terminal - creates https://xxxxx.loca.lt
 
-# Production testing (comprehensive endpoint testing)
-npm run test:prod all                    # Test all endpoints
-npm run test:prod products-public        # Test specific endpoint  
-npm run test:prod health                 # Health check
-npm run test:prod products              # Authenticated products
-npm run test:prod auth-me               # Authentication status
+# Production testing (comprehensive endpoint testing - VERCEL ONLY)
+# ⚠️  CRITICAL: ML API requires HTTPS and pre-configured URLs
+# All testing must be done on Vercel deployment, never locally
+npm run test:prod all                    # Test all endpoints on Vercel
+npm run test:prod products-public        # Test specific endpoint on Vercel
+npm run test:prod health                 # Health check on Vercel
+npm run test:prod products              # Authenticated products on Vercel
+npm run test:prod auth-me               # Authentication status on Vercel
 
 # Build and test
 npm run build

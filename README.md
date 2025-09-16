@@ -25,6 +25,19 @@ cp .env.example .env.local
 npm run dev:mock
 
 # For real ML integration testing, deploy to Vercel and test via production endpoints
+# ⚠️  IMPORTANT: Mercado Livre requires HTTPS and pre-configured URLs
+# All API testing must be done on Vercel deployment, never locally
+
+## 🧪 Testing (Production Only)
+
+```bash
+# Test all endpoints on Vercel
+npm run test:prod all
+
+# Test specific endpoints on Vercel
+npm run test:prod products-public
+npm run test:prod health
+npm run test:prod auth-me
 ```
 
 **🌐 Live Demo:** [https://peepers.vercel.app](https://peepers.vercel.app)

@@ -125,11 +125,12 @@ test: add integration tests for OAuth flow
    
    # Run linting
    npm run lint
-   
-   # Test production endpoints
+
+   # ⚠️  Test production endpoints (Vercel ONLY - ML requires HTTPS)
+   # Local testing will fail for ML integration
    npm run test:prod health
    npm run test:prod products-public
-   
+
    # Build successfully
    npm run build
    ```
