@@ -95,15 +95,41 @@ npm run dev:mock
 
 ### Real Integration Development
 
-For testing OAuth and ML API integration, deploy to Vercel and test production endpoints via CURL:
+⚠️ **CRITICAL**: Mercado Livre API **ONLY** accepts HTTPS URLs that are pre-configured in your ML Developer Console. Local development with real ML integration is **IMPOSSIBLE**.
 
-```bash
-# Deploy to Vercel
-vercel --prod
+**Required Steps for ML Integration Testing:**
 
-# Test endpoints
-npm run test:prod all
-```
+1. **Deploy to Vercel** (required for HTTPS):
+
+   ```bash
+   vercel --prod
+   ```
+
+2. **Configure ML Developer Console**:
+   - Add your Vercel domain to allowed redirect URIs
+   - Configure webhook URLs in ML settings
+
+3. **Test ONLY on Vercel** (never locally):
+
+   ```bash
+   # Test all endpoints on Vercel production
+   npm run test:prod all
+
+   # Test specific endpoints on Vercel
+   npm run test:prod products-public
+   npm run test:prod auth-me
+   ```
+
+4. **Local Development**:
+   - Use `npm run dev:mock` for development
+   - Mock data simulates ML responses
+   - No real API calls to ML
+
+**🚨 REMEMBER**: Any attempt to test ML integration locally will fail because:
+
+- ML requires HTTPS (local is HTTP)
+- ML requires pre-configured URLs
+- ML blocks unknown domains
 
 ## Project Structure
 
@@ -172,8 +198,10 @@ peepers/
 
 3. **Add tests** for new functionality
 
-4. **Test production endpoints**:
+4. **Test production endpoints** (REQUIRED - Vercel only):
    ```bash
+   # ⚠️  IMPORTANT: ML integration ONLY works on Vercel
+   # Local testing will ALWAYS fail for ML API calls
    npm run test:prod health
    npm run test:prod products-public
    ```
