@@ -22,8 +22,8 @@ export default function FeaturedProducts({
 
   return (
     <section className={`mb-8 ${className}`}>
-      <div className="bg-gradient-to-r from-peepers-primary-50 to-peepers-secondary-50 rounded-xl p-6 border border-peepers-primary-100">
-        <h2 className="text-2xl font-bold text-peepers-neutral-900 mb-4 flex items-center gap-2">
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
           {title}
         </h2>
         
@@ -31,7 +31,7 @@ export default function FeaturedProducts({
           {products.map((product) => (
             <div
               key={product.id}
-              className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-all duration-300 group"
+              className="card-peepers group"
             >
               <div className="aspect-square bg-peepers-neutral-100 relative overflow-hidden">
                 {product.thumbnail ? (
