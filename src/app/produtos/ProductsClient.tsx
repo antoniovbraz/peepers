@@ -293,10 +293,10 @@ export default function ProductsClient() {
         {/* Controles principais */}
         <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
           <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-peepers-neutral-900">
+            <h1 className="text-2xl font-bold text-gray-900">
               Nossos Produtos
             </h1>
-            <span className="text-sm text-peepers-neutral-600 bg-peepers-neutral-100 px-3 py-1 rounded-full">
+            <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
               {categorizedProducts.length} produtos
             </span>
           </div>
@@ -364,7 +364,7 @@ export default function ProductsClient() {
             ← Voltar para Seções
           </button>
           
-          <h2 className="text-xl font-bold text-peepers-neutral-900">
+          <h2 className="text-xl font-bold text-gray-900">
             {Object.keys(filters).length > 0 ? 'Produtos Filtrados' : 'Todos os Produtos'}
           </h2>
         </div>
@@ -381,10 +381,10 @@ export default function ProductsClient() {
           <div className="mb-6">
             <PeepersLogo variant="icon" size="xl" className="mx-auto opacity-20 mb-4" />
           </div>
-          <p className="text-peepers-neutral-600 mb-4 text-lg">
+          <p className="text-gray-600 mb-4 text-lg">
             Nenhum produto encontrado com os filtros aplicados.
           </p>
-          <p className="text-sm text-peepers-neutral-500 mb-6">
+          <p className="text-sm text-gray-500 mb-6">
             Tente ajustar os filtros ou remover algumas opções.
           </p>
           <button

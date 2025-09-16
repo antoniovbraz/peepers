@@ -33,29 +33,30 @@ export default function ProductCategorySection({
   if (products.length === 0) return null;
 
   return (
-    <section className={`mb-8 ${className}`}>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        {/* Header da seção */}
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
+    <section className={`mb-12 ${className}`}>
+      {/* Design clean sem bordas grossas */}
+      <div className="space-y-6">
+        {/* Header da seção - mais clean */}
+        <div className="px-4 sm:px-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold text-peepers-neutral-900 flex items-center gap-2">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-3 mb-1">
                 <span className="text-2xl">{category.icon}</span>
                 {category.name}
-                <span className="text-sm font-normal text-peepers-neutral-600">
-                  ({category.count} produtos)
+                <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                  {category.count}
                 </span>
               </h2>
-              <p className="text-sm text-peepers-neutral-600 mt-1">
+              <p className="text-sm text-gray-600">
                 {category.description}
               </p>
             </div>
             
             <button
               onClick={() => onViewAll(category.id)}
-              className="btn-secondary text-sm"
+              className="btn-secondary text-sm self-start sm:self-center"
             >
-              Ver Todos
+              Ver Todos →
             </button>
           </div>
           
@@ -64,10 +65,10 @@ export default function ProductCategorySection({
             <div className="flex flex-wrap gap-2 mt-4">
               <button
                 onClick={() => setSelectedSubcategory(null)}
-                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                className={`px-4 py-2 text-sm rounded-xl transition-all duration-200 ${
                   selectedSubcategory === null
-                    ? 'bg-peepers-primary-100 text-peepers-primary-700 border border-peepers-primary-200'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                 }`}
               >
                 Todas
@@ -76,10 +77,10 @@ export default function ProductCategorySection({
                 <button
                   key={sub.id}
                   onClick={() => setSelectedSubcategory(sub.id)}
-                  className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                  className={`px-4 py-2 text-sm rounded-xl transition-all duration-200 ${
                     selectedSubcategory === sub.id
-                      ? 'bg-peepers-primary-100 text-peepers-primary-700 border border-peepers-primary-200'
-                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   {sub.name} ({sub.count})
@@ -89,9 +90,9 @@ export default function ProductCategorySection({
           )}
         </div>
         
-        {/* Grid de produtos */}
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Grid de produtos - espaçamento otimizado para mobile */}
+        <div className="px-4 sm:px-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
             {visibleProducts.map((product) => (
               <div
                 key={product.id}
@@ -202,8 +203,8 @@ export default function ProductCategorySection({
           
           {/* Call to action para ver mais */}
           {hasMoreProducts && (
-            <div className="text-center mt-6 pt-6 border-t border-gray-200">
-              <p className="text-sm text-peepers-neutral-600 mb-3">
+            <div className="text-center mt-6 pt-6">
+              <p className="text-sm text-gray-600 mb-3">
                 Mostrando {visibleProducts.length} de {displayProducts.length} produtos
                 {selectedSubcategory && ` em ${category.subcategories?.find(s => s.id === selectedSubcategory)?.name}`}
               </p>
