@@ -4,10 +4,27 @@
 
 The Peepers API provides a comprehensive interface for managing Mercado Livre product integration, OAuth authentication, and real-time webhook processing. All endpoints follow RESTful conventions with consistent response formats.
 
+**Current API Version**: v1.0.0
+
+**Endpoint Status Dashboard**: Visit `/api/endpoints-status` for real-time deprecation and migration information.
+
 ## Base URL
 
 - **Production**: `https://peepers.vercel.app`
 - **Development**: `http://localhost:3000`
+
+## 🚨 IMPORTANT: Deprecation Notice
+
+**Phase 3 Cleanup (Active)**: Several legacy endpoints are deprecated and will be removed by December 31, 2025. 
+
+**Migration Required**: All clients should migrate to the unified `/api/v1/products` endpoint.
+
+**Benefits of Migration**:
+- ✅ Single endpoint to maintain
+- ✅ Advanced filtering and pagination  
+- ✅ Better performance with caching
+- ✅ Consistent response format
+- ✅ Rate limiting and error handling
 
 ## Authentication
 
@@ -38,6 +55,88 @@ sequenceDiagram
 
 ## Endpoints
 
+### 🟢 Primary Endpoints (Recommended)
+
+#### GET `/api/v1/products` ⭐ **UNIFIED API**
+
+**The primary endpoint for all product operations.** Consolidates functionality from multiple legacy endpoints with advanced filtering and pagination.
+
+**Authentication**: Optional (provides enhanced data when authenticated)
+
+**Query Parameters**:
+- `format` (string): Response format
+  - `minimal` - Basic product info (id, title, price, thumbnail)
+  - `summary` - Standard product data (default)
+  - `full` - Complete product details with attributes
+- `limit` (number): Products per page (default: 50, max: 100)
+- `page` (number): Page number for pagination (default: 1)
+- `category` (string): Filter by category
+- `price_min` (number): Minimum price filter
+- `price_max` (number): Maximum price filter  
+- `condition` (string): Product condition (`new`, `used`)
+- `status` (string): Product status (`active`, `inactive`)
+- `free_shipping` (boolean): Free shipping filter (`true`, `false`)
+- `search` (string): Search in title and description
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "MLB123456789",
+      "title": "iPhone 14 Pro Max 256GB",
+      "price": 8999.99,
+      "thumbnail": "https://http2.mlstatic.com/D_123456-MLA123456.jpg",
+      "condition": "new",
+      "permalink": "https://mercadolivre.com.br/...",
+      "category": "Celulares e Smartphones",
+      "free_shipping": true,
+      "status": "active"
+    }
+  ],
+  "count": 95,
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 95,
+    "totalPages": 2
+  },
+  "filters": {
+    "applied": {
+      "format": "summary",
+      "limit": 50
+    },
+    "available": {
+      "categories": ["Celulares", "Eletrônicos", "Casa"],
+      "conditions": ["new", "used"],
+      "price_range": {
+        "min": 29.99,
+        "max": 15999.99
+      }
+    }
+  },
+  "timestamp": "2025-01-07T10:30:00.000Z"
+}
+```
+
+**Usage Examples**:
+```bash
+# Get minimal format for homepage
+GET /api/v1/products?format=minimal&limit=6
+
+# Filter by category with pagination
+GET /api/v1/products?category=electronics&page=1&limit=20
+
+# Search with price range
+GET /api/v1/products?search=smartphone&price_min=1000&price_max=5000
+
+# Get only free shipping products
+GET /api/v1/products?free_shipping=true&format=summary
+```
+
+---
+
 ### Authentication Endpoints
 
 #### Initiate OAuth Flow
@@ -53,6 +152,7 @@ Initiates the OAuth 2.0 + PKCE authentication flow with Mercado Livre.
 **Response**: Redirects to Mercado Livre authorization URL
 
 **Example**:
+
 ```bash
 curl -X GET https://peepers.vercel.app/api/auth/mercado-livre
 ```
@@ -68,12 +168,14 @@ GET /api/auth/mercado-livre/callback?code={code}&state={state}
 Handles the OAuth callback from Mercado Livre and completes the authentication flow.
 
 **Query Parameters**:
+
 - `code` (string, required): Authorization code from ML
 - `state` (string, required): CSRF protection state parameter
 
 **Response**: Redirects to admin dashboard or login page
 
 **Success Response**:
+
 ```http
 HTTP/1.1 302 Found
 Location: /admin
@@ -82,6 +184,7 @@ Set-Cookie: user_id=...; HttpOnly; Secure
 ```
 
 **Error Response**:
+
 ```json
 {
   "success": false,
@@ -103,6 +206,7 @@ Returns the current user's authentication status and profile information.
 **Authentication**: Required (session cookies)
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -124,6 +228,7 @@ Returns the current user's authentication status and profile information.
 ```
 
 **Error Response** (Unauthenticated):
+
 ```json
 {
   "success": false,
@@ -134,20 +239,358 @@ Returns the current user's authentication status and profile information.
 
 ---
 
-### Product Endpoints
+### 🟡 Legacy Endpoints (Active but not recommended)
 
-#### Get Public Products
+#### GET `/api/products` 🔒
 
-```http
-GET /api/products-public
-```
+Authenticated products endpoint for admin use. Still actively maintained but limited compared to v1 API.
 
-Returns a public list of products without requiring authentication. Used for homepage display.
-
-**Authentication**: Not required
+**Authentication**: Required
 
 **Query Parameters**:
-- `limit` (number, optional): Maximum number of products (default: 50)
+
+- `status` (string, optional): Filter by status (`active`, `paused`, `closed`)
+- `limit` (number, optional): Maximum number of products
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "MLB123456789",
+      "title": "Product Title",
+      "price": 299.99,
+      "status": "active",
+      "date_created": "2024-01-15T10:30:00.000Z"
+    }
+  ],
+  "count": 45,
+  "timestamp": "2025-01-07T10:30:00.000Z"
+}
+```
+
+---
+
+### 🔴 Deprecated Endpoints (Sunset: Dec 31, 2025)
+
+> **⚠️ DEPRECATION WARNING**: The following endpoints are deprecated and will be removed by December 31, 2025. Please migrate to `/api/v1/products` with appropriate query parameters.
+
+#### GET `/api/products-public` 🚨 DEPRECATED
+
+**Replacement**: `/api/v1/products?format=minimal`
+
+Get all publicly available products without authentication.
+
+**Deprecation Headers**:
+
+```http
+Deprecation: true
+Sunset: Wed, 31 Dec 2025 23:59:59 GMT
+Link: </api/v1/products>; rel="successor-version"
+```
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "data": [...],
+  "count": 95,
+  "deprecation": {
+    "deprecated": true,
+    "sunset_date": "2025-12-31",
+    "replacement": "/api/v1/products?format=minimal",
+    "message": "This endpoint is deprecated. Please migrate to the unified v1 API."
+  }
+}
+```
+
+---
+
+#### GET `/api/products-minimal` 🚨 DEPRECATED
+
+**Replacement**: `/api/v1/products?format=minimal&limit=3`
+
+Returns minimal product information for quick loading.
+
+**Deprecation Headers**: Same as above
+
+---
+
+#### GET `/api/products-simple` 🚨 DEPRECATED
+
+**Replacement**: `/api/v1/products?format=minimal&limit=10`
+
+Returns simple product list with basic information.
+
+**Deprecation Headers**: Same as above
+
+---
+
+#### GET `/api/test-products-path` 🚨 DEPRECATED
+
+**Replacement**: `/api/v1/products`
+
+Debug endpoint for products logic testing. No longer needed.
+
+**Sunset**: November 30, 2025 (earlier than other endpoints)
+
+---
+
+### 🔧 Utility Endpoints
+
+#### GET `/api/health`
+
+Health check endpoint for monitoring application status.
+
+**Response**:
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-01-07T10:30:00.000Z",
+  "uptime": "2d 14h 23m",
+  "version": "1.0.0"
+}
+```
+
+---
+
+#### GET `/api/cache-debug`
+
+Cache debugging information for development and troubleshooting.
+
+**Response**:
+
+```json
+{
+  "cache_status": "connected",
+  "redis_info": {...},
+  "cached_keys": ["products:all", "user:123"],
+  "memory_usage": "2.5MB"
+}
+```
+
+---
+
+#### GET `/api/endpoints-status`
+
+Real-time endpoint status and deprecation dashboard.
+
+**Response**:
+
+```json
+{
+  "timestamp": "2025-01-07T10:30:00.000Z",
+  "api_version": "v1.0.0",
+  "endpoints": {
+    "primary": {...},
+    "deprecated": {...},
+    "utility": {...}
+  },
+  "statistics": {
+    "total_endpoints": 12,
+    "active_endpoints": 6,
+    "deprecated_endpoints": 4,
+    "deprecation_completion": "100%"
+  }
+}
+```
+
+---
+
+### 🔄 Webhook Endpoints
+
+#### POST `/api/webhook/mercado-livre`
+
+Receives real-time notifications from Mercado Livre for orders, items, messages, and shipments.
+
+**Authentication**: Webhook signature verification
+
+**Topics Supported**:
+
+- `orders_v2` - Order status changes
+- `items` - Product updates  
+- `messages` - User messages
+- `shipments` - Shipping updates
+
+**Request Body**:
+
+```json
+{
+  "resource": "/orders/123456789",
+  "user_id": 123456789,
+  "topic": "orders_v2",
+  "application_id": 987654321,
+  "attempts": 1,
+  "sent": "2025-01-07T10:30:00.000Z",
+  "received": "2025-01-07T10:30:01.000Z"
+}
+```
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "processed": true,
+  "timestamp": "2025-01-07T10:30:01.000Z"
+}
+```
+
+---
+
+## Migration Guide
+
+### From Legacy Endpoints to v1 API
+
+#### 1. Replace `products-public` calls
+
+**Before**:
+
+```javascript
+fetch('/api/products-public')
+```
+
+**After**:
+
+```javascript
+fetch('/api/v1/products?format=minimal')
+```
+
+#### 2. Replace `products-minimal` calls
+
+**Before**:
+
+```javascript
+fetch('/api/products-minimal')
+```
+
+**After**:
+
+```javascript
+fetch('/api/v1/products?format=minimal&limit=3')
+```
+
+#### 3. Add pagination for better performance
+
+**Before**:
+
+```javascript
+fetch('/api/products-simple')
+```
+
+**After**:
+
+```javascript
+fetch('/api/v1/products?format=minimal&limit=10&page=1')
+```
+
+#### 4. Leverage advanced filtering
+
+**New capabilities**:
+
+```javascript
+// Filter by category and price range
+fetch('/api/v1/products?category=electronics&price_min=100&price_max=1000')
+
+// Search with free shipping
+fetch('/api/v1/products?search=smartphone&free_shipping=true')
+
+// Get only new condition products
+fetch('/api/v1/products?condition=new&format=summary')
+```
+
+### Response Format Changes
+
+The v1 API provides richer response structure:
+
+```json
+{
+  "success": true,
+  "data": [...],
+  "count": 95,
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 95,
+    "totalPages": 2
+  },
+  "filters": {
+    "applied": {...},
+    "available": {...}
+  },
+  "timestamp": "2025-01-07T10:30:00.000Z"
+}
+```
+
+Legacy endpoints only provide:
+
+```json
+{
+  "success": true,
+  "data": [...],
+  "count": 95
+}
+```
+
+## Rate Limiting
+
+All endpoints implement rate limiting:
+
+- **Public endpoints**: 100 requests per minute per IP
+- **Authenticated endpoints**: 1000 requests per hour per user
+- **Webhook endpoints**: 10,000 requests per hour
+
+## Error Handling
+
+Consistent error format across all endpoints:
+
+```json
+{
+  "success": false,
+  "error": "Error message",
+  "code": "ERROR_CODE",
+  "details": {...},
+  "timestamp": "2025-01-07T10:30:00.000Z"
+}
+```
+
+## Testing
+
+### Production Testing (Required)
+
+All ML API integrations require HTTPS and must be tested on Vercel:
+
+```bash
+# Test all endpoints
+npm run test:prod all
+
+# Test specific endpoint  
+npm run test:prod products-public
+
+# Test v1 API
+npm run test:prod v1-products
+```
+
+### Development Testing
+
+```bash
+# Unit tests
+npm test
+
+# With coverage
+npm run test:coverage
+
+# Watch mode
+npm run test:watch
+```
+
+---
+
+**Need Help?** Visit `/api/endpoints-status` for real-time migration status and guidance.
 - `category` (string, optional): Filter by category ID
 
 **Response**:

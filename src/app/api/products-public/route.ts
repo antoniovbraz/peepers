@@ -7,6 +7,9 @@ import { validateInput, PaginationSchema, ProductFilterSchema } from '@/lib/vali
 
 export async function GET(request: NextRequest) {
   try {
+    // ⚠️ DEPRECATION WARNING - Added Phase 3
+    console.warn('⚠️ [DEPRECATED] /api/products-public is deprecated. Use /api/v1/products?format=minimal instead');
+    
     console.log('🚀 Public Products API called');
 
     // Rate limiting: 500 requests per 15 minutes per IP
@@ -160,7 +163,19 @@ export async function GET(request: NextRequest) {
       hasPrev: page > 1,
       message: `${paginatedProducts.length} produtos encontrados (página ${page} de ${Math.ceil(total / limit)})`,
       source: cachedProducts === MOCK_PRODUCTS ? 'development-mock' : 'production-cache',
-      filters: Object.keys(filters).length > 0 ? filters : undefined
+      filters: Object.keys(filters).length > 0 ? filters : undefined,
+      // ⚠️ DEPRECATION WARNING - Added Phase 3
+      deprecation: {
+        warning: "This endpoint is deprecated. Use /api/v1/products?format=minimal instead",
+        migration_url: "/api/v1/products",
+        sunset_date: "2025-12-31"
+      }
+    }, {
+      headers: {
+        'Deprecation': 'true',
+        'Sunset': '2025-12-31',
+        'Link': '</api/v1/products>; rel="successor-version"'
+      }
     });
 
   } catch (error) {

@@ -3,6 +3,9 @@ import { cache } from '@/lib/cache';
 
 export async function GET(_request: NextRequest) {
   try {
+    // ⚠️ DEPRECATION WARNING - Added Phase 3
+    console.warn('⚠️ [DEPRECATED] /api/test-products-path is a debug endpoint and will be removed. Use /api/v1/products instead');
+    
     console.log('=== PRODUCTS ENDPOINT LOGIC TEST ===');
     
     // Replicate the exact same logic as products endpoint
