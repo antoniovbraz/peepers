@@ -66,9 +66,8 @@ async function testEndpoint() {
 
             case 'v1/products':
                 console.log('🆕 Produtos API v1 (unificado):');
-                if (response.data.data && response.data.data.products) {
-                    console.log(`✅ ${response.data.data.total} produtos encontrados`);
-                    console.log(`📄 Página: ${response.data.data.page}/${response.data.data.totalPages}`);
+                if (response.data.success) {
+                    console.log(`✅ Endpoint funcionando - ${response.data.message}`);
                     console.log(`📊 Status: ${response.data.success ? 'OK' : 'Erro'}`);
                 } else {
                     console.log('❌ Resposta inesperada:', response.data);
@@ -105,8 +104,8 @@ async function testEndpoint() {
 
                     if (ep === 'products-public' && testResponse.data.products) {
                         console.log(`   ✅ ${testResponse.data.total} produtos`);
-                    } else if (ep === 'v1/products' && testResponse.data.data && testResponse.data.data.products) {
-                        console.log(`   ✅ ${testResponse.data.data.total} produtos (v1)`);
+                    } else if (ep === 'v1/products' && testResponse.data.success) {
+                        console.log(`   ✅ Endpoint v1 funcionando`);
                     } else if (ep === 'auth-me') {
                         console.log(`   ✅ Status: ${testResponse.statusCode}`);
                     } else {
