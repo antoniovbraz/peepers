@@ -24,9 +24,7 @@ cp .env.example .env.local
 # Start development server with mocks (recommended)
 npm run dev:mock
 
-# Or start with real ML integration (requires HTTPS tunnel)
-npm run dev
-npm run tunnel  # In separate terminal
+# For real ML integration testing, deploy to Vercel and test via production endpoints
 ```
 
 **🌐 Live Demo:** [https://peepers.vercel.app](https://peepers.vercel.app)

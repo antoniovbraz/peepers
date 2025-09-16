@@ -95,20 +95,14 @@ npm run dev:mock
 
 ### Real Integration Development
 
-For testing OAuth and ML API integration:
+For testing OAuth and ML API integration, deploy to Vercel and test production endpoints via CURL:
 
 ```bash
-# Terminal 1: Start app
-npm run dev
+# Deploy to Vercel
+vercel --prod
 
-# Terminal 2: Create HTTPS tunnel
-npm install -g localtunnel
-npm run tunnel
-```
-
-Update your `.env.local` with the tunnel URL:
-```env
-NEXT_PUBLIC_APP_URL=https://your-tunnel-id.loca.lt
+# Test endpoints
+npm run test:prod all
 ```
 
 ## Project Structure
