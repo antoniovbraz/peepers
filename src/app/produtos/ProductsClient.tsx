@@ -1,12 +1,26 @@
 'use client';
 
 // Force cache invalidation - Updated: 2025-09-15T19:30:00Z
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import PeepersLogo from '@/components/PeepersLogo';
+import ProductFilters from '@/components/ProductFilters';
+import ProductSort from '@/components/ProductSort';
+import FeaturedProducts from '@/components/FeaturedProducts';
+import ProductCategorySection from '@/components/ProductCategorySection';
+import ProductBadges from '@/components/ProductBadges';
 import type { ProductSummary } from '@/types/product';
 import { PAGES, API_ENDPOINTS } from '@/config/routes';
+import { 
+  categorizeProduct,
+  getProductCategories,
+  filterProducts,
+  sortProducts,
+  getRecommendedProducts,
+  ProductFilters as IProductFilters,
+  CategorizedProduct
+} from '@/utils/productCategories';
 
 interface ProductsResponse {
   products: ProductSummary[];
@@ -20,19 +34,42 @@ interface ProductsResponse {
 }
 
 export default function ProductsClient() {
-  const [products, setProducts] = useState<ProductSummary[]>([]);
+  const [rawProducts, setRawProducts] = useState<ProductSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
+  const [filters, setFilters] = useState<IProductFilters>({});
+  const [sortBy, setSortBy] = useState('relevance');
+  const [viewMode, setViewMode] = useState<'sections' | 'grid'>('sections');
+
+  // Processar produtos em versão categorizada
+  const categorizedProducts = useMemo(() => {
+    return rawProducts.map(product => categorizeProduct(product));
+  }, [rawProducts]);
+
+  // Obter categorias baseadas nos produtos
+  const categories = useMemo(() => {
+    return getProductCategories(categorizedProducts);
+  }, [categorizedProducts]);
+
+  // Filtrar e ordenar produtos
+  const filteredProducts = useMemo(() => {
+    const filtered = filterProducts(categorizedProducts, filters);
+    return sortProducts(filtered, sortBy);
+  }, [categorizedProducts, filters, sortBy]);
+
+  // Produtos destacados
+  const featuredProducts = useMemo(() => {
+    return getRecommendedProducts(categorizedProducts);
+  }, [categorizedProducts]);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Adicionar timeout e headers específicos para mobile
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
       
       const response = await fetch(API_ENDPOINTS.PRODUCTS, {
         cache: 'no-store',
@@ -50,7 +87,7 @@ export default function ProductsClient() {
       if (response.status === 401) {
         setNeedsAuth(true);
         setError('Você precisa se autenticar com o Mercado Livre primeiro.');
-        setProducts([]);
+        setRawProducts([]);
         return;
       }
       
@@ -60,12 +97,11 @@ export default function ProductsClient() {
       
       const data: ProductsResponse = await response.json();
       
-      // Validar dados antes de usar
       if (!data || typeof data !== 'object') {
         throw new Error('Resposta inválida do servidor');
       }
       
-      setProducts(Array.isArray(data.products) ? data.products : []);
+      setRawProducts(Array.isArray(data.products) ? data.products : []);
       setNeedsAuth(false);
       
     } catch (err) {
@@ -83,18 +119,28 @@ export default function ProductsClient() {
         setError('Erro desconhecido ao carregar produtos');
       }
       
-      setProducts([]);
+      setRawProducts([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleViewAllCategory = (categoryId: string, subcategoryId?: string) => {
+    const newFilters: IProductFilters = {
+      category: categoryId,
+      subcategory: subcategoryId
+    };
+    setFilters(newFilters);
+    setViewMode('grid');
+    
+    // Scroll para o topo da página
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   useEffect(() => {
-    // Adicionar verificação de ambiente e delay para evitar problemas de hydration
     let isMounted = true;
     
     const loadProducts = async () => {
-      // Pequeno delay para garantir que o componente foi montado completamente
       await new Promise(resolve => setTimeout(resolve, 100));
       
       if (isMounted) {
@@ -102,7 +148,6 @@ export default function ProductsClient() {
       }
     };
     
-    // Verificar se estamos no browser antes de fazer fetch
     if (typeof window !== 'undefined') {
       loadProducts().catch(err => {
         console.error('[ProductsClient] useEffect error:', err);
@@ -121,18 +166,31 @@ export default function ProductsClient() {
   // Loading state
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {[...Array(8)].map((_, i) => (
-          <div key={i} className="card-peepers animate-pulse">
-            <div className="aspect-square bg-peepers-neutral-200 rounded-t-lg"></div>
-            <div className="p-4">
-              <div className="h-4 bg-peepers-neutral-200 rounded mb-2"></div>
-              <div className="h-4 bg-peepers-neutral-200 rounded w-2/3 mb-2"></div>
-              <div className="h-6 bg-peepers-neutral-200 rounded w-1/2 mb-3"></div>
-              <div className="h-10 bg-peepers-neutral-200 rounded-lg"></div>
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="animate-pulse space-y-4">
+            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="flex gap-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-8 w-24 bg-gray-200 rounded-full"></div>
+              ))}
             </div>
           </div>
-        ))}
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="card-peepers animate-pulse">
+              <div className="aspect-square bg-peepers-neutral-200 rounded-t-lg"></div>
+              <div className="p-4">
+                <div className="h-4 bg-peepers-neutral-200 rounded mb-2"></div>
+                <div className="h-4 bg-peepers-neutral-200 rounded w-2/3 mb-2"></div>
+                <div className="h-6 bg-peepers-neutral-200 rounded w-1/2 mb-3"></div>
+                <div className="h-10 bg-peepers-neutral-200 rounded-lg"></div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -167,15 +225,6 @@ export default function ProductsClient() {
           </svg>
           Painel Admin
         </a>
-        <button 
-          onClick={fetchProducts}
-          className="btn-secondary inline-flex items-center"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Tentar Novamente
-        </button>
       </div>
     );
   }
@@ -205,7 +254,7 @@ export default function ProductsClient() {
   }
 
   // No products found
-  if (products.length === 0) {
+  if (rawProducts.length === 0) {
     return (
       <div className="text-center py-12">
         <div className="mb-6">
@@ -237,69 +286,221 @@ export default function ProductsClient() {
     );
   }
 
-  // Products grid
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {products.map((product: ProductSummary) => (
-        <div key={product.id} className="card-peepers group">
-          <div className="aspect-square bg-peepers-neutral-100 relative overflow-hidden rounded-t-lg">
-            {product.thumbnail ? (
-              <Image
-                src={product.thumbnail}
-                alt={product.title}
-                fill
-                className="object-contain group-hover:scale-105 transition-transform duration-300 p-2"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <PeepersLogo variant="icon" size="lg" className="opacity-20" />
-              </div>
-            )}
-            {product.condition === 'new' && (
-              <div className="absolute top-3 left-3">
-                <span className="badge-new">Novo</span>
-              </div>
-            )}
-            {product.shipping?.free_shipping && (
-              <div className="absolute top-3 right-3">
-                <span className="badge-shipping">Frete Grátis</span>
-              </div>
-            )}
+  // Layout em seções (modo padrão)
+  if (viewMode === 'sections' && Object.keys(filters).length === 0) {
+    return (
+      <div className="space-y-6">
+        {/* Controles principais */}
+        <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold text-peepers-neutral-900">
+              Nossos Produtos
+            </h1>
+            <span className="text-sm text-peepers-neutral-600 bg-peepers-neutral-100 px-3 py-1 rounded-full">
+              {categorizedProducts.length} produtos
+            </span>
           </div>
-          <div className="p-4">
-            <h3 className="font-semibold text-peepers-neutral-900 mb-2 line-clamp-2 min-h-[3rem] group-hover:text-peepers-primary-600 transition-colors">
-              {product.title}
-            </h3>
-            <p className="text-2xl font-bold text-peepers-primary-600 mb-2">
-              {new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-              }).format(product.price || 0)}
-            </p>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm text-peepers-neutral-600">
-                {product.available_quantity} disponíveis
-              </span>
-              {product.installments && (
-                <span className="text-xs text-peepers-secondary-600 font-medium">
-                  {product.installments.quantity}x sem juros
-                </span>
-              )}
-            </div>
-            <Link
-              href={PAGES.PRODUTO_DETALHE(product.id)}
-              className="btn-primary w-full text-center group relative overflow-hidden"
+          
+          <div className="flex items-center gap-4">
+            <ProductSort 
+              currentSort={sortBy}
+              onSortChange={setSortBy}
+            />
+            
+            <button
+              onClick={() => setViewMode('grid')}
+              className="btn-secondary text-sm"
             >
-              <span className="relative z-10">Comprar no Mercado Livre</span>
-              <div className="absolute inset-0 bg-peepers-primary-700 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-            </Link>
-            <p className="text-xs text-center text-peepers-neutral-500 mt-2">
-              Você será redirecionado com segurança
-            </p>
+              Ver Todos em Lista
+            </button>
           </div>
         </div>
-      ))}
+
+        {/* Produtos destacados */}
+        {featuredProducts.length > 0 && (
+          <FeaturedProducts products={featuredProducts} />
+        )}
+
+        {/* Seções por categoria */}
+        {categories
+          .sort((a, b) => b.count - a.count) // Ordenar por quantidade de produtos
+          .map(category => {
+            const categoryProducts = categorizedProducts.filter(p => p.category === category.id);
+            return (
+              <ProductCategorySection
+                key={category.id}
+                category={category}
+                products={categoryProducts}
+                onViewAll={handleViewAllCategory}
+              />
+            );
+          })}
+      </div>
+    );
+  }
+
+  // Layout em grid (com filtros ou quando solicitado)
+  return (
+    <div className="space-y-6">
+      {/* Filtros */}
+      <ProductFilters
+        categories={categories}
+        filters={filters}
+        onFiltersChange={setFilters}
+        totalProducts={categorizedProducts.length}
+        filteredCount={filteredProducts.length}
+      />
+
+      {/* Controles da lista */}
+      <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => {
+              setViewMode('sections');
+              setFilters({});
+            }}
+            className="btn-secondary text-sm"
+          >
+            ← Voltar para Seções
+          </button>
+          
+          <h2 className="text-xl font-bold text-peepers-neutral-900">
+            {Object.keys(filters).length > 0 ? 'Produtos Filtrados' : 'Todos os Produtos'}
+          </h2>
+        </div>
+        
+        <ProductSort 
+          currentSort={sortBy}
+          onSortChange={setSortBy}
+        />
+      </div>
+
+      {/* Grid de produtos */}
+      {filteredProducts.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="mb-6">
+            <PeepersLogo variant="icon" size="xl" className="mx-auto opacity-20 mb-4" />
+          </div>
+          <p className="text-peepers-neutral-600 mb-4 text-lg">
+            Nenhum produto encontrado com os filtros aplicados.
+          </p>
+          <p className="text-sm text-peepers-neutral-500 mb-6">
+            Tente ajustar os filtros ou remover algumas opções.
+          </p>
+          <button
+            onClick={() => setFilters({})}
+            className="btn-primary"
+          >
+            Limpar Filtros
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredProducts.map((product: CategorizedProduct) => (
+            <div key={product.id} className="card-peepers group">
+              <div className="aspect-square bg-peepers-neutral-100 relative overflow-hidden rounded-t-lg">
+                {product.thumbnail ? (
+                  <Image
+                    src={product.thumbnail}
+                    alt={product.title}
+                    fill
+                    className="object-contain group-hover:scale-105 transition-transform duration-300 p-2"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <PeepersLogo variant="icon" size="lg" className="opacity-20" />
+                  </div>
+                )}
+                
+                {/* Badges posicionadas */}
+                <div className="absolute top-2 left-2">
+                  <ProductBadges 
+                    badges={product.badges.filter(badge => badge.type === 'new')} 
+                  />
+                </div>
+                
+                <div className="absolute top-2 right-2">
+                  <ProductBadges 
+                    badges={product.badges.filter(badge => badge.type === 'free-shipping')} 
+                  />
+                </div>
+                
+                <div className="absolute bottom-2 left-2 right-2">
+                  <ProductBadges 
+                    badges={product.badges.filter(badge => 
+                      ['turbo', 'ultra', 'gaming', 'premium'].includes(badge.type)
+                    )} 
+                  />
+                </div>
+              </div>
+              
+              <div className="p-4">
+                <h3 className="font-semibold text-peepers-neutral-900 mb-2 line-clamp-2 min-h-[3rem] group-hover:text-peepers-primary-600 transition-colors">
+                  {product.title}
+                </h3>
+                
+                <p className="text-2xl font-bold text-peepers-primary-600 mb-2">
+                  {new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                  }).format(product.price || 0)}
+                </p>
+                
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm text-peepers-neutral-600">
+                    {product.available_quantity} disponíveis
+                  </span>
+                  {product.installments && (
+                    <span className="text-xs text-peepers-secondary-600 font-medium">
+                      {product.installments.quantity}x sem juros
+                    </span>
+                  )}
+                </div>
+                
+                {/* Características específicas */}
+                <div className="mb-3 space-y-1">
+                  {product.length && (
+                    <p className="text-xs text-peepers-neutral-500">
+                      {product.length === 'short' && '📏 Cabo curto (≤30cm)'}
+                      {product.length === 'medium' && '📏 Cabo médio (1m)'}
+                      {product.length === 'long' && '📏 Cabo longo (≥2m)'}
+                    </p>
+                  )}
+                  {product.powerRating && product.powerRating >= 30 && (
+                    <p className="text-xs text-peepers-neutral-500">
+                      ⚡ {product.powerRating}W de potência
+                    </p>
+                  )}
+                </div>
+                
+                {/* Badges de estoque baixo */}
+                <div className="mb-3">
+                  <ProductBadges 
+                    badges={product.badges.filter(badge => badge.type === 'low-stock')} 
+                  />
+                </div>
+                
+                <Link
+                  href={PAGES.PRODUTO_DETALHE(product.id)}
+                  className="btn-primary w-full text-center group relative overflow-hidden"
+                >
+                  <span className="relative z-10">Comprar no Mercado Livre</span>
+                  <div className="absolute inset-0 bg-peepers-primary-700 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+                </Link>
+                
+                {/* Compatibilidade */}
+                {product.compatibility && product.compatibility.length > 0 && (
+                  <p className="text-xs text-center text-peepers-neutral-500 mt-2">
+                    {product.compatibility.slice(0, 2).join(', ')}
+                    {product.compatibility.length > 2 && ' +'}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
