@@ -24,6 +24,7 @@ export const API_ENDPOINTS = {
   // Produtos (público)
   PRODUCTS: '/api/products',
   PRODUCTS_PUBLIC: '/api/products-public',
+  PRODUCTS_V1: '/api/v1/products', // ✅ NEW: Unified products API
   PRODUCT_BY_ID: (id: string) => `/api/products/${id}`,
   
   // Autenticação OAuth (público)

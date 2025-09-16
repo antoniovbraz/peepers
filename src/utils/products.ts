@@ -2,13 +2,21 @@ import { API_ENDPOINTS } from '@/config/routes';
 import type { MLProduct } from '@/types/ml';
 
 /**
- * Fetches products from the public API
+ * Fetches products from the unified v1 API
  * @param limit - Maximum number of products to fetch
  * @returns Promise with products array
  */
 export async function fetchProducts(limit?: number): Promise<MLProduct[]> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
-  const response = await fetch(`${baseUrl}${API_ENDPOINTS.PRODUCTS_PUBLIC}`, {
+  
+  // ✅ NEW: Use unified v1 endpoint with public format
+  const url = new URL(API_ENDPOINTS.PRODUCTS_V1, baseUrl);
+  url.searchParams.set('format', 'minimal'); // Public-friendly format
+  if (limit) {
+    url.searchParams.set('limit', limit.toString());
+  }
+  
+  const response = await fetch(url.toString(), {
     cache: 'no-store'
   });
   
@@ -17,7 +25,9 @@ export async function fetchProducts(limit?: number): Promise<MLProduct[]> {
   }
   
   const data = await response.json();
-  const products = data.products || [];
+  
+  // ✅ NEW: Handle v1 API response format  
+  const products = data.data?.products || data.products || [];
   
   return limit ? products.slice(0, limit) : products;
 }

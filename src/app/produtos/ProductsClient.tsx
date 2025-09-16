@@ -23,14 +23,27 @@ import {
 } from '@/utils/productCategories';
 
 interface ProductsResponse {
-  products: ProductSummary[];
-  total: number;
+  // Old format support
+  products?: ProductSummary[];
+  total?: number;
   statistics?: {
     total_products: number;
     active_products: number;
     paused_products: number;
   };
   message?: string;
+  
+  // New v1 format support
+  success?: boolean;
+  data?: {
+    products: ProductSummary[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
 }
 
 export default function ProductsClient() {
@@ -71,7 +84,12 @@ export default function ProductsClient() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       
-      const response = await fetch(API_ENDPOINTS.PRODUCTS_PUBLIC, {
+      // ✅ NEW: Use unified v1 endpoint with public format
+      const url = new URL(API_ENDPOINTS.PRODUCTS_V1, window.location.origin);
+      url.searchParams.set('format', 'minimal'); // Public-friendly format
+      url.searchParams.set('limit', '100'); // Get more products
+      
+      const response = await fetch(url.toString(), {
         cache: 'no-store',
         signal: controller.signal,
         headers: {
@@ -93,8 +111,10 @@ export default function ProductsClient() {
       if (!data || typeof data !== 'object') {
         throw new Error('Resposta inválida do servidor');
       }
-      
-      setRawProducts(Array.isArray(data.products) ? data.products : []);
+
+      // ✅ NEW: Handle v1 API response format
+      const products = data.data?.products || data.products || [];
+      setRawProducts(Array.isArray(products) ? products : []);
       setNeedsAuth(false);
       
     } catch (err) {

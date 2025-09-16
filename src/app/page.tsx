@@ -16,9 +16,13 @@ const ProductCard = lazy(() => import('@/components/ProductCard'));
 // Componente para mostrar produtos em destaque
 async function FeaturedProducts() {
   try {
-    // Buscar produtos públicos (não requer autenticação)
+    // ✅ NEW: Use unified v1 endpoint with public format
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
-    const response = await fetch(`${baseUrl}${API_ENDPOINTS.PRODUCTS_PUBLIC}`, {
+    const url = new URL(API_ENDPOINTS.PRODUCTS_V1, baseUrl);
+    url.searchParams.set('format', 'minimal'); // Public-friendly format
+    url.searchParams.set('limit', '6'); // Just for homepage
+    
+    const response = await fetch(url.toString(), {
       cache: 'no-store', // Sempre buscar dados atualizados
       headers: {
         'Accept': 'application/json',
@@ -37,8 +41,9 @@ async function FeaturedProducts() {
     if (!data || typeof data !== 'object') {
       throw new Error('Resposta inválida da API');
     }
-    
-    const products = Array.isArray(data.products) ? data.products : [];
+
+    // ✅ NEW: Handle v1 API response format
+    const products = data.data?.products || data.products || [];
     
     // Limitar a 6 produtos para destaque e filtrar produtos válidos
     const featuredProducts = products

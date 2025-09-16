@@ -37,6 +37,13 @@ function AdminDashboard() {
       icon: '🛍️'
     },
     {
+      name: 'Produtos v1 (Unificado)',
+      url: API_ENDPOINTS.PRODUCTS_V1,
+      status: 'loading', 
+      description: '✅ NEW: Endpoint unificado com filtros avançados',
+      icon: '🚀'
+    },
+    {
       name: 'Debug Info',
       url: API_ENDPOINTS.DEBUG,
       status: 'loading',
