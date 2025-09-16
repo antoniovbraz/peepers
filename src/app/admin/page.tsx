@@ -52,8 +52,45 @@ function AdminDashboard() {
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isTestingAll, setIsTestingAll] = useState(false);
+  const [urlProcessed, setUrlProcessed] = useState(false);
+  const [authSuccessMessage, setAuthSuccessMessage] = useState<string | null>(null);
+
+  // Processar parâmetros da URL apenas uma vez
+  useEffect(() => {
+    if (urlProcessed) return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const authSuccess = urlParams.get('auth_success');
+    const userId = urlParams.get('user_id');
+    const authError = urlParams.get('auth_error');
+    
+    if (authSuccess === 'true' && userId) {
+      console.log('✅ Autenticação bem-sucedida detectada, limpando URL...');
+      setAuthSuccessMessage(`✅ Autenticação realizada com sucesso! Usuário ID: ${userId}`);
+      // Limpar parâmetros da URL sem recarregar a página
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      setUrlProcessed(true);
+      
+      // Esconder mensagem após 5 segundos
+      setTimeout(() => setAuthSuccessMessage(null), 5000);
+    } else if (authError) {
+      console.error('❌ Erro de autenticação detectado:', authError);
+      setAuthSuccessMessage(`❌ Erro na autenticação: ${authError}`);
+      // Limpar parâmetros da URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      setUrlProcessed(true);
+      
+      // Esconder mensagem após 5 segundos
+      setTimeout(() => setAuthSuccessMessage(null), 5000);
+    }
+  }, [urlProcessed]);
 
   const testEndpoint = async (endpoint: EndpointStatus) => {
+    // Prevenir testes simultâneos do mesmo endpoint
+    if (endpoint.status === 'loading') return;
+    
     try {
       setEndpoints(prev => prev.map(ep => 
         ep.url === endpoint.url ? { ...ep, status: 'loading' } : ep
@@ -82,18 +119,55 @@ function AdminDashboard() {
   };
 
   const testAllEndpoints = useCallback(async () => {
-    setIsTestingAll(true);
-    for (const endpoint of endpoints) {
-      await testEndpoint(endpoint);
-      // Pequeno delay para não sobrecarregar
-      await new Promise(resolve => setTimeout(resolve, 500));
+    // Prevenir múltiplas execuções simultâneas
+    if (isTestingAll) {
+      console.log('⏳ Teste já em andamento, ignorando...');
+      return;
     }
-    setIsTestingAll(false);
-  }, [endpoints]);
+    
+    console.log('🚀 Iniciando teste de todos os endpoints...');
+    setIsTestingAll(true);
+    
+    try {
+      const endpointsCopy = [...endpoints]; // Copiar para evitar mudanças durante iteração
+      
+      for (let i = 0; i < endpointsCopy.length; i++) {
+        const endpoint = endpointsCopy[i];
+        console.log(`📡 Testando endpoint ${i + 1}/${endpointsCopy.length}: ${endpoint.name}`);
+        
+        await testEndpoint(endpoint);
+        
+        // Pequeno delay para não sobrecarregar
+        if (i < endpointsCopy.length - 1) { // Não fazer delay no último
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      console.log('✅ Todos os endpoints testados com sucesso!');
+    } catch (error) {
+      console.error('❌ Erro durante teste de endpoints:', error);
+    } finally {
+      setIsTestingAll(false);
+    }
+  }, [endpoints, isTestingAll]);
 
+  // Executar teste inicial apenas uma vez após processamento da URL
   useEffect(() => {
-    testAllEndpoints();
-  }, [testAllEndpoints]);
+    if (!urlProcessed) return; // Aguardar processamento da URL
+    
+    // Prevenir execução se já estiver testando
+    if (isTestingAll) return;
+    
+    console.log('⏰ Agendando teste inicial dos endpoints...');
+    const timer = setTimeout(() => {
+      // Verificação adicional antes de executar
+      if (!isTestingAll && urlProcessed) {
+        testAllEndpoints();
+      }
+    }, 1500); // Delay maior para permitir carregamento completo
+    
+    return () => clearTimeout(timer);
+  }, [urlProcessed, isTestingAll, testAllEndpoints]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -105,14 +179,14 @@ function AdminDashboard() {
           testAllEndpoints();
         }
       }
-      
+
       // Alt + 1-4: Switch tabs
       if (e.altKey && ['1', '2', '3', '4'].includes(e.key)) {
         e.preventDefault();
         const tabs = ['dashboard', 'endpoints', 'backup', 'settings'];
         setActiveTab(tabs[parseInt(e.key) - 1]);
       }
-      
+
       // Alt + R: Reload page
       if (e.altKey && e.key === 'r') {
         e.preventDefault();
@@ -122,7 +196,7 @@ function AdminDashboard() {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [testAllEndpoints, isTestingAll]);
+  }, [isTestingAll, testAllEndpoints]); // Incluir dependências necessárias
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -240,8 +314,30 @@ function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Notification Banner */}
+      {authSuccessMessage && (
+        <div className={`fixed top-0 left-0 right-0 z-50 p-4 ${
+          authSuccessMessage.includes('✅') 
+            ? 'bg-green-600 text-white' 
+            : 'bg-red-600 text-white'
+        }`}>
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="text-lg">ℹ️</span>
+              <span className="font-medium">{authSuccessMessage}</span>
+            </div>
+            <button
+              onClick={() => setAuthSuccessMessage(null)}
+              className="text-white hover:text-gray-200 text-xl font-bold"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Navigation Bar */}
-      <nav className="bg-white border-b border-gray-100">
+      <nav className={`bg-white border-b border-gray-100 ${authSuccessMessage ? 'mt-16' : ''}`}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4">
           <div className="flex justify-between items-center h-14 sm:h-16">
             <div className="flex items-center space-x-4 sm:space-x-8">
