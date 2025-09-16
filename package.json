@@ -10,7 +10,6 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run --coverage",
-    "tunnel": "lt --port 3000",
     "test:prod": "node test-prod.js"
   },
   "dependencies": {

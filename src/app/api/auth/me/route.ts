@@ -1,65 +1,89 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
-import { CACHE_KEYS } from '@/config/routes';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    // Verificar se existe cookie de sessão
     const sessionToken = request.cookies.get('session_token')?.value;
     const userId = request.cookies.get('user_id')?.value;
 
     if (!sessionToken || !userId) {
       return NextResponse.json({
         authenticated: false,
-        error: 'No session found'
+        message: 'No session found',
+        redirect: '/login'
       }, { status: 401 });
     }
 
-    // Verificar se o token existe no cache
-    const tokenData = await cache.getUser(userId);
-
-    if (!tokenData || !tokenData.token) {
+    const allowedUserIds = process.env.ALLOWED_USER_IDS?.split(',') || [];
+    if (allowedUserIds.length > 0 && !allowedUserIds.includes(userId)) {
       return NextResponse.json({
         authenticated: false,
-        error: 'Invalid session'
-      }, { status: 401 });
+        authorized: false,
+        message: 'User not authorized',
+        redirect: '/acesso-negado'
+      }, { status: 403 });
     }
 
-    // Verificar se o session token corresponde
-    if (tokenData.session_token !== sessionToken) {
+    const userData = await cache.getUser(userId);
+    
+    if (!userData || !userData.token) {
       return NextResponse.json({
         authenticated: false,
-        error: 'Session token mismatch'
+        message: 'No token found in cache',
+        redirect: '/login'
       }, { status: 401 });
     }
 
-    // Verificar se o token não expirou
-    const expiresAt = tokenData.expires_at ? new Date(tokenData.expires_at) : null;
-    if (expiresAt && expiresAt < new Date()) {
+    if (userData.session_token !== sessionToken) {
       return NextResponse.json({
         authenticated: false,
-        error: 'Session expired'
+        message: 'Invalid session token',
+        redirect: '/login'
       }, { status: 401 });
     }
 
-    // Buscar dados da empresa do cache
-    const companyData = await cache.getUser(userId);
+    const expiresAt = userData.expires_at ? new Date(userData.expires_at) : null;
+    const now = new Date();
+    const isExpired = expiresAt && expiresAt < now;
+
+    if (isExpired) {
+      return NextResponse.json({
+        authenticated: false,
+        message: 'Token expired',
+        expires_at: userData.expires_at,
+        redirect: '/login'
+      }, { status: 401 });
+    }
+
+    const timeUntilExpiry = expiresAt ? expiresAt.getTime() - now.getTime() : 0;
+    const hoursUntilExpiry = timeUntilExpiry / (1000 * 60 * 60);
 
     return NextResponse.json({
       authenticated: true,
-      user_id: userId,
-      company: companyData?.company || null,
+      authorized: true,
+      user: {
+        id: userData.id,
+        nickname: userData.nickname,
+        email: userData.email,
+      },
+      token: {
+        expires_at: userData.expires_at,
+        hours_until_expiry: Math.round(hoursUntilExpiry * 100) / 100,
+        needs_refresh: hoursUntilExpiry < 1
+      },
       session: {
-        expires_at: tokenData.expires_at,
-        last_sync: companyData?.last_sync || null
+        session_token: sessionToken ? 'present' : 'missing',
+        user_id: userId
       }
     });
 
   } catch (error) {
-    console.error('Erro ao verificar autenticação:', error);
+    logger.error({ error }, 'Auth check error');
     return NextResponse.json({
       authenticated: false,
-      error: 'Internal server error'
+      message: 'Internal server error',
+      error: String(error)
     }, { status: 500 });
   }
 }
