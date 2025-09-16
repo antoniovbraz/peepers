@@ -18,6 +18,16 @@ interface ProductCardProps {
   onToggleFavorite?: (id: string) => void;
   mercadoLivreLink?: string;
   imageFit?: 'cover' | 'contain';
+  availableQuantity?: number;
+  onNotifyWhenAvailable?: (id: string) => void;
+  showDetails?: boolean; // Para mostrar mais informações na página de produtos
+  length?: string;
+  powerRating?: number;
+  compatibility?: string[];
+  installments?: {
+    quantity: number;
+    amount: number;
+  };
 }
 
 export default function ProductCard({
@@ -32,7 +42,14 @@ export default function ProductCard({
   isFavorite = false,
   onToggleFavorite,
   mercadoLivreLink,
-  imageFit = 'contain' // Default to contain for better product image display
+  imageFit = 'contain', // Default to contain for better product image display
+  availableQuantity,
+  onNotifyWhenAvailable,
+  showDetails = false,
+  length,
+  powerRating,
+  compatibility,
+  installments
 }: ProductCardProps) {
   const [isImageLoading, setIsImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
@@ -222,6 +239,54 @@ export default function ProductCard({
           </span>
         </div>
 
+        {/* Additional Details (when showDetails is true) */}
+        {showDetails && (
+          <div className="mb-3 space-y-1">
+            {/* Available Quantity */}
+            {availableQuantity !== undefined && (
+              <div className="flex items-center justify-between text-xs text-gray-600">
+                <span>Disponíveis:</span>
+                <span className={availableQuantity === 0 ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}>
+                  {availableQuantity === 0 ? 'Esgotado' : availableQuantity}
+                </span>
+              </div>
+            )}
+
+            {/* Length */}
+            {length && (
+              <p className="text-xs text-gray-500">
+                {length === 'short' && '📏 Cabo curto (≤30cm)'}
+                {length === 'medium' && '📏 Cabo médio (1m)'}
+                {length === 'long' && '📏 Cabo longo (≥2m)'}
+              </p>
+            )}
+
+            {/* Power Rating */}
+            {powerRating && powerRating >= 30 && (
+              <p className="text-xs text-gray-500">
+                ⚡ {powerRating}W de potência
+              </p>
+            )}
+
+            {/* Installments */}
+            {installments && (
+              <p className="text-xs text-gray-600">
+                {installments.quantity}x sem juros
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Notify Button for Out of Stock */}
+        {availableQuantity === 0 && onNotifyWhenAvailable && (
+          <button
+            onClick={() => onNotifyWhenAvailable(safeId)}
+            className="w-full bg-orange-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-orange-700 transition-colors duration-200 text-sm mb-2"
+          >
+            🔔 Avisar quando chegar
+          </button>
+        )}
+
         {/* Mercado Livre Button */}
         <button
           onClick={handleMercadoLivreClick}
@@ -230,6 +295,14 @@ export default function ProductCard({
         >
           Ver no Mercado Livre
         </button>
+
+        {/* Compatibility */}
+        {showDetails && compatibility && compatibility.length > 0 && (
+          <p className="text-xs text-center text-gray-500 mt-2">
+            {compatibility.slice(0, 2).join(', ')}
+            {compatibility.length > 2 && ' +' + (compatibility.length - 2)}
+          </p>
+        )}
       </div>
     </div>
   );
