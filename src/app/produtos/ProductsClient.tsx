@@ -71,7 +71,7 @@ export default function ProductsClient() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       
-      const response = await fetch(API_ENDPOINTS.PRODUCTS, {
+      const response = await fetch(API_ENDPOINTS.PRODUCTS_PUBLIC, {
         cache: 'no-store',
         signal: controller.signal,
         headers: {
@@ -83,13 +83,6 @@ export default function ProductsClient() {
       });
       
       clearTimeout(timeoutId);
-      
-      if (response.status === 401) {
-        setNeedsAuth(true);
-        setError('Você precisa se autenticar com o Mercado Livre primeiro.');
-        setRawProducts([]);
-        return;
-      }
       
       if (!response.ok) {
         throw new Error(`Falha ao carregar produtos (${response.status})`);

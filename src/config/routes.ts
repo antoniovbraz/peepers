@@ -29,6 +29,8 @@ export const API_ENDPOINTS = {
   // Autenticação OAuth (público)
   AUTH_ML: '/api/auth/mercado-livre',
   AUTH_ML_CALLBACK: '/api/auth/mercado-livre/callback',
+  AUTH_ME: '/api/auth/me',
+  AUTH_LOGOUT: '/api/auth/logout',
   
   // Webhook (público)
   WEBHOOK_ML: '/api/webhook/mercado-livre',
@@ -77,6 +79,8 @@ export const MIDDLEWARE_CONFIG = {
     API_ENDPOINTS.DEBUG,
     API_ENDPOINTS.AUTH_ML,
     API_ENDPOINTS.AUTH_ML_CALLBACK,
+    API_ENDPOINTS.AUTH_ME,
+    API_ENDPOINTS.AUTH_LOGOUT,
     API_ENDPOINTS.WEBHOOK_ML,
     PAGES.ACESSO_NEGADO
   ],
@@ -137,7 +141,7 @@ export function buildUrl(endpoint: string, isProduction: boolean = true): string
  * ✅ /api/products
  */
 
-export default {
+const routesConfig = {
   BASE_URLS,
   API_ENDPOINTS,
   PAGES,
@@ -147,3 +151,5 @@ export default {
   isValidApiRoute,
   buildUrl
 };
+
+export default routesConfig;
