@@ -1,12 +1,14 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback, lazy } from 'react';
 import Link from 'next/link';
 import { PAGES, API_ENDPOINTS } from '@/config/routes';
-import BackupManager from '@/components/BackupManager';
-import CompanyProfileCard from '@/components/admin/CompanyProfileCard';
-import AuthStatusCard from '@/components/admin/AuthStatusCard';
 import AuthCheck from '@/components/AuthCheck';
+
+// Lazy load heavy admin components
+const BackupManager = lazy(() => import('@/components/BackupManager'));
+const CompanyProfileCard = lazy(() => import('@/components/admin/CompanyProfileCard'));
+const AuthStatusCard = lazy(() => import('@/components/admin/AuthStatusCard'));
 
 interface EndpointStatus {
   name: string;
@@ -424,11 +426,15 @@ function AdminDashboard() {
         </div>
 
         {/* Authentication Status */}
-        <AuthStatusCard />
+        <Suspense fallback={<div className="card-peepers p-4 animate-pulse"><div className="h-32 bg-gray-200 rounded"></div></div>}>
+          <AuthStatusCard />
+        </Suspense>
 
         {/* Company Profile Card */}
         <div className="mb-6 sm:mb-8">
-          <CompanyProfileCard />
+          <Suspense fallback={<div className="card-peepers p-4 animate-pulse"><div className="h-48 bg-gray-200 rounded"></div></div>}>
+            <CompanyProfileCard />
+          </Suspense>
         </div>
 
         {/* Endpoints Grid */}
@@ -583,7 +589,9 @@ function AdminDashboard() {
 
         {/* Backup Manager */}
         <div className="card-peepers p-4 sm:p-6">
-          <BackupManager />
+          <Suspense fallback={<div className="h-64 bg-gray-200 animate-pulse rounded"></div>}>
+            <BackupManager />
+          </Suspense>
         </div>
       </div>
     </div>

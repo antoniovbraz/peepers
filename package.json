@@ -7,6 +7,8 @@
     "dev:mock": "cross-env NODE_ENV=development next dev",
     "dev:https": "next dev --experimental-https",
     "build": "next build",
+    "build:analyze": "cross-env ANALYZE=true next build",
+    "analyze": "npx webpack-bundle-analyzer .next/static/chunks/*.js --open",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run --coverage",
@@ -20,6 +22,7 @@
     "@upstash/redis": "^1.35.3",
     "@vercel/kv": "^3.0.0",
     "clsx": "^2.1.1",
+    "critters": "^0.0.23",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.2",
     "lucide-react": "^0.544.0",
@@ -46,6 +49,7 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.20.5",
     "typescript": "^5",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "webpack-bundle-analyzer": "^4.10.2"
   }
 }

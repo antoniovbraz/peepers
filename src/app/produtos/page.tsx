@@ -1,8 +1,10 @@
 import { PAGES } from '@/config/routes';
 import Link from 'next/link';
-import { Suspense } from 'react';
+import { Suspense, lazy } from 'react';
 import Header from '@/components/Header';
-import ProductsClient from './ProductsClient';
+
+// Lazy load the heavy ProductsClient component
+const ProductsClient = lazy(() => import('./ProductsClient'));
 
 // Loading component para produtos
 function ProductsLoading() {

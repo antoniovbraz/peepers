@@ -1,14 +1,17 @@
 import { PAGES } from '@/config/routes';
-import { Suspense } from 'react';
+import { Suspense, lazy } from 'react';
 import Header from '@/components/Header';
-import HeroSection from '@/components/HeroSection';
-import ProductCard from '@/components/ProductCard';
+import PreloadResources from '@/components/PreloadResources';
 import ProductsLoading from '@/components/ProductsLoading';
 import ProductsError from '@/components/ProductsError';
 import ServiceWorkerProvider from '@/components/ServiceWorkerProvider';
 import { API_ENDPOINTS } from '@/config/routes';
 import { getMercadoLivreUrl } from '@/utils/products';
 import type { MLProduct } from '@/types/ml';
+
+// Lazy load components for better performance
+const HeroSection = lazy(() => import('@/components/HeroSection'));
+const ProductCard = lazy(() => import('@/components/ProductCard'));
 
 // Componente para mostrar produtos em destaque
 async function FeaturedProducts() {
@@ -120,12 +123,25 @@ export default function HomePage() {
     <div className="min-h-screen bg-gray-50">
       {/* Service Worker Provider */}
       <ServiceWorkerProvider />
-      
+
+      {/* Preload critical resources */}
+      <PreloadResources
+        resources={[
+          // Preload critical images
+          {
+            href: '/next.svg',
+            as: 'image'
+          }
+        ]}
+      />
+
       {/* Header */}
       <Header />
 
       {/* Hero Section */}
-      <HeroSection />
+      <Suspense fallback={<div className="h-96 bg-gray-100 animate-pulse" />}>
+        <HeroSection />
+      </Suspense>
 
       {/* Features Section */}
       <section className="py-20 bg-white">

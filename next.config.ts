@@ -9,6 +9,46 @@ const nextConfig: NextConfig = {
   // Melhorar compatibilidade com mobile e performance
   experimental: {
     optimizePackageImports: ['lucide-react'],
+    // Code splitting optimizations
+    optimizeCss: true,
+    scrollRestoration: true,
+    // Enable webpack build worker
+    webpackBuildWorker: true,
+  },
+  // Bundle analysis and optimization
+  webpack: (config, { dev, isServer }) => {
+    // Code splitting for better performance
+    if (!dev && !isServer) {
+      config.optimization.splitChunks.chunks = 'all';
+      config.optimization.splitChunks.cacheGroups = {
+        ...config.optimization.splitChunks.cacheGroups,
+        // Separate vendor chunks
+        vendor: {
+          test: /[\\/]node_modules[\\/]/,
+          name: 'vendors',
+          chunks: 'all',
+          priority: 10,
+        },
+        // Separate React and Next.js chunks
+        framework: {
+          test: /[\\/]node_modules[\\/](react|react-dom|next|@next)[\\/]/,
+          name: 'framework',
+          chunks: 'all',
+          priority: 20,
+        },
+        // Separate large libraries
+        lib: {
+          test: /[\\/]node_modules[\\/](@sentry|lucide-react|tailwindcss|@vercel)[\\/]/,
+          name: 'lib',
+          chunks: 'all',
+          priority: 15,
+        },
+      };
+    }
+
+    // Bundle analysis can be done with ANALYZE=true npm run build && npx webpack-bundle-analyzer .next/static/chunks/*.js
+
+    return config;
   },
   // Configuração de compilação mais robusta
   compiler: {
