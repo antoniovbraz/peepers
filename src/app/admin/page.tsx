@@ -107,24 +107,100 @@ function AdminDashboard() {
     }
   };
 
-  const formatData = (data: any): string => {
-    if (!data) return '';
+  const formatData = (data: any, endpointName: string): React.ReactElement => {
+    if (!data) return <span className="text-gray-500">Sem dados</span>;
     
-    if (data.products && Array.isArray(data.products)) {
-      const activeProducts = data.products.filter((p: any) => p.status === 'active').length;
-      const pausedProducts = data.products.filter((p: any) => p.status === 'paused').length;
-      return `${data.products.length} produtos total (${activeProducts} ativos, ${pausedProducts} pausados)`;
+    // Para produtos
+    if (endpointName.includes('Produtos') && data.products && Array.isArray(data.products)) {
+      const activeProducts = data.products.filter((p: { status?: string }) => p.status === 'active').length;
+      const pausedProducts = data.products.filter((p: { status?: string }) => p.status === 'paused').length;
+      const totalProducts = data.products.length;
+      
+      return (
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="font-medium text-green-600">📦 {totalProducts} produtos</span>
+            <span className="text-sm text-gray-500">Total</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-blue-600">✅ Ativos:</span>
+              <span className="font-medium">{activeProducts}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-orange-600">⏸️ Pausados:</span>
+              <span className="font-medium">{pausedProducts}</span>
+            </div>
+          </div>
+        </div>
+      );
     }
     
+    // Para health check
+    if (endpointName.includes('Health') && data.status) {
+      return (
+        <div className="space-y-1">
+          <div className="flex items-center space-x-2">
+            <span className={`text-lg ${data.status === 'ok' ? 'text-green-500' : 'text-red-500'}`}>
+              {data.status === 'ok' ? '💚' : '💔'}
+            </span>
+            <span className="font-medium capitalize">{data.status}</span>
+          </div>
+          {data.timestamp && (
+            <div className="text-xs text-gray-500">
+              Última verificação: {new Date(data.timestamp).toLocaleString('pt-BR')}
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Para cache debug
+    if (endpointName.includes('Cache') && data.cache_status) {
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <span className={`text-lg ${data.cache_status === 'connected' ? 'text-green-500' : 'text-red-500'}`}>
+              {data.cache_status === 'connected' ? '🔗' : '❌'}
+            </span>
+            <span className="font-medium capitalize">{data.cache_status}</span>
+          </div>
+          {data.keys_count !== undefined && (
+            <div className="text-sm">
+              <span className="text-gray-600">Chaves no cache:</span>
+              <span className="font-medium ml-1">{data.keys_count}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Para debug info
+    if (endpointName.includes('Debug') && data.environment) {
+      return (
+        <div className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Ambiente:</span>
+            <span className="font-medium">{data.environment}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Versão:</span>
+            <span className="font-medium">{data.version || 'N/A'}</span>
+          </div>
+        </div>
+      );
+    }
+    
+    // Fallback para outros tipos de dados
     if (data.message) {
-      return data.message;
+      return <span className="text-gray-700">{data.message}</span>;
     }
     
     if (data.total_products) {
-      return `${data.total_products} produtos encontrados`;
+      return <span className="text-gray-700">{data.total_products} produtos encontrados</span>;
     }
     
-    return JSON.stringify(data).substring(0, 100) + '...';
+    return <span className="text-gray-500 text-sm">Dados complexos - verifique o endpoint diretamente</span>;
   };
 
   return (
@@ -212,7 +288,7 @@ function AdminDashboard() {
                 {endpoint.status === 'success' && endpoint.data && (
                   <div className="text-sm">
                     <strong>✅ Funcionando:</strong>
-                    <div className="mt-1">{formatData(endpoint.data)}</div>
+                    <div className="mt-1">{formatData(endpoint.data, endpoint.name)}</div>
                   </div>
                 )}
                 {endpoint.status === 'error' && (

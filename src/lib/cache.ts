@@ -35,7 +35,7 @@ export function __resetKVClient() {
 
 // Cache TTL constants (in seconds)
 const CACHE_TTL = {
-  PRODUCTS: 7200, // 2 hours
+  PRODUCTS: 21600, // 6 hours (increased from 2 hours)
   QUESTIONS: 3600, // 1 hour
   USER_DATA: 1800, // 30 minutes
   CATEGORIES: 86400, // 24 hours
@@ -77,7 +77,10 @@ class CacheManager {
     try {
       const cached = await kv.get<CachedProduct[]>(CACHE_KEYS.PRODUCTS_ALL);
       
-      if (!cached) return null;
+      if (!cached) {
+        logger.info('Cache miss: no products cached');
+        return null;
+      }
       
       // Check if cache is expired
       const now = new Date().toISOString();
@@ -86,14 +89,17 @@ class CacheManager {
       );
       
       if (isExpired) {
+        logger.warn({ count: cached.length }, 'Cache expired, invalidating products cache');
         await this.invalidateProductsCache();
         return null;
       }
       
+      logger.info({ count: cached.length }, 'Cache hit: returning products from cache');
+      
       // Extract products from nested structure if needed
       return cached.map(product => this.toMLProduct(product));
     } catch (error) {
-      logger.error({ err: error }, 'Cache get error');
+      logger.error({ err: error }, 'Cache get error - falling back to null');
       return null;
     }
   }
@@ -376,6 +382,7 @@ class CacheManager {
     const kv = getKVClient();
     let count = 0;
     for await (const _ of kv.scanIterator({ match: pattern })) {
+      void _;
       count++;
     }
     return count;

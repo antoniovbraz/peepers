@@ -110,7 +110,20 @@ export async function GET(request: NextRequest) {
       expires_at: new Date(Date.now() + (tokenResult.expires_in * 1000)).toISOString(),
       user_id: parseInt(userId, 10), // Converter para number
       scope: tokenResult.scope,
-      token_type: tokenResult.token_type
+      token_type: tokenResult.token_type,
+      // Adicionar dados da empresa
+      company: userData.company || {},
+      nickname: userData.nickname,
+      name: userData.first_name + ' ' + userData.last_name,
+      email: userData.email,
+      country: userData.country_id,
+      user_type: userData.user_type,
+      site_id: userData.site_id,
+      permalink: userData.permalink,
+      seller_reputation: userData.seller_reputation || {},
+      status: userData.status || {},
+      connected_at: new Date().toISOString(),
+      last_sync: new Date().toISOString()
     });
 
     // Limpar code verifier usado
