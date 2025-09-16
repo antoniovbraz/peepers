@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
+// FORCE CACHE BUSTING - BUILD: 2025-09-15-20-35
+const FORCE_CACHE_BUST = "2025-09-15-20-35";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -46,6 +49,9 @@ export const metadata: Metadata = {
     apple: [
       { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
     ],
+  },
+  other: {
+    "cache-bust": FORCE_CACHE_BUST,
   },
 };
 
