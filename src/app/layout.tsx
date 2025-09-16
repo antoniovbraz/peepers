@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { WebVitals } from "@/components/WebVitals";
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 // FORCE CACHE BUSTING - BUILD: 2025-09-15-20-35
 const FORCE_CACHE_BUST = "2025-09-15-20-35";
@@ -84,6 +85,7 @@ export default function RootLayout({
       >
         <ErrorBoundary>
           <WebVitals />
+          <SpeedInsights />
           {children}
         </ErrorBoundary>
       </body>
