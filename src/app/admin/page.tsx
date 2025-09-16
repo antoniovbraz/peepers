@@ -1,17 +1,18 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { PAGES, API_ENDPOINTS } from '@/config/routes';
 import BackupManager from '@/components/BackupManager';
 import CompanyProfileCard from '@/components/admin/CompanyProfileCard';
+import AuthStatusCard from '@/components/admin/AuthStatusCard';
 import AuthCheck from '@/components/AuthCheck';
 
 interface EndpointStatus {
   name: string;
   url: string;
   status: 'loading' | 'success' | 'error';
-  data?: any;
+  data?: Record<string, unknown>;
   error?: string;
   description: string;
   icon: string;
@@ -49,6 +50,9 @@ function AdminDashboard() {
     }
   ]);
 
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isTestingAll, setIsTestingAll] = useState(false);
+
   const testEndpoint = async (endpoint: EndpointStatus) => {
     try {
       setEndpoints(prev => prev.map(ep => 
@@ -77,24 +81,55 @@ function AdminDashboard() {
     }
   };
 
-  const testAllEndpoints = async () => {
+  const testAllEndpoints = useCallback(async () => {
+    setIsTestingAll(true);
     for (const endpoint of endpoints) {
       await testEndpoint(endpoint);
       // Pequeno delay para não sobrecarregar
       await new Promise(resolve => setTimeout(resolve, 500));
     }
-  };
+    setIsTestingAll(false);
+  }, [endpoints]);
 
   useEffect(() => {
     testAllEndpoints();
-  }, []);
+  }, [testAllEndpoints]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Alt + T: Test all endpoints
+      if (e.altKey && e.key === 't') {
+        e.preventDefault();
+        if (!isTestingAll) {
+          testAllEndpoints();
+        }
+      }
+      
+      // Alt + 1-4: Switch tabs
+      if (e.altKey && ['1', '2', '3', '4'].includes(e.key)) {
+        e.preventDefault();
+        const tabs = ['dashboard', 'endpoints', 'backup', 'settings'];
+        setActiveTab(tabs[parseInt(e.key) - 1]);
+      }
+      
+      // Alt + R: Reload page
+      if (e.altKey && e.key === 'r') {
+        e.preventDefault();
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [testAllEndpoints, isTestingAll]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'loading': return 'bg-yellow-100 border-yellow-300 text-yellow-800';
-      case 'success': return 'bg-green-100 border-green-300 text-green-800';
-      case 'error': return 'bg-red-100 border-red-300 text-red-800';
-      default: return 'bg-gray-100 border-gray-300 text-gray-800';
+      case 'loading': return 'bg-yellow-50 border-yellow-200 text-yellow-800';
+      case 'success': return 'bg-green-50 border-green-200 text-green-800';
+      case 'error': return 'bg-red-50 border-red-200 text-red-800';
+      default: return 'bg-gray-50 border-gray-200 text-gray-800';
     }
   };
 
@@ -107,14 +142,14 @@ function AdminDashboard() {
     }
   };
 
-  const formatData = (data: any, endpointName: string): React.ReactElement => {
-    if (!data) return <span className="text-gray-500">Sem dados</span>;
+  const formatData = (data: Record<string, unknown>, endpointName: string): React.ReactElement => {
+    if (!data || typeof data !== 'object') return <span className="text-gray-500">Sem dados</span>;
     
     // Para produtos
     if (endpointName.includes('Produtos') && data.products && Array.isArray(data.products)) {
-      const activeProducts = data.products.filter((p: { status?: string }) => p.status === 'active').length;
-      const pausedProducts = data.products.filter((p: { status?: string }) => p.status === 'paused').length;
-      const totalProducts = data.products.length;
+      const activeProducts = (data.products as { status?: string }[]).filter((p) => p.status === 'active').length;
+      const pausedProducts = (data.products as { status?: string }[]).filter((p) => p.status === 'paused').length;
+      const totalProducts = (data.products as unknown[]).length;
       
       return (
         <div className="space-y-2">
@@ -144,13 +179,13 @@ function AdminDashboard() {
             <span className={`text-lg ${data.status === 'ok' ? 'text-green-500' : 'text-red-500'}`}>
               {data.status === 'ok' ? '💚' : '💔'}
             </span>
-            <span className="font-medium capitalize">{data.status}</span>
+            <span className="font-medium capitalize">{String(data.status)}</span>
           </div>
-          {data.timestamp && (
+          {data.timestamp ? (
             <div className="text-xs text-gray-500">
-              Última verificação: {new Date(data.timestamp).toLocaleString('pt-BR')}
+              Última verificação: {new Date(String(data.timestamp)).toLocaleString('pt-BR')}
             </div>
-          )}
+          ) : null}
         </div>
       );
     }
@@ -163,14 +198,14 @@ function AdminDashboard() {
             <span className={`text-lg ${data.cache_status === 'connected' ? 'text-green-500' : 'text-red-500'}`}>
               {data.cache_status === 'connected' ? '🔗' : '❌'}
             </span>
-            <span className="font-medium capitalize">{data.cache_status}</span>
+            <span className="font-medium capitalize">{String(data.cache_status)}</span>
           </div>
-          {data.keys_count !== undefined && (
+          {data.keys_count !== undefined ? (
             <div className="text-sm">
               <span className="text-gray-600">Chaves no cache:</span>
-              <span className="font-medium ml-1">{data.keys_count}</span>
+              <span className="font-medium ml-1">{String(data.keys_count)}</span>
             </div>
-          )}
+          ) : null}
         </div>
       );
     }
@@ -181,11 +216,11 @@ function AdminDashboard() {
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">Ambiente:</span>
-            <span className="font-medium">{data.environment}</span>
+            <span className="font-medium">{String(data.environment)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Versão:</span>
-            <span className="font-medium">{data.version || 'N/A'}</span>
+            <span className="font-medium">{String(data.version || 'N/A')}</span>
           </div>
         </div>
       );
@@ -193,11 +228,11 @@ function AdminDashboard() {
     
     // Fallback para outros tipos de dados
     if (data.message) {
-      return <span className="text-gray-700">{data.message}</span>;
+      return <span className="text-gray-700">{String(data.message)}</span>;
     }
     
     if (data.total_products) {
-      return <span className="text-gray-700">{data.total_products} produtos encontrados</span>;
+      return <span className="text-gray-700">{String(data.total_products)} produtos encontrados</span>;
     }
     
     return <span className="text-gray-500 text-sm">Dados complexos - verifique o endpoint diretamente</span>;
@@ -206,34 +241,62 @@ function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation Bar */}
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-8">
-              <h1 className="text-xl font-bold text-gray-900">Peepers Admin</h1>
+      <nav className="bg-white border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4">
+          <div className="flex justify-between items-center h-14 sm:h-16">
+            <div className="flex items-center space-x-4 sm:space-x-8">
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900">Peepers Admin</h1>
               <div className="hidden md:flex space-x-6">
-                <button className="text-blue-600 border-b-2 border-blue-600 pb-1 font-medium">
+                <button 
+                  onClick={() => setActiveTab('dashboard')}
+                  className={`font-medium text-sm transition-colors ${
+                    activeTab === 'dashboard' 
+                      ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
                   Dashboard
                 </button>
-                <button className="text-gray-500 hover:text-gray-700 font-medium">
-                  Sincronizar Produtos
+                <button 
+                  onClick={() => setActiveTab('endpoints')}
+                  className={`font-medium text-sm transition-colors ${
+                    activeTab === 'endpoints' 
+                      ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Endpoints
                 </button>
-                <button className="text-gray-500 hover:text-gray-700 font-medium">
-                  Gerenciar Backup
+                <button 
+                  onClick={() => setActiveTab('backup')}
+                  className={`font-medium text-sm transition-colors ${
+                    activeTab === 'backup' 
+                      ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Backup
                 </button>
-                <button className="text-gray-500 hover:text-gray-700 font-medium">
-                  Perfil da Loja
+                <button 
+                  onClick={() => setActiveTab('settings')}
+                  className={`font-medium text-sm transition-colors ${
+                    activeTab === 'settings' 
+                      ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Config
                 </button>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Produção</span>
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <span className="text-xs sm:text-sm text-gray-600 hidden sm:block">Produção</span>
               <button
                 onClick={async () => {
                   await fetch('/api/auth/logout', { method: 'POST' });
                   window.location.href = '/';
                 }}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                className="bg-red-600 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-sm font-medium"
               >
                 Sair
               </button>
@@ -242,59 +305,68 @@ function AdminDashboard() {
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
             🔧 Dashboard Administrativo
           </h2>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 mb-4 text-sm sm:text-base">
             Monitoramento completo dos endpoints da API • Produção: https://peepers.vercel.app/
           </p>
           <button
             onClick={testAllEndpoints}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            disabled={isTestingAll}
+            className={`py-2 rounded-lg font-medium text-sm sm:text-base w-full sm:w-auto px-4 sm:px-6 transition-colors ${
+              isTestingAll 
+                ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
           >
-            🔄 Testar Todos os Endpoints
+            {isTestingAll ? '⏳ Testando...' : '🔄 Testar Todos os Endpoints'}
           </button>
         </div>
 
+        {/* Authentication Status */}
+        <AuthStatusCard />
+
         {/* Company Profile Card */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <CompanyProfileCard />
         </div>
 
         {/* Endpoints Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
           {endpoints.map((endpoint) => (
-            <div key={endpoint.url} className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-blue-500">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <span className="text-2xl mr-2">{endpoint.icon}</span>
-                  {endpoint.name}
+            <div key={endpoint.url} className="card-peepers p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+                  <span className="text-xl sm:text-2xl mr-2">{endpoint.icon}</span>
+                  <span className="hidden sm:inline">{endpoint.name}</span>
+                  <span className="sm:hidden">{endpoint.name.split(' ')[0]}</span>
                 </h3>
-                <span className="text-xl">{getStatusIcon(endpoint.status)}</span>
+                <span className="text-lg sm:text-xl">{getStatusIcon(endpoint.status)}</span>
               </div>
               
-              <p className="text-sm text-gray-600 mb-4">{endpoint.description}</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">{endpoint.description}</p>
               
-              <div className={`p-3 rounded-lg border mb-4 ${getStatusColor(endpoint.status)}`}>
-                <div className="font-mono text-xs mb-2">
+              <div className={`p-2 sm:p-3 rounded-lg border mb-3 sm:mb-4 ${getStatusColor(endpoint.status)}`}>
+                <div className="font-mono text-xs mb-1 sm:mb-2 break-all">
                   {endpoint.url}
                 </div>
                 {endpoint.status === 'loading' && (
-                  <div className="text-sm">Testando endpoint...</div>
+                  <div className="text-xs sm:text-sm">Testando endpoint...</div>
                 )}
                 {endpoint.status === 'success' && endpoint.data && (
-                  <div className="text-sm">
+                  <div className="text-xs sm:text-sm">
                     <strong>✅ Funcionando:</strong>
                     <div className="mt-1">{formatData(endpoint.data, endpoint.name)}</div>
                   </div>
                 )}
                 {endpoint.status === 'error' && (
-                  <div className="text-sm">
+                  <div className="text-xs sm:text-sm">
                     <strong>❌ Erro:</strong>
-                    <div className="mt-1">{endpoint.error}</div>
+                    <div className="mt-1 break-words">{endpoint.error}</div>
                   </div>
                 )}
               </div>
@@ -302,7 +374,7 @@ function AdminDashboard() {
               <div className="flex gap-2">
                 <button
                   onClick={() => testEndpoint(endpoint)}
-                  className="flex-1 bg-gray-600 text-white py-2 px-3 rounded text-sm hover:bg-gray-700 transition-colors"
+                  className="flex-1 bg-gray-600 text-white py-1.5 sm:py-2 px-2 sm:px-3 rounded text-xs sm:text-sm hover:bg-gray-700 transition-colors"
                 >
                   🧪 Testar
                 </button>
@@ -310,7 +382,7 @@ function AdminDashboard() {
                   href={`https://peepers.vercel.app${endpoint.url}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 bg-blue-600 text-white py-2 px-3 rounded text-sm hover:bg-blue-700 transition-colors text-center"
+                  className="flex-1 bg-blue-600 text-white py-1.5 sm:py-2 px-2 sm:px-3 rounded text-xs sm:text-sm hover:bg-blue-700 transition-colors text-center"
                 >
                   🔗 Abrir
                 </a>
@@ -320,30 +392,30 @@ function AdminDashboard() {
         </div>
 
         {/* Summary Section */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-6 flex items-center">
+        <div className="card-peepers p-4 sm:p-6 mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 flex items-center">
             📊 Resumo do Sistema
           </h2>
           
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <h3 className="font-semibold text-green-900 mb-2 flex items-center">
+          <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4">
+              <h3 className="font-semibold text-green-900 mb-2 flex items-center text-sm sm:text-base">
                 <span className="text-lg mr-2">✅</span>
                 Funcionando
               </h3>
-              <div className="text-green-800 text-sm space-y-1">
+              <div className="text-green-800 text-xs sm:text-sm space-y-1">
                 {endpoints.filter(ep => ep.status === 'success').map(ep => (
                   <div key={ep.url}>• {ep.name}</div>
                 ))}
               </div>
             </div>
 
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <h3 className="font-semibold text-red-900 mb-2 flex items-center">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
+              <h3 className="font-semibold text-red-900 mb-2 flex items-center text-sm sm:text-base">
                 <span className="text-lg mr-2">❌</span>
                 Com Problemas
               </h3>
-              <div className="text-red-800 text-sm space-y-1">
+              <div className="text-red-800 text-xs sm:text-sm space-y-1">
                 {endpoints.filter(ep => ep.status === 'error').map(ep => (
                   <div key={ep.url}>• {ep.name}</div>
                 ))}
@@ -353,12 +425,12 @@ function AdminDashboard() {
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2 flex items-center">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+              <h3 className="font-semibold text-blue-900 mb-2 flex items-center text-sm sm:text-base">
                 <span className="text-lg mr-2">ℹ️</span>
                 Informações
               </h3>
-              <div className="text-blue-800 text-sm space-y-1">
+              <div className="text-blue-800 text-xs sm:text-sm space-y-1">
                 <div>• Ambiente: Produção</div>
                 <div>• URL: peepers.vercel.app</div>
                 <div>• Cache: Redis (Upstash)</div>
@@ -370,9 +442,9 @@ function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-6">⚡ Ações Rápidas</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="card-peepers p-4 sm:p-6 mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">⚡ Ações Rápidas</h2>
+          <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
             <a 
               href={PAGES.PRODUTOS} 
               className="flex items-center justify-center bg-teal-600 text-white py-3 px-4 rounded-lg hover:bg-teal-700 transition-colors font-medium"
@@ -414,7 +486,7 @@ function AdminDashboard() {
         </div>
 
         {/* Backup Manager */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="card-peepers p-4 sm:p-6">
           <BackupManager />
         </div>
       </div>
