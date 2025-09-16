@@ -7,8 +7,7 @@ import {
   exportBackup,
   importBackup,
   type BackupResult,
-  type RollbackResult,
-  type BackupMetadata
+  type RollbackResult
 } from '@/lib/backup';
 import { logger } from '@/lib/logger';
 

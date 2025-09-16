@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Try to get sessions with oauth prefix
     const sessions = await Promise.all([

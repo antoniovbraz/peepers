@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
 import { createMercadoLivreAPI } from '@/lib/ml-api';
-import { CACHE_KEYS, PAGES } from '@/config/routes';
+import { PAGES } from '@/config/routes';
+import { validateInput, SyncOptionsSchema } from '@/lib/validation';
 
 const mlApi = createMercadoLivreAPI(
   { fetch },
@@ -17,6 +18,20 @@ const mlApi = createMercadoLivreAPI(
 export async function GET(request: NextRequest) {
   try {
     console.log('Sync API called');
+
+    // Validate query parameters
+    const url = new URL(request.url);
+    const queryParams = Object.fromEntries(url.searchParams);
+    const validation = validateInput(SyncOptionsSchema, queryParams);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Invalid sync parameters', details: validation.error },
+        { status: 400 }
+      );
+    }
+
+    const { clear_cache, max_products } = validation.data;
     
     // Get user ID and token from cache
     const userId = process.env.ML_USER_ID || '669073070';
@@ -42,27 +57,40 @@ export async function GET(request: NextRequest) {
       tokenData.refresh_token
     );
     
+    // Clear cache if requested
+    if (clear_cache) {
+      console.log('Clearing existing cache...');
+      await cache.invalidateProductsCache();
+    }
+
     // Fetch products from ML API
     console.log('Fetching products from ML API...');
     const mlProducts = await mlApi.syncAllProducts();
     console.log(`Fetched ${mlProducts.length} products from ML API`);
+
+    // Limit products if specified
+    const limitedProducts = max_products ? mlProducts.slice(0, max_products) : mlProducts;
+    if (max_products && mlProducts.length > max_products) {
+      console.log(`Limiting to ${max_products} products as requested`);
+    }
     
-    if (mlProducts.length > 0) {
+    if (limitedProducts.length > 0) {
       // Store products in cache
       console.log('Storing products in cache...');
-      await cache.setAllProducts(mlProducts);
+      await cache.setAllProducts(limitedProducts);
       
       console.log('Products stored successfully');
     }
     
     // Get active products for response
-    const activeProducts = mlProducts.filter(p => p.status === 'active');
-    const pausedProducts = mlProducts.filter(p => p.status === 'paused');
+    const activeProducts = limitedProducts.filter(p => p.status === 'active');
+    const pausedProducts = limitedProducts.filter(p => p.status === 'paused');
     
     return NextResponse.json({
       success: true,
       message: 'Sincronização realizada com sucesso',
       total_fetched: mlProducts.length,
+      total_stored: limitedProducts.length,
       active_products: activeProducts.length,
       paused_products: pausedProducts.length,
       last_sync: new Date().toISOString(),

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PAGES, API_ENDPOINTS } from '@/config/routes';
 
@@ -12,7 +11,6 @@ interface AuthCheckProps {
 function AuthCheck({ children }: AuthCheckProps) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
     checkAuthentication();
