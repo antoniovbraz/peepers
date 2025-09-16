@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { WebVitals } from "@/components/WebVitals";
 
 // FORCE CACHE BUSTING - BUILD: 2025-09-15-20-35
 const FORCE_CACHE_BUST = "2025-09-15-20-35";
@@ -82,6 +83,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ErrorBoundary>
+          <WebVitals />
           {children}
         </ErrorBoundary>
       </body>
