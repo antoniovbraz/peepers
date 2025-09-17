@@ -2,8 +2,6 @@
 
 // Force cache invalidation - Updated: 2025-09-15T19:30:00Z
 import { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
 import PeepersLogo from '@/components/PeepersLogo';
 import ProductFiltersNew from '@/components/ProductFiltersNew';
 import ProductSortNew from '@/components/ProductSortNew';
@@ -13,6 +11,7 @@ import ProductBadgesNew from '@/components/ProductBadgesNew';
 import ProductsLoadingNew from '@/components/ProductsLoadingNew';
 import ProductsErrorNew from '@/components/ProductsErrorNew';
 import EmptyProductsNew from '@/components/EmptyProductsNew';
+import ProductCardNew from '@/components/ProductCardNew';
 import type { ProductSummary } from '@/types/product';
 import { PAGES, API_ENDPOINTS } from '@/config/routes';
 import { 
@@ -413,130 +412,21 @@ export default function ProductsClient() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredProducts.map((product: CategorizedProduct) => (
-            <div key={product.id} className="card-peepers group">
-              <div className="aspect-square bg-peepers-neutral-100 relative overflow-hidden rounded-t-lg">
-                {product.thumbnail ? (
-                  <Image
-                    src={product.thumbnail}
-                    alt={product.title}
-                    fill
-                    className="object-contain group-hover:scale-105 transition-transform duration-300 p-2"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <PeepersLogo variant="icon" size="lg" className="opacity-20" />
-                  </div>
-                )}
-                
-                {/* Badges posicionadas */}
-                <div className="absolute top-2 left-2">
-                  <ProductBadgesNew 
-                    badges={product.badges.filter(badge => badge.type === 'new')} 
-                  />
-                </div>
-                
-                <div className="absolute top-2 right-2">
-                  <ProductBadgesNew 
-                    badges={product.badges.filter(badge => badge.type === 'free-shipping')} 
-                  />
-                </div>
-                
-                <div className="absolute bottom-2 left-2 right-2">
-                  <ProductBadgesNew 
-                    badges={product.badges.filter(badge => 
-                      ['turbo', 'ultra', 'gaming', 'premium'].includes(badge.type)
-                    )} 
-                  />
-                </div>
-              </div>
-              
-              <div className="p-4">
-                <h3 className="font-semibold text-peepers-neutral-900 mb-2 line-clamp-2 min-h-[3rem] group-hover:text-peepers-primary-600 transition-colors">
-                  {product.title}
-                </h3>
-                
-                <p className="text-2xl font-bold text-peepers-primary-600 mb-2">
-                  {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL'
-                  }).format(product.price || 0)}
-                </p>
-                
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm text-peepers-neutral-600">
-                    {product.available_quantity} disponíveis
-                  </span>
-                  {product.installments && (
-                    <span className="text-xs text-peepers-secondary-600 font-medium">
-                      {product.installments.quantity}x sem juros
-                    </span>
-                  )}
-                </div>
-                
-                {/* Características específicas */}
-                <div className="mb-3 space-y-1">
-                  {product.length && (
-                    <p className="text-xs text-peepers-neutral-500">
-                      {product.length === 'short' && '📏 Cabo curto (≤30cm)'}
-                      {product.length === 'medium' && '📏 Cabo médio (1m)'}
-                      {product.length === 'long' && '📏 Cabo longo (≥2m)'}
-                    </p>
-                  )}
-                  {product.powerRating && product.powerRating >= 30 && (
-                    <p className="text-xs text-peepers-neutral-500">
-                      ⚡ {product.powerRating}W de potência
-                    </p>
-                  )}
-                </div>
-                
-                {/* Badges de estoque baixo */}
-                <div className="mb-3">
-                  <ProductBadgesNew 
-                    badges={product.badges.filter(badge => badge.type === 'low-stock')} 
-                  />
-                </div>
-                
-                <Link
-                  href={PAGES.PRODUTO_DETALHE(product.id)}
-                  className="btn-primary w-full text-center group relative overflow-hidden"
-                >
-                  <span className="relative z-10">Comprar no Mercado Livre</span>
-                  <div className="absolute inset-0 bg-peepers-primary-700 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-                </Link>
-                
-                {/* Botão de notificação para produtos fora de estoque */}
-                {product.available_quantity === 0 && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      alert(`🔔 Notificação configurada! Você será avisado quando "${product.title}" estiver disponível novamente.`);
-                      // Aqui você pode implementar a lógica para salvar a notificação no backend
-                    }}
-                    className="btn-secondary w-full text-center mt-2 group relative overflow-hidden"
-                    title="Receber notificação quando o produto estiver disponível"
-                  >
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7v5l-5 5V7h5z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2a10 10 0 100 20 10 10 0 000-20z" />
-                      </svg>
-                      Avisar quando chegar
-                    </span>
-                    <div className="absolute inset-0 bg-peepers-secondary-700 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-                  </button>
-                )}
-                
-                {/* Compatibilidade */}
-                {product.compatibility && product.compatibility.length > 0 && (
-                  <p className="text-xs text-center text-peepers-neutral-500 mt-2">
-                    {product.compatibility.slice(0, 2).join(', ')}
-                    {product.compatibility.length > 2 && ' +'}
-                  </p>
-                )}
-              </div>
-            </div>
+            <ProductCardNew
+              key={product.id}
+              id={product.id}
+              title={product.title}
+              price={product.price || 0}
+              image={product.thumbnail || '/api/placeholder/300/300'}
+              availableQuantity={product.available_quantity}
+              mercadoLivreLink={PAGES.PRODUTO_DETALHE(product.id)}
+              imageFit="contain"
+              showDetails={true}
+              length={product.length}
+              powerRating={product.powerRating}
+              compatibility={product.compatibility}
+              size="default"
+            />
           ))}
         </div>
       )}
