@@ -37,7 +37,7 @@ export function __resetKVClient() {
 const CACHE_TTL = {
   PRODUCTS: 21600, // 6 hours (increased from 2 hours)
   QUESTIONS: 3600, // 1 hour
-  USER_DATA: 1800, // 30 minutes
+  USER_DATA: 7200, // 2 hours (increased from 30 minutes)
   CATEGORIES: 86400, // 24 hours
 } as const;
 

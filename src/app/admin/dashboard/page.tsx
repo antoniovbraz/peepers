@@ -11,6 +11,7 @@ import {
   EyeIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
+import useCleanAuthUrl from '@/hooks/useCleanAuthUrl';
 
 import { DashboardMetricsDTO } from '../../../application/dtos/DashboardMetricsDTO';
 import { GetDashboardMetricsUseCase } from '../../../application/use-cases/GetDashboardMetricsUseCase';
@@ -90,6 +91,9 @@ export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetricsDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Limpa automaticamente query parameters de autenticação da URL
+  useCleanAuthUrl();
 
   useEffect(() => {
     async function loadMetrics() {

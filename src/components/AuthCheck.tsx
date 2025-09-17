@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { PAGES, API_ENDPOINTS } from '@/config/routes';
 
@@ -11,18 +11,58 @@ interface AuthCheckProps {
 function AuthCheck({ children }: AuthCheckProps) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     checkAuthentication();
+    
+    // Verifica autenticação a cada 5 minutos para manter sessão ativa
+    intervalRef.current = setInterval(() => {
+      checkAuthentication(false); // false = não mostrar loading
+    }, 5 * 60 * 1000); // 5 minutos
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
   }, []);
 
-  const checkAuthentication = async () => {
+  const checkAuthentication = async (showLoading = true) => {
     try {
-      const response = await fetch('/api/auth/me');
+      if (showLoading) {
+        setIsLoading(true);
+      }
+      
+      const response = await fetch('/api/auth/me', {
+        cache: 'no-store', // Sempre buscar dados frescos
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+      
       if (response.ok) {
         const data = await response.json();
         if (data.authenticated) {
           setIsAuthenticated(true);
+          
+          // Verificar se token precisa ser renovado (menos de 1 hora)
+          if (data.token?.needs_refresh) {
+            try {
+              const refreshResponse = await fetch('/api/auth/refresh', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                }
+              });
+              
+              if (refreshResponse.ok) {
+                console.log('Token refreshed automatically');
+              }
+            } catch (refreshError) {
+              console.warn('Token refresh failed:', refreshError);
+            }
+          }
         } else {
           setIsAuthenticated(false);
         }
@@ -33,7 +73,9 @@ function AuthCheck({ children }: AuthCheckProps) {
       console.error('Erro ao verificar autenticação:', error);
       setIsAuthenticated(false);
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
   };
 
