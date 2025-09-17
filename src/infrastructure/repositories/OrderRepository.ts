@@ -69,7 +69,23 @@ export class OrderRepository implements IOrderRepository {
           315.98,
           299.99,
           undefined,
-          [],
+          [
+            {
+              item: {
+                id: 'MLB123456789',
+                title: 'Produto Exemplo',
+                category_id: 'MLB5672',
+                variation_id: undefined,
+                seller_custom_field: undefined,
+                variation_attributes: []
+              },
+              quantity: 1,
+              unit_price: 299.99,
+              currency_id: 'BRL',
+              full_unit_price: 299.99,
+              seller_sku: undefined
+            }
+          ],
           {
             id: 123456,
             nickname: 'buyer_user',
