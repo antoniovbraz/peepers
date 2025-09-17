@@ -21,3 +21,19 @@ export async function register() {
     });
   }
 }
+
+export async function onRequestError(
+  err: unknown,
+  request: {
+    path: string;
+    method: string;
+    headers: { [key: string]: string | string[] | undefined };
+  },
+  context: {
+    routerKind: string;
+    routePath: string;
+    routeType: string;
+  }
+) {
+  Sentry.captureRequestError(err, request, context);
+}
