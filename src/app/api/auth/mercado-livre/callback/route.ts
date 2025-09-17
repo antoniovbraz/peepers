@@ -3,6 +3,33 @@ import { getKVClient } from '@/lib/cache';
 import { cache } from '@/lib/cache';
 import { ML_CONFIG, CACHE_KEYS, API_ENDPOINTS, PAGES } from '@/config/routes';
 
+/**
+ * OAuth 2.0 Callback Handler com PKCE e Proteção CSRF
+ * 
+ * Processa retorno do Mercado Livre após autorização do usuário:
+ * 1. Valida parâmetros obrigatórios (code, state)
+ * 2. Implementa proteção CSRF crítica via state validation
+ * 3. Verifica PKCE code verifier armazenado no cache
+ * 4. Realiza troca segura de código por token
+ * 5. Busca dados do usuário autorizado
+ * 6. Armazena sessão segura com cookies HttpOnly
+ * 
+ * Validações de Segurança Críticas:
+ * - State parameter DEVE existir no cache (anti-CSRF)
+ * - State format validation (Base64URL, min 32 chars)
+ * - PKCE verifier matching (anti-interception)
+ * - Client credentials validation
+ * - Session token único por sessão
+ * 
+ * Conformidade LGPD:
+ * - Dados mínimos necessários armazenados
+ * - TTL definido para todos os caches
+ * - Logs estruturados sem dados sensíveis
+ * - Cookie flags: httpOnly, secure, sameSite=strict
+ * 
+ * @param request - NextRequest contendo query parameters do ML
+ * @returns {Promise<NextResponse>} Redirect para admin ou erro
+ */
 export async function GET(request: NextRequest) {
   try {
     console.log('🔄 Callback OAuth ML iniciado');
