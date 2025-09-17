@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import { tokens } from "./src/styles/tokens";
 
 export default {
   content: [
@@ -7,32 +8,89 @@ export default {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    // Override default theme with our design tokens
+    colors: tokens.colors,
+    spacing: tokens.spacing,
+    fontFamily: tokens.typography.fontFamily,
+    fontSize: tokens.typography.fontSize,
+    fontWeight: tokens.typography.fontWeight,
+    letterSpacing: tokens.typography.letterSpacing,
+    lineHeight: tokens.typography.lineHeight,
+    borderRadius: tokens.borders.borderRadius,
+    borderWidth: tokens.borders.borderWidth,
+    boxShadow: tokens.shadows.boxShadow,
+    transitionDuration: tokens.animations.transitionDuration,
+    transitionTimingFunction: tokens.animations.transitionTimingFunction,
+    keyframes: tokens.animations.keyframes,
+    zIndex: tokens.zIndex,
+    screens: tokens.breakpoints,
+    
     extend: {
+      // Legacy colors for backward compatibility
       colors: {
-        // Cores do Logo Peepers
+        // Keep existing primary/secondary structure for smooth migration
         primary: {
-          DEFAULT: '#0D6832',  // Verde principal do sapo
-          light: '#15884A',    // Verde claro
-          dark: '#074D20',     // Verde escuro
-          50: '#f0f9f4',       // Verde muito claro para backgrounds
-          100: '#dcfce7',
-          500: '#0D6832',      // Default
-          600: '#074D20',      // Dark
+          DEFAULT: tokens.colors.brand.primary[600],  // #0D6832
+          light: tokens.colors.brand.primary[500],    // #15884A
+          dark: tokens.colors.brand.primary[700],     // #0A5429
+          50: tokens.colors.brand.primary[50],
+          100: tokens.colors.brand.primary[100],
+          200: tokens.colors.brand.primary[200],
+          300: tokens.colors.brand.primary[300],
+          400: tokens.colors.brand.primary[400],
+          500: tokens.colors.brand.primary[500],
+          600: tokens.colors.brand.primary[600],
+          700: tokens.colors.brand.primary[700],
+          800: tokens.colors.brand.primary[800],
+          900: tokens.colors.brand.primary[900],
+          950: tokens.colors.brand.primary[950],
         },
         secondary: {
-          DEFAULT: '#E0C81A',  // Dourado da coroa
-          light: '#F7DB32',    // Dourado claro
-          dark: '#C4AF10',     // Dourado escuro
-          50: '#fefce8',       // Dourado muito claro para backgrounds
-          100: '#fef3c7',
-          500: '#E0C81A',      // Default
-          600: '#C4AF10',      // Dark
+          DEFAULT: tokens.colors.brand.secondary[400], // #E0C81A
+          light: tokens.colors.brand.secondary[300],   // #F7DB32
+          dark: tokens.colors.brand.secondary[600],    // #C4AF10
+          50: tokens.colors.brand.secondary[50],
+          100: tokens.colors.brand.secondary[100],
+          200: tokens.colors.brand.secondary[200],
+          300: tokens.colors.brand.secondary[300],
+          400: tokens.colors.brand.secondary[400],
+          500: tokens.colors.brand.secondary[500],
+          600: tokens.colors.brand.secondary[600],
+          700: tokens.colors.brand.secondary[700],
+          800: tokens.colors.brand.secondary[800],
+          900: tokens.colors.brand.secondary[900],
+          950: tokens.colors.brand.secondary[950],
         },
         accent: {
-          DEFAULT: '#DC2626',  // Vermelho para promoções
-          light: '#EF4444',
-          dark: '#B91C1C',
+          DEFAULT: tokens.colors.brand.accent[600],    // #DC2626
+          light: tokens.colors.brand.accent[500],      // #EF4444
+          dark: tokens.colors.brand.accent[700],       // #B91C1C
+          50: tokens.colors.brand.accent[50],
+          100: tokens.colors.brand.accent[100],
+          200: tokens.colors.brand.accent[200],
+          300: tokens.colors.brand.accent[300],
+          400: tokens.colors.brand.accent[400],
+          500: tokens.colors.brand.accent[500],
+          600: tokens.colors.brand.accent[600],
+          700: tokens.colors.brand.accent[700],
+          800: tokens.colors.brand.accent[800],
+          900: tokens.colors.brand.accent[900],
+          950: tokens.colors.brand.accent[950],
         },
+        
+        // Design system semantic colors
+        success: tokens.colors.semantic.success,
+        warning: tokens.colors.semantic.warning,
+        error: tokens.colors.semantic.error,
+        info: tokens.colors.semantic.info,
+        
+        // Neutral system
+        gray: tokens.colors.neutral,
+        
+        // Brand system aliases
+        brand: tokens.colors.brand,
+        
+        // Legacy support (will be deprecated)
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -58,65 +116,39 @@ export default {
           "5": "hsl(var(--chart-5))",
         },
       },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
-        heading: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      
+      // Component-specific utilities using our design tokens
+      height: {
+        'button-sm': tokens.components.button.height.sm,
+        'button-md': tokens.components.button.height.md,
+        'button-lg': tokens.components.button.height.lg,
+        'input-sm': tokens.components.input.height.sm,
+        'input-md': tokens.components.input.height.md,
+        'input-lg': tokens.components.input.height.lg,
       },
-      fontSize: {
-        'xs': ['0.75rem', { lineHeight: '1rem' }],
-        'sm': ['0.875rem', { lineHeight: '1.25rem' }],
-        'base': ['1rem', { lineHeight: '1.5rem' }],
-        'lg': ['1.125rem', { lineHeight: '1.75rem' }],
-        'xl': ['1.25rem', { lineHeight: '1.75rem' }],
-        '2xl': ['1.5rem', { lineHeight: '2rem' }],
-        '3xl': ['1.875rem', { lineHeight: '2.25rem' }],
-        '4xl': ['2.25rem', { lineHeight: '2.5rem' }],
-        '5xl': ['3rem', { lineHeight: '1' }],
-      },
-      spacing: {
-        '18': '4.5rem',
-        '88': '22rem',
-        '128': '32rem',
-      },
-      borderRadius: {
-        'lg': '0.5rem',
-        'xl': '0.75rem',
-        '2xl': '1rem',
-        '3xl': '1.5rem',
-      },
-      boxShadow: {
-        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
-        'medium': '0 4px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-        'strong': '0 10px 40px -15px rgba(0, 0, 0, 0.2)',
-      },
+
+      // Custom animations using our tokens
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',
         'slide-up': 'slideUp 0.3s ease-out',
         'scale-in': 'scaleIn 0.2s ease-out',
+        'spin': 'spin 1s linear infinite',
+        'ping': 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
+        'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'bounce': 'bounce 1s infinite',
       },
-      keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        slideUp: {
-          '0%': { transform: 'translateY(10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-        scaleIn: {
-          '0%': { transform: 'scale(0.95)', opacity: '0' },
-          '100%': { transform: 'scale(1)', opacity: '1' },
-        },
-      },
+
+      // Brand gradient backgrounds
       backgroundImage: {
-        'gradient-primary': 'linear-gradient(135deg, #15884A 0%, #0D6832 100%)',
-        'gradient-secondary': 'linear-gradient(135deg, #F7DB32 0%, #E0C81A 100%)',
-        'gradient-accent': 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+        'gradient-primary': `linear-gradient(135deg, ${tokens.colors.brand.primary[500]} 0%, ${tokens.colors.brand.primary[600]} 100%)`,
+        'gradient-secondary': `linear-gradient(135deg, ${tokens.colors.brand.secondary[300]} 0%, ${tokens.colors.brand.secondary[400]} 100%)`,
+        'gradient-accent': `linear-gradient(135deg, ${tokens.colors.brand.accent[500]} 0%, ${tokens.colors.brand.accent[600]} 100%)`,
+        'gradient-success': `linear-gradient(135deg, ${tokens.colors.semantic.success[400]} 0%, ${tokens.colors.semantic.success[600]} 100%)`,
+        'gradient-hero': `linear-gradient(135deg, ${tokens.colors.brand.primary[50]} 0%, ${tokens.colors.brand.secondary[50]} 100%)`,
       },
     },
   },
   plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/typography'),
+    // Convert to proper ES6 imports instead of require
   ],
 } satisfies Config;
