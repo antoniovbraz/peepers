@@ -19,6 +19,10 @@ import { GetDashboardMetricsUseCase } from '../../../application/use-cases/GetDa
 import { ProductRepository } from '../../../infrastructure/repositories/ProductRepository';
 import { OrderRepository } from '../../../infrastructure/repositories/OrderRepository';
 import { SellerRepository } from '../../../infrastructure/repositories/SellerRepository';
+import SalesChart from '@/components/admin/dashboard/SalesChart';
+import AnalyticsOverview from '@/components/admin/dashboard/AnalyticsOverview';
+import ActivityFeed from '@/components/admin/dashboard/ActivityFeed';
+import QuickActions from '@/components/admin/dashboard/QuickActions';
 
 // Initialize repositories and use case
 const productRepository = new ProductRepository();
@@ -283,6 +287,14 @@ export default function AdminDashboard() {
         />
       </div>
 
+      {/* Charts and Analytics */}
+      <div className="space-y-6">
+        <SalesChart height={350} />
+        <QuickActions />
+        <AnalyticsOverview />
+        <ActivityFeed maxItems={8} />
+      </div>
+
       {/* Performance Summary */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Resumo de Performance</h2>
@@ -315,14 +327,6 @@ export default function AdminDashboard() {
             </div>
             <div className="text-sm text-gray-500">Problemas críticos</div>
           </div>
-        </div>
-      </div>
-
-      {/* Recent Activity Placeholder */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Atividade Recente</h2>
-        <div className="text-sm text-gray-500">
-          Implementação futura: Lista de atividades recentes
         </div>
       </div>
     </div>
