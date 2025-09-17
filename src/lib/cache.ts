@@ -12,6 +12,20 @@ import { CACHE_KEYS as GLOBAL_CACHE_KEYS } from '@/config/routes';
 
 let kvClient: ReturnType<typeof createClient> | null = null;
 
+/**
+ * Inicializa e retorna cliente Redis/KV (Upstash)
+ * 
+ * Implementa padrão Singleton para reutilização da conexão.
+ * Valida variáveis de ambiente críticas para segurança.
+ * 
+ * Segurança:
+ * - Validação obrigatória de URL e TOKEN
+ * - Conexão criptografada via TLS
+ * - Credenciais via environment variables
+ * 
+ * @throws {Error} Se variáveis de ambiente não estiverem configuradas
+ * @returns {KVClient} Cliente Redis configurado e autenticado
+ */
 export function getKVClient() {
   if (kvClient) return kvClient;
 
@@ -29,6 +43,12 @@ export function getKVClient() {
   return kvClient;
 }
 
+/**
+ * Reset do cliente KV para testes
+ * 
+ * ATENÇÃO: Apenas para uso em testes unitários.
+ * Não deve ser usado em produção.
+ */
 export function __resetKVClient() {
   kvClient = null;
 }

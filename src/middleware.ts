@@ -5,6 +5,30 @@ import { cache } from '@/lib/cache';
 import { logger } from '@/lib/logger';
 import { MIDDLEWARE_CONFIG } from '@/config/routes';
 
+/**
+ * Middleware de Autenticação e Autorização
+ * 
+ * Implementa controle de acesso multi-camada para rotas protegidas:
+ * 1. Verificação de rotas públicas (bypass de autenticação)
+ * 2. Validação de cookies de sessão (session_token + user_id)
+ * 3. Autorização por lista de usuários permitidos (ALLOWED_USER_IDS)
+ * 4. Validação de integridade da sessão no cache Redis
+ * 5. Verificação de expiração de tokens OAuth
+ * 
+ * Segurança implementada:
+ * - Proteção CSRF via session_token matching
+ * - Rate limiting implícito via cache TTL
+ * - Logs estruturados para auditoria
+ * - Redirecionamento seguro para login/acesso negado
+ * 
+ * Conformidade LGPD:
+ * - Cookies com flags httpOnly e sameSite=strict
+ * - Logs sem exposição de dados sensíveis
+ * - TTL respeitando tempo mínimo necessário
+ * 
+ * @param request - NextRequest contendo cookies e URL
+ * @returns NextResponse com redirecionamento ou continuação
+ */
 export async function middleware(request: NextRequest) {
   // Se a rota é pública, permite o acesso
   if (MIDDLEWARE_CONFIG.PUBLIC_PATHS.some(path => request.nextUrl.pathname.startsWith(path))) {

@@ -47,6 +47,7 @@ export const PAGES = {
   ADMIN: '/admin',
   LOGIN: '/login',
   ACESSO_NEGADO: '/acesso-negado',
+  PRIVACIDADE: '/privacidade',
   PRODUTO_DETALHE: (id: string) => `/produtos/${id}`
 } as const;
 
