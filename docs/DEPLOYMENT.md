@@ -80,7 +80,7 @@ curl -I https://your-domain.com/api/health
 
 Configure automatic deployments:
 
-1. **Production Branch**: Deploy `main` branch automatically
+1. **Production Branch**: Deploy `master` branch automatically
 2. **Preview Deployments**: Every pull request gets preview URL
 3. **Environment Separation**: Use different variables for preview vs production
 

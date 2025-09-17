@@ -12,7 +12,7 @@ Este documento define as configurações necessárias do repositório GitHub par
 
 ## 🛡️ Branch Protection Rules
 
-### **Main Branch (Production)**
+### **Master Branch (Production)**
 
 ```json
 {
@@ -117,7 +117,7 @@ name: PR Quality Checks
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [master, develop]
   pull_request_target:
     types: [opened, synchronize, reopened]
 
@@ -238,7 +238,7 @@ name: Deploy to Production
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   release:
     types: [published]
 
@@ -765,7 +765,7 @@ Qualquer outra informação relevante sobre a feature.
   "allow_auto_merge": true,
   "delete_branch_on_merge": true,
   "allow_update_branch": true,
-  "default_branch": "main"
+  "default_branch": "master"
 }
 ```
 
@@ -846,7 +846,7 @@ ALLOWED_USER_IDS=              # Authorized user IDs
 ### **Environment Variables per Branch**
 
 ```yaml
-# Production (main branch)
+# Production (master branch)
 production:
   NEXT_PUBLIC_APP_URL: "https://peepers.vercel.app"
   NODE_ENV: "production"

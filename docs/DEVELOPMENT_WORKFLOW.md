@@ -310,7 +310,7 @@ NEXT_PUBLIC_APP_URL=https://peepers-staging.vercel.app
 ML_CLIENT_ID=staging_client_id
 NODE_ENV=staging
 
-# .env.production (main branch)
+# .env.production (master branch)
 NEXT_PUBLIC_APP_URL=https://peepers.vercel.app
 ML_CLIENT_ID=prod_client_id
 NODE_ENV=production
