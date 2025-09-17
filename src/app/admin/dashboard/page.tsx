@@ -12,6 +12,7 @@ import {
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import useCleanAuthUrl from '@/hooks/useCleanAuthUrl';
+import KPICard from '@/components/admin/dashboard/KPICard';
 
 import { DashboardMetricsDTO } from '../../../application/dtos/DashboardMetricsDTO';
 import { GetDashboardMetricsUseCase } from '../../../application/use-cases/GetDashboardMetricsUseCase';
@@ -229,40 +230,56 @@ export default function AdminDashboard() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
+        <KPICard
           title="Produtos Ativos"
           value={metrics.products.active}
-          change={calculateProductChange(metrics.products)}
-          icon={ShoppingBagIcon}
           subtitle={`${metrics.products.total} total`}
-          color="green"
+          trend={{
+            value: calculateProductChange(metrics.products),
+            isPositive: calculateProductChange(metrics.products) > 0,
+            period: 'vs mês anterior',
+          }}
+          icon={<ShoppingBagIcon className="h-full w-full" />}
+          status={metrics.products.active > 0 ? 'success' : 'warning'}
         />
         
-        <MetricCard
+        <KPICard
           title="Receita do Mês"
           value={`R$ ${metrics.orders.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-          change={15.2} // Mock change for now
-          icon={CurrencyDollarIcon}
           subtitle="Valor total"
-          color="blue"
+          trend={{
+            value: 15.2, // Mock change for now
+            isPositive: true,
+            period: 'vs mês anterior',
+          }}
+          icon={<CurrencyDollarIcon className="h-full w-full" />}
+          status="success"
         />
         
-        <MetricCard
+        <KPICard
           title="Pedidos Ativos"
           value={metrics.seller.performance.orders.pending + metrics.seller.performance.orders.shipped}
-          change={5.2}
-          icon={ChartBarIcon}
           subtitle={`${metrics.orders.total} total`}
-          color="purple"
+          trend={{
+            value: 5.2,
+            isPositive: true,
+            period: 'vs período anterior',
+          }}
+          icon={<ChartBarIcon className="h-full w-full" />}
+          status="success"
         />
         
-        <MetricCard
+        <KPICard
           title="Reputação"
-          value={`${(metrics.seller.reputation.score * 20).toFixed(0)}%`} // Convert 5-star to percentage
-          change={metrics.seller.performance.reputation.trend}
-          icon={UserGroupIcon}
+          value={`${(metrics.seller.reputation.score * 20).toFixed(0)}%`}
           subtitle={metrics.seller.reputation.level}
-          color="yellow"
+          trend={{
+            value: metrics.seller.performance.reputation.trend,
+            isPositive: metrics.seller.performance.reputation.trend > 0,
+            period: 'vs mês anterior',
+          }}
+          icon={<UserGroupIcon className="h-full w-full" />}
+          status={metrics.seller.reputation.score >= 4.5 ? 'success' : 'warning'}
         />
       </div>
 

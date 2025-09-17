@@ -24,10 +24,10 @@ Peepers is a Next.js 15 application integrating with Mercado Livre's e-commerce 
 - **Advanced Analytics**: Performance metrics, sales reports, reputation tracking, market trends
 
 ### Project Evolution Phases
-- **Phase 1 (CURRENT)**: Endpoint consolidation, Service Layer implementation, shared utilities
-- **Phase 2**: Performance optimization, intelligent caching, code splitting, image optimization
-- **Phase 3**: Design System implementation, comprehensive testing, component refactoring
-- **Phase 4**: Microservices consideration, advanced monitoring, scalability features
+- **Phase 1 (COMPLETED)**: Endpoint consolidation, Service Layer implementation, shared utilities
+- **Phase 2 (COMPLETED)**: Performance optimization, intelligent caching, code splitting, image optimization
+- **Phase 3 (COMPLETED)**: Design System implementation, Storybook integration, comprehensive testing
+- **Phase 4 (IN PROGRESS)**: Complete admin panel, microservices consideration, advanced monitoring
 
 ### Key Architecture Patterns
 
@@ -92,10 +92,17 @@ npm run lint                            # ESLint
 # Fast deployment for ML testing
 vercel --prod                           # Quick deploy for HTTPS testing with ML API
 
+# Storybook (Design System Development)
+npm run storybook                       # Start Storybook dev server on port 6006
+npm run build-storybook                 # Build static Storybook for deployment
+
+# Performance analysis
+npm run build:analyze                   # Enable bundle analysis with ANALYZE=true
+npm run analyze                         # Open webpack bundle analyzer (after build)
+
 # v2.0.0 Admin Panel Development
 npm run dev:admin                       # Future: Admin-specific development mode
 npm run test:admin                      # Future: Admin panel testing
-npm run build:analyze                   # Bundle analysis for performance optimization
 ```
 
 ## API Structure
@@ -143,7 +150,15 @@ npm run build:analyze                   # Bundle analysis for performance optimi
 - Production testing scripts in root: `test-prod.js`, `test-*.js`
 - Mock data available for offline development with `npm run dev:mock`
 - Comprehensive endpoint testing with specific error scenarios
+- **Storybook Integration**: Component testing and documentation with accessibility checks
 - **Future v2.0.0**: Unit tests (70%), Integration tests (20%), E2E tests (10%) with Cypress/Playwright
+
+### Component Development Patterns
+- **Storybook Stories**: Create `.stories.ts` files for all reusable components
+- **Accessibility**: Use `@storybook/addon-a11y` for automated accessibility testing
+- **Documentation**: Auto-generated docs with `@storybook/addon-docs`
+- **Design Tokens**: Standardized Tailwind CSS v4 classes with Peepers brand colors
+- **Component Library**: Located in `src/components/` with clear separation between UI and business logic
 
 ## Critical Debugging Points
 
@@ -161,6 +176,8 @@ npm run build:analyze                   # Bundle analysis for performance optimi
 - **Performance Optimization**: Use React.memo, useMemo, useCallback for optimal rendering
 - **Error Boundaries**: Implement per-section error boundaries for better UX
 - **Cache Strategy**: L1 (memory, 5min), L2 (Redis, 30min), L3 (CDN, 1h) with intelligent invalidation
+- **Storybook Development**: All UI components must have corresponding `.stories.ts` files for documentation
+- **TypeScript Patterns**: Strict mode enabled, comprehensive type coverage, Zod for runtime validation
 
 ### Environment Variables Required
 - `ML_CLIENT_ID`, `ML_CLIENT_SECRET` (Mercado Livre app credentials)

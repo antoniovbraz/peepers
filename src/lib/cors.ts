@@ -15,7 +15,6 @@ import { logger } from '@/lib/logger';
 const ALLOWED_ORIGINS = {
   production: [
     'https://peepers.vercel.app',
-    'https://peepers-eight.vercel.app',
     'https://auth.mercadolivre.com.br',
     'https://api.mercadolibre.com'
   ],
