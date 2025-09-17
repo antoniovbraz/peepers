@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
         title: product.title,
         price: product.price,
         currency_id: product.currency_id,
-        thumbnail: product.thumbnail,
+        thumbnail: product.secure_thumbnail || product.thumbnail, // Sempre usar HTTPS quando disponível
         condition: product.condition,
         permalink: product.permalink,
         shipping: {

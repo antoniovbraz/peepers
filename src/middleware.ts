@@ -18,27 +18,39 @@ export async function middleware(request: NextRequest) {
 
     if (!sessionToken || !userId) {
       logger.warn('No session cookies found');
-  return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
-    }    // Verificar se o usuário está na lista de autorizados
+      return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
+    }
+
+    // Verificar se o usuário está na lista de autorizados
     const allowedUserIds = process.env.ALLOWED_USER_IDS?.split(',') || [];
     if (allowedUserIds.length > 0 && !allowedUserIds.includes(userId)) {
       logger.warn(`Unauthorized user attempt: ${userId}`);
       // Usuário autenticado mas não autorizado - redirecionar para página de vendas
-  return NextResponse.redirect(new URL(PAGES.ACESSO_NEGADO, request.url));
-    }    // Verificar se o token existe no cache
+      return NextResponse.redirect(new URL(PAGES.ACESSO_NEGADO, request.url));
+    }
+
+    // Verificar se o token existe no cache
     const tokenData = await cache.getUser(userId);
 
     if (!tokenData || !tokenData.token) {
       logger.warn({ userId }, 'No token found in cache for user');
-  return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
+      return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
+    }
+
+    // CRÍTICO: Verificar se o session_token do cookie corresponde ao armazenado no cache
+    if (!tokenData.session_token || tokenData.session_token !== sessionToken) {
+      logger.warn({ userId }, 'Invalid session token for user');
+      return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
     }
 
     // Verificar se o token está expirado
     const expiresAt = tokenData.expires_at ? new Date(tokenData.expires_at) : null;
     if (expiresAt && expiresAt < new Date()) {
       logger.warn({ userId }, 'Token expired for user');
-  return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
-    }    // Se chegou aqui, está tudo ok
+      return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
+    }
+
+    // Se chegou aqui, está tudo ok
     return NextResponse.next();
 
   } catch (error) {
