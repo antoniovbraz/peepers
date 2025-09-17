@@ -6,6 +6,7 @@ import { CategorizedProduct } from '@/utils/productCategories';
 import ProductBadges from './ProductBadges';
 import PeepersLogo from './PeepersLogo';
 import { PAGES } from '@/config/routes';
+import { getBestImageUrl } from '@/lib/utils';
 
 interface FeaturedProductsProps {
   products: CategorizedProduct[];
@@ -34,9 +35,9 @@ export default function FeaturedProducts({
               className="card-peepers group"
             >
               <div className="aspect-square bg-peepers-neutral-100 relative overflow-hidden">
-                {product.thumbnail ? (
+                {product.thumbnail || (product.pictures && product.pictures.length > 0) ? (
                   <Image
-                    src={product.thumbnail}
+                    src={getBestImageUrl(product)}
                     alt={product.title}
                     fill
                     className="object-contain group-hover:scale-105 transition-transform duration-300 p-2"

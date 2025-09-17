@@ -417,7 +417,7 @@ export default function ProductsClient() {
               id={product.id}
               title={product.title}
               price={product.price || 0}
-              image={product.thumbnail || '/api/placeholder/300/300'}
+              image={product.thumbnail || '/api/placeholder/300/300'} // Fallback for compatibility
               availableQuantity={product.available_quantity}
               mercadoLivreLink={PAGES.PRODUTO_DETALHE(product.id)}
               imageFit="contain"
@@ -428,7 +428,7 @@ export default function ProductsClient() {
               size="default"
               product={{
                 thumbnail: product.thumbnail,
-                pictures: product.pictures
+                pictures: product.pictures // This will be used by getBestImageUrl for higher quality
               }}
             />
           ))}
