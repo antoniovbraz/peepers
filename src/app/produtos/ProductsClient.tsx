@@ -86,9 +86,9 @@ export default function ProductsClient() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       
-      // ✅ NEW: Use unified v1 endpoint with public format
+      // ✅ NEW: Use unified v1 endpoint with summary format for high-quality images
       const url = new URL(API_ENDPOINTS.PRODUCTS_V1, window.location.origin);
-      url.searchParams.set('format', 'minimal'); // Public-friendly format
+      url.searchParams.set('format', 'summary'); // Summary format includes pictures array
       url.searchParams.set('limit', '100'); // Get more products
       
       const response = await fetch(url.toString(), {
@@ -426,6 +426,10 @@ export default function ProductsClient() {
               powerRating={product.powerRating}
               compatibility={product.compatibility}
               size="default"
+              product={{
+                thumbnail: product.thumbnail,
+                pictures: product.pictures
+              }}
             />
           ))}
         </div>

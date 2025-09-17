@@ -249,3 +249,19 @@ export function ensureHttps(url: string): string {
   
   return url;
 }
+
+/**
+ * Gets the best available image URL from product data
+ * @param product - Product with thumbnail and pictures array
+ * @returns The highest quality image URL available
+ */
+export function getBestImageUrl(product: { thumbnail?: string; pictures?: Array<{ secure_url: string; url: string }> }): string {
+  // Priority: 1st picture secure_url > 1st picture url > thumbnail
+  if (product.pictures && product.pictures.length > 0) {
+    const firstPicture = product.pictures[0];
+    return ensureHttps(firstPicture.secure_url || firstPicture.url);
+  }
+  
+  // Fallback to thumbnail
+  return ensureHttps(product.thumbnail || '/images/placeholder-product.jpg');
+}

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/primitives/Button';
 import { Badge } from '@/components/ui/primitives/Badge';
 import { Container, Section } from '@/components/ui/layout/Container';
 import { VStack, HStack } from '@/components/ui/layout/Stack';
+import { getBestImageUrl } from '@/lib/utils';
 
 // ==================== TYPES ====================
 
@@ -62,9 +63,9 @@ function ProductCard({ product }: ProductCardProps) {
           )}
           
           {/* Image */}
-          {product.thumbnail ? (
+          {product.thumbnail || (product.pictures && product.pictures.length > 0) ? (
             <Image
-              src={product.thumbnail}
+              src={getBestImageUrl(product)}
               alt={product.title}
               fill
               className="object-contain group-hover:scale-105 transition-transform duration-300 p-4"
