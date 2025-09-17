@@ -5,7 +5,6 @@ import FeaturedProductsNew from '@/components/FeaturedProductsNew';
 import PreloadResources from '@/components/PreloadResources';
 import ProductsLoading from '@/components/ProductsLoading';
 import ProductsError from '@/components/ProductsError';
-import ServiceWorkerProvider from '@/components/ServiceWorkerProvider';
 
 // Lazy load components for better performance
 const HeroSection = lazy(() => import('@/components/HeroSectionNew'));
@@ -13,9 +12,6 @@ const HeroSection = lazy(() => import('@/components/HeroSectionNew'));
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Service Worker Provider */}
-      <ServiceWorkerProvider />
-
       {/* Preload critical resources */}
       <PreloadResources
         resources={[

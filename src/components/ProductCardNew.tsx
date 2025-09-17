@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/primitives/Badge';
 import { Button } from '@/components/ui/primitives/Button';
 import { VStack, HStack } from '@/components/ui/layout/Stack';
 import { Container } from '@/components/ui/layout/Container';
+import { ensureHttps } from '@/lib/utils';
 
 // ==================== TYPES ====================
 
@@ -92,7 +93,7 @@ export default function ProductCard({
   // Safe values
   const safeTitle = title || 'Produto indisponível';
   const safePrice = typeof price === 'number' && price >= 0 ? price : 0;
-  const safeImage = image || '/api/placeholder/300/300';
+  const safeImage = ensureHttps(image || '/api/placeholder/300/300');
   const safeId = id || 'unknown';
   
   const imageFitClass = imageFit === 'cover' ? 'object-cover' : 'object-contain';

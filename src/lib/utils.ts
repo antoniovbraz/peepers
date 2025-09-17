@@ -99,6 +99,9 @@ export function isValidUrl(url: string): boolean {
 export function getImageUrl(url: string, size: 'thumbnail' | 'small' | 'medium' | 'large' = 'medium'): string {
   if (!url) return '/images/placeholder-product.jpg';
   
+  // Ensure HTTPS for security
+  const secureUrl = ensureHttps(url);
+  
   // ML image URLs can be resized by changing the size parameter
   const sizeMap = {
     thumbnail: 'I',
@@ -108,11 +111,11 @@ export function getImageUrl(url: string, size: 'thumbnail' | 'small' | 'medium' 
   };
   
   // Replace the size in ML URLs
-  if (url.includes('mlstatic.com')) {
-    return url.replace(/\/[IDOW]\//, `/${sizeMap[size]}/`);
+  if (secureUrl.includes('mlstatic.com')) {
+    return secureUrl.replace(/\/[IDOW]\//, `/${sizeMap[size]}/`);
   }
   
-  return url;
+  return secureUrl;
 }
 
 export function debounce<T extends (...args: any[]) => any>(
@@ -229,4 +232,20 @@ export async function checkRateLimit(
     console.warn('Rate limiting check failed:', error);
     return { allowed: true, remaining: limit - 1, resetTime: now + windowMs };
   }
+}
+
+/**
+ * Converts HTTP URLs to HTTPS, particularly useful for Mercado Livre image URLs
+ * @param url - The URL to convert
+ * @returns The same URL with HTTPS protocol if it was HTTP
+ */
+export function ensureHttps(url: string): string {
+  if (!url) return url;
+  
+  // Convert HTTP to HTTPS for ML static images
+  if (url.startsWith('http://') && url.includes('mlstatic.com')) {
+    return url.replace('http://', 'https://');
+  }
+  
+  return url;
 }
