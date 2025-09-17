@@ -8,8 +8,8 @@ import PeepersLogo from '@/components/PeepersLogo';
 import ProductFiltersNew from '@/components/ProductFiltersNew';
 import ProductSortNew from '@/components/ProductSortNew';
 import FeaturedProductsNew from '@/components/FeaturedProductsNew';
-import ProductCategorySection from '@/components/ProductCategorySection';
-import ProductBadges from '@/components/ProductBadges';
+import ProductCategorySectionNew from '@/components/ProductCategorySectionNew';
+import ProductBadgesNew from '@/components/ProductBadgesNew';
 import ProductsLoadingNew from '@/components/ProductsLoadingNew';
 import ProductsErrorNew from '@/components/ProductsErrorNew';
 import EmptyProductsNew from '@/components/EmptyProductsNew';
@@ -343,7 +343,7 @@ export default function ProductsClient() {
           .map(category => {
             const categoryProducts = categorizedProducts.filter(p => p.category === category.id);
             return (
-              <ProductCategorySection
+              <ProductCategorySectionNew
                 key={category.id}
                 category={category}
                 products={categoryProducts}
@@ -431,19 +431,19 @@ export default function ProductsClient() {
                 
                 {/* Badges posicionadas */}
                 <div className="absolute top-2 left-2">
-                  <ProductBadges 
+                  <ProductBadgesNew 
                     badges={product.badges.filter(badge => badge.type === 'new')} 
                   />
                 </div>
                 
                 <div className="absolute top-2 right-2">
-                  <ProductBadges 
+                  <ProductBadgesNew 
                     badges={product.badges.filter(badge => badge.type === 'free-shipping')} 
                   />
                 </div>
                 
                 <div className="absolute bottom-2 left-2 right-2">
-                  <ProductBadges 
+                  <ProductBadgesNew 
                     badges={product.badges.filter(badge => 
                       ['turbo', 'ultra', 'gaming', 'premium'].includes(badge.type)
                     )} 
@@ -492,7 +492,7 @@ export default function ProductsClient() {
                 
                 {/* Badges de estoque baixo */}
                 <div className="mb-3">
-                  <ProductBadges 
+                  <ProductBadgesNew 
                     badges={product.badges.filter(badge => badge.type === 'low-stock')} 
                   />
                 </div>
