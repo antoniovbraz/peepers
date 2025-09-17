@@ -234,33 +234,75 @@ export class Product {
 
   /**
    * Factory method to create Product from Mercado Livre API response
+   * This method creates a read-only representation without strict validations
    */
   static fromMLResponse(mlProduct: Record<string, unknown>): Product {
+    // Create instance without calling validateProduct for read-only data
+    const product = Object.create(Product.prototype);
+    
+    // Set properties directly to bypass constructor validation
+    product.id = mlProduct.id as string;
+    product.title = mlProduct.title as string; // Keep original title from ML
+    product.price = mlProduct.price as number;
+    product.currency_id = mlProduct.currency_id as string;
+    product.available_quantity = mlProduct.available_quantity as number;
+    product.sold_quantity = mlProduct.sold_quantity as number;
+    product.condition = mlProduct.condition as 'new' | 'used' | 'not_specified';
+    product.listing_type_id = mlProduct.listing_type_id as string;
+    product.category_id = mlProduct.category_id as string;
+    product.domain_id = mlProduct.domain_id as string;
+    product.thumbnail = mlProduct.thumbnail as string;
+    product.secure_thumbnail = mlProduct.secure_thumbnail as string;
+    product.pictures = mlProduct.pictures as ProductPicture[] || [];
+    product.attributes = mlProduct.attributes as ProductAttribute[] || [];
+    product.variations = mlProduct.variations as ProductVariation[] || [];
+    product.shipping = mlProduct.shipping as ProductShipping || {} as ProductShipping;
+    product.seller_id = mlProduct.seller_id as number;
+    product.catalog_product_id = mlProduct.catalog_product_id as string;
+    product.tags = mlProduct.tags as string[] || [];
+    product.warranty = mlProduct.warranty as string;
+    product.catalog_listing = mlProduct.catalog_listing as boolean || false;
+    product.status = mlProduct.status as 'active' | 'paused' | 'closed' | 'under_review' || 'active';
+    product.date_created = mlProduct.date_created ? new Date(mlProduct.date_created as string) : new Date();
+    product.last_updated = mlProduct.last_updated ? new Date(mlProduct.last_updated as string) : new Date();
+    
+    return product;
+  }
+
+  /**
+   * Factory method to create a new Product (with validations)
+   * Use this when creating products to be sent to ML API
+   */
+  static createNew(
+    id: string,
+    title: string,
+    price: number,
+    currency_id: string,
+    available_quantity: number,
+    sold_quantity: number,
+    condition: 'new' | 'used' | 'not_specified',
+    listing_type_id: string,
+    category_id: string,
+    domain_id: string,
+    thumbnail: string,
+    secure_thumbnail: string,
+    pictures: ProductPicture[],
+    attributes: ProductAttribute[],
+    variations: ProductVariation[],
+    shipping: ProductShipping,
+    seller_id: number,
+    catalog_product_id?: string,
+    tags: string[] = [],
+    warranty?: string,
+    catalog_listing: boolean = false,
+    status: 'active' | 'paused' | 'closed' | 'under_review' = 'active'
+  ): Product {
     return new Product(
-      mlProduct.id as string,
-      mlProduct.title as string,
-      mlProduct.price as number,
-      mlProduct.currency_id as string,
-      mlProduct.available_quantity as number,
-      mlProduct.sold_quantity as number,
-      mlProduct.condition as 'new' | 'used' | 'not_specified',
-      mlProduct.listing_type_id as string,
-      mlProduct.category_id as string,
-      mlProduct.domain_id as string,
-      mlProduct.thumbnail as string,
-      mlProduct.secure_thumbnail as string,
-      mlProduct.pictures as ProductPicture[] || [],
-      mlProduct.attributes as ProductAttribute[] || [],
-      mlProduct.variations as ProductVariation[] || [],
-      mlProduct.shipping as ProductShipping || {} as ProductShipping,
-      mlProduct.seller_id as number,
-      mlProduct.catalog_product_id as string,
-      mlProduct.tags as string[] || [],
-      mlProduct.warranty as string,
-      mlProduct.catalog_listing as boolean || false,
-      mlProduct.status as 'active' | 'paused' | 'closed' | 'under_review' || 'active',
-      mlProduct.date_created ? new Date(mlProduct.date_created as string) : new Date(),
-      mlProduct.last_updated ? new Date(mlProduct.last_updated as string) : new Date()
+      id, title, price, currency_id, available_quantity, sold_quantity,
+      condition, listing_type_id, category_id, domain_id, thumbnail,
+      secure_thumbnail, pictures, attributes, variations, shipping,
+      seller_id, catalog_product_id, tags, warranty, catalog_listing,
+      status
     );
   }
 

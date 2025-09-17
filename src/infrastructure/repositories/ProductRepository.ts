@@ -95,9 +95,22 @@ export class ProductRepository implements IProductRepository {
       }
 
       // Transform API response to domain entities
-      const products = rawData.data.products.map((item: Record<string, unknown>) => 
-        Product.fromMLResponse(item)
-      );
+      const products = rawData.data.products.map((item: Record<string, unknown>) => {
+        try {
+          return Product.fromMLResponse(item);
+        } catch (error) {
+          // Log problematic product for debugging
+          console.error('❌ Error creating Product from ML data:', {
+            id: item.id,
+            title: item.title,
+            titleLength: item.title ? (item.title as string).length : 0,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+          
+          // Skip this product instead of failing the entire request
+          return null;
+        }
+      }).filter(Boolean) as Product[];
 
       const result: PaginatedResult<Product> = {
         items: products,
@@ -223,7 +236,9 @@ export class ProductRepository implements IProductRepository {
       const result = await this.findAll(undefined, { page: 1, limit: 1000, offset: 0 });
       
       if (!result.success || !result.data) {
-        throw new Error(result.error || 'Failed to fetch products for statistics');
+        const errorMessage = result.error || 'Failed to fetch products for statistics';
+        console.error('❌ Product stats error:', errorMessage);
+        throw new Error(`Product stats error: ${errorMessage}`);
       }
 
       const products = result.data.items;
