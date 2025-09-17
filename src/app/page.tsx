@@ -1,127 +1,14 @@
 import { PAGES } from '@/config/routes';
 import { Suspense, lazy } from 'react';
-import Header from '@/components/Header';
+import HeaderNew from '@/components/HeaderNew';
+import FeaturedProductsNew from '@/components/FeaturedProductsNew';
 import PreloadResources from '@/components/PreloadResources';
 import ProductsLoading from '@/components/ProductsLoading';
 import ProductsError from '@/components/ProductsError';
 import ServiceWorkerProvider from '@/components/ServiceWorkerProvider';
-import { API_ENDPOINTS } from '@/config/routes';
-import { getMercadoLivreUrl } from '@/utils/products';
-import type { MLProduct } from '@/types/ml';
 
 // Lazy load components for better performance
-const HeroSection = lazy(() => import('@/components/HeroSection'));
-const ProductCard = lazy(() => import('@/components/ProductCard'));
-
-// Componente para mostrar produtos em destaque
-async function FeaturedProducts() {
-  try {
-    // ✅ NEW: Use unified v1 endpoint with public format
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
-    const url = new URL(API_ENDPOINTS.PRODUCTS_V1, baseUrl);
-    url.searchParams.set('format', 'minimal'); // Public-friendly format
-    url.searchParams.set('limit', '6'); // Just for homepage
-    
-    const response = await fetch(url.toString(), {
-      cache: 'no-store', // Sempre buscar dados atualizados
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      console.error('[FeaturedProducts] API Error:', response.status, response.statusText);
-      throw new Error(`Falha ao carregar produtos: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    // Validação robusta dos dados
-    if (!data || typeof data !== 'object') {
-      throw new Error('Resposta inválida da API');
-    }
-
-    // ✅ NEW: Handle v1 API response format
-    const products = data.data?.products || data.products || [];
-    
-    // Limitar a 6 produtos para destaque e filtrar produtos válidos
-    const featuredProducts = products
-      .filter((product: MLProduct) => {
-        return product && 
-               product.id && 
-               product.title && 
-               typeof product.price === 'number' && 
-               product.price > 0;
-      })
-      .slice(0, 6);
-
-    if (featuredProducts.length === 0) {
-      return (
-        <div className="text-center py-12">
-          <div className="max-w-md mx-auto">
-            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Produtos chegando em breve</h3>
-            <p className="text-gray-600 mb-4">
-              Nossa equipe está trabalhando para adicionar novos produtos incríveis.
-            </p>
-            <a
-              href="https://www.mercadolivre.com.br/pagina/peepersshop"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-            >
-              Visitar nossa loja ML
-              <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            </a>
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {featuredProducts.map((product: MLProduct, index: number) => {
-          // Enhanced validation to prevent crashes
-          if (!product || !product.id || typeof product.id !== 'string') {
-            return null; // Skip invalid products
-          }
-          
-          try {
-            return (
-              <ProductCard
-                key={product.id || `product-${index}`}
-                id={product.id}
-                title={product.title || 'Produto sem título'}
-                price={typeof product.price === 'number' ? product.price : 0}
-                image={product.thumbnail || '/api/placeholder/300/300'}
-                mercadoLivreLink={getMercadoLivreUrl(product)}
-                rating={4.5}
-                reviewCount={product.id ? (parseInt(product.id.toString().slice(-2), 10) || 0) + 50 : 50}
-                badge={product.shipping?.free_shipping ? "Frete Grátis" : undefined}
-                imageFit="contain"
-              />
-            );
-          } catch (error) {
-            console.warn('Error rendering product:', product.id, error);
-            return null; // Skip problematic products
-          }
-        }).filter(Boolean)} {/* Filter out null values */}
-      </div>
-    );
-  } catch (error) {
-    console.error('[FeaturedProducts] Error:', error);
-    return <ProductsError />;
-  }
-}
-
-// Loading component
-// ...existing code...
+const HeroSection = lazy(() => import('@/components/HeroSectionNew'));
 
 export default function HomePage() {
   return (
@@ -141,7 +28,7 @@ export default function HomePage() {
       />
 
       {/* Header */}
-      <Header />
+      <HeaderNew />
 
       {/* Hero Section */}
       <Suspense fallback={<div className="h-96 bg-gray-100 animate-pulse" />}>
@@ -287,7 +174,7 @@ export default function HomePage() {
           </div>
           
           <Suspense fallback={<ProductsLoading />}>
-            <FeaturedProducts />
+            <FeaturedProductsNew />
           </Suspense>
           
           <div className="text-center mt-16">

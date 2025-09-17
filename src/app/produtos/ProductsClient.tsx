@@ -5,11 +5,14 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import PeepersLogo from '@/components/PeepersLogo';
-import ProductFilters from '@/components/ProductFilters';
-import ProductSort from '@/components/ProductSort';
-import FeaturedProducts from '@/components/FeaturedProducts';
+import ProductFiltersNew from '@/components/ProductFiltersNew';
+import ProductSortNew from '@/components/ProductSortNew';
+import FeaturedProductsNew from '@/components/FeaturedProductsNew';
 import ProductCategorySection from '@/components/ProductCategorySection';
 import ProductBadges from '@/components/ProductBadges';
+import ProductsLoadingNew from '@/components/ProductsLoadingNew';
+import ProductsErrorNew from '@/components/ProductsErrorNew';
+import EmptyProductsNew from '@/components/EmptyProductsNew';
 import type { ProductSummary } from '@/types/product';
 import { PAGES, API_ENDPOINTS } from '@/config/routes';
 import { 
@@ -315,7 +318,7 @@ export default function ProductsClient() {
           </div>
           
           <div className="flex items-center gap-4">
-            <ProductSort 
+            <ProductSortNew 
               currentSort={sortBy}
               onSortChange={setSortBy}
             />
@@ -331,7 +334,7 @@ export default function ProductsClient() {
 
         {/* Produtos destacados */}
         {featuredProducts.length > 0 && (
-          <FeaturedProducts products={featuredProducts} />
+          <FeaturedProductsNew limit={6} />
         )}
 
         {/* Seções por categoria */}
@@ -356,7 +359,7 @@ export default function ProductsClient() {
   return (
     <div className="space-y-6">
       {/* Filtros */}
-      <ProductFilters
+      <ProductFiltersNew
         categories={categories}
         filters={filters}
         onFiltersChange={setFilters}
@@ -382,7 +385,7 @@ export default function ProductsClient() {
           </h2>
         </div>
         
-        <ProductSort 
+        <ProductSortNew 
           currentSort={sortBy}
           onSortChange={setSortBy}
         />
