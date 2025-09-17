@@ -66,19 +66,15 @@ export class ProductService {
   }
 
   private applyBusinessRules(products: Product[]): Product[] {
-    return products.map(product => ({
-      ...product,
-      // Apply any business rules here
-      // For example: calculate discounts, format prices, etc.
-    }));
+    // Products are already Product class instances with business logic
+    // Apply any additional transformations here if needed
+    return products;
   }
 
   private applyPublicBusinessRules(products: Product[]): Product[] {
-    return products.map(product => ({
-      ...product,
-      // Public products might have different rules
-      // For example: hide sensitive information, limit fields, etc.
-    }));
+    // Products are already Product class instances with business logic
+    // Apply any public-specific transformations here if needed
+    return products;
   }
 
   private getDefaultQuery(): ProductQuery {
