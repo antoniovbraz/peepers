@@ -19,10 +19,10 @@ import {
   CogIcon,
   Bars3Icon,
   XMarkIcon,
-  BellIcon,
   UserCircleIcon
 } from '@heroicons/react/24/outline';
 import PeepersLogo from '@/components/PeepersLogo';
+import NotificationCenter from '@/components/admin/NotificationCenter';
 
 interface NavigationItem {
   name: string;
@@ -212,13 +212,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
             <div className="flex items-center space-x-4">
               {/* Notifications */}
-              <button
-                type="button"
-                className="relative p-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg"
-              >
-                <BellIcon className="h-6 w-6" />
-                <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-accent-500 ring-2 ring-white" />
-              </button>
+              <NotificationCenter />
 
               {/* User menu */}
               <div className="flex items-center space-x-3">

@@ -8,6 +8,7 @@
 import { ReactNode } from 'react';
 import AuthCheck from '@/components/AuthCheck';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -22,9 +23,11 @@ interface AdminRootLayoutProps {
 export default function AdminRootLayout({ children }: AdminRootLayoutProps) {
   return (
     <AuthCheck>
-      <AdminLayout>
-        {children}
-      </AdminLayout>
+      <NotificationProvider>
+        <AdminLayout>
+          {children}
+        </AdminLayout>
+      </NotificationProvider>
     </AuthCheck>
   );
 }
