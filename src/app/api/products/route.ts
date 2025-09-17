@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
 import { createMercadoLivreAPI } from '@/lib/ml-api';
+import { checkAuthAPILimit } from '@/lib/rate-limiter';
+import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
 
 export async function GET(request: NextRequest) {
+  const clientIP = request.headers.get('x-forwarded-for') || 
+                   request.headers.get('x-real-ip') || 
+                   'unknown';
+
   try {
     console.log('🚀 Products API called - Enhanced version with API fallback');
     
@@ -13,6 +19,28 @@ export async function GET(request: NextRequest) {
         error: 'Unauthorized',
         message: 'Você precisa estar autenticado para acessar os produtos'
       }, { status: 401 });
+    }
+
+    // Rate limiting para API autenticada
+    const rateLimitResult = await checkAuthAPILimit(userId, clientIP, '/api/products');
+    if (!rateLimitResult.allowed) {
+      await logSecurityEvent({
+        type: SecurityEventType.RATE_LIMIT_EXCEEDED,
+        severity: 'MEDIUM',
+        userId,
+        clientIP,
+        details: {
+          endpoint: '/api/products',
+          remaining: rateLimitResult.remaining,
+          resetTime: rateLimitResult.resetTime,
+          totalHits: rateLimitResult.totalHits
+        }
+      });
+
+      return NextResponse.json({
+        error: 'Rate limit exceeded',
+        retryAfter: rateLimitResult.retryAfter || Math.ceil(rateLimitResult.resetTime / 1000)
+      }, { status: 429 });
     }
     
     // Test 1: Check cache first

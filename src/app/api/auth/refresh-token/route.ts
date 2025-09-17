@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
 import { logger } from '@/lib/logger';
+import { tokenRotationService } from '@/lib/token-rotation';
 
 interface RefreshTokenResponse {
   access_token: string;
@@ -26,50 +27,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No refresh token found' }, { status: 404 });
     }
 
-    // Renovar token com Mercado Livre
-    const refreshResponse = await fetch('https://api.mercadolibre.com/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-      },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        client_id: process.env.ML_CLIENT_ID!,
-        client_secret: process.env.ML_CLIENT_SECRET!,
-        refresh_token: userData.refresh_token || '',
-      }),
-    });
+    // NOVO: Usar serviço de rotação segura de tokens
+    const rotationResult = await tokenRotationService.rotateRefreshToken(userId, userData.refresh_token);
 
-    if (!refreshResponse.ok) {
-      const error = await refreshResponse.text();
-      logger.error({ error, userId }, 'Failed to refresh token');
-      return NextResponse.json({ error: 'Failed to refresh token' }, { status: 500 });
+    if (!rotationResult.success) {
+      logger.error({ userId, error: rotationResult.error }, 'Token rotation failed');
+      
+      // Se foi detectado token theft, retornar 401 para forçar re-login
+      if (rotationResult.error?.includes('theft detected')) {
+        return NextResponse.json({ 
+          error: 'Security violation detected',
+          message: 'Please log in again',
+          require_reauth: true
+        }, { status: 401 });
+      }
+      
+      return NextResponse.json({ 
+        error: rotationResult.error || 'Failed to refresh token' 
+      }, { status: 500 });
     }
 
-    const tokenData: RefreshTokenResponse = await refreshResponse.json();
-
-    // Calcular nova data de expiração
-    const expiresAt = new Date();
-    expiresAt.setSeconds(expiresAt.getSeconds() + tokenData.expires_in);
-
-    // Atualizar dados no cache
-    const updatedUserData = {
-      ...userData,
-      token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token,
-      expires_at: expiresAt.toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    await cache.setUser(userId, updatedUserData);
-
-    logger.info({ userId, expiresAt }, 'Token refreshed successfully');
+    logger.info({ userId, expiresAt: rotationResult.expires_at }, 'Token refreshed successfully with rotation');
 
     return NextResponse.json({
       success: true,
-      expires_at: expiresAt.toISOString(),
-      token_type: tokenData.token_type,
+      expires_at: rotationResult.expires_at,
+      token_type: 'Bearer',
     });
 
   } catch (error) {

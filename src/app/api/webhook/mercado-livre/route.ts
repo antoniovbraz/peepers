@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
-import { checkRateLimit } from '@/lib/utils';
+import { checkWebhookLimit } from '@/lib/rate-limiter';
 
 const WebhookSchema = z.object({
   user_id: z.number(),
@@ -17,20 +17,28 @@ export async function POST(request: NextRequest) {
   try {
     logger.info('📡 Webhook ML recebido');
 
-    // Rate limiting: 1000 requests per 15 minutes per IP
+    // Rate limiting avançado: baseado em IP e User-Agent
     const clientIP = request.headers.get('x-forwarded-for') ||
                      request.headers.get('x-real-ip') ||
                      'unknown';
-    const rateLimit = await checkRateLimit(`webhook:${clientIP}`, 1000, 15 * 60 * 1000);
+    const userAgent = request.headers.get('user-agent') || 'unknown';
+    
+    const rateLimit = await checkWebhookLimit(clientIP, userAgent);
 
     if (!rateLimit.allowed) {
-      logger.warn({ clientIP, remaining: rateLimit.remaining }, 'Rate limit exceeded for webhook');
+      logger.warn({ 
+        clientIP, 
+        userAgent,
+        remaining: rateLimit.remaining,
+        resetTime: rateLimit.resetTime 
+      }, 'Rate limit exceeded for webhook');
+      
       return NextResponse.json(
         { error: 'Too many requests' },
         {
           status: 429,
           headers: {
-            'Retry-After': Math.ceil((rateLimit.resetTime - Date.now()) / 1000).toString(),
+            'Retry-After': rateLimit.retryAfter?.toString() || '60',
             'X-RateLimit-Remaining': rateLimit.remaining.toString(),
             'X-RateLimit-Reset': rateLimit.resetTime.toString(),
           }

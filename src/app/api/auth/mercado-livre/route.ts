@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getKVClient } from '@/lib/cache';
 import { ML_CONFIG, CACHE_KEYS, API_ENDPOINTS } from '@/config/routes';
+import { checkLoginLimit } from '@/lib/rate-limiter';
+import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
 
 /**
  * Gerar Code Verifier para PKCE (Proof Key for Code Exchange)
@@ -71,7 +73,32 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
  * @returns {Promise<NextResponse>} Redirect para autorização ML
  */
 export async function GET(request: NextRequest) {
+  const clientIP = request.headers.get('x-forwarded-for') || 
+                   request.headers.get('x-real-ip') || 
+                   'unknown';
+
   try {
+    // Rate limiting para autenticação
+    const rateLimitResult = await checkLoginLimit(clientIP);
+    if (!rateLimitResult.allowed) {
+      await logSecurityEvent({
+        type: SecurityEventType.RATE_LIMIT_EXCEEDED,
+        severity: 'MEDIUM',
+        clientIP,
+        details: {
+          endpoint: '/api/auth/mercado-livre',
+          remaining: rateLimitResult.remaining,
+          resetTime: rateLimitResult.resetTime,
+          totalHits: rateLimitResult.totalHits
+        }
+      });
+
+      return NextResponse.json({
+        error: 'Rate limit exceeded',
+        retryAfter: rateLimitResult.retryAfter || Math.ceil(rateLimitResult.resetTime / 1000)
+      }, { status: 429 });
+    }
+
     console.log('🔐 Iniciando processo de autenticação OAuth com Mercado Livre');
 
     const clientId = process.env.ML_CLIENT_ID;

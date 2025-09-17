@@ -1,15 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
 import { MLProduct } from '@/types/ml';
+import { checkPublicAPILimit } from '@/lib/rate-limiter';
+import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
 
 export async function GET(request: NextRequest) {
+  const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0] || 
+                   request.headers.get('x-real-ip') || 
+                   'unknown';
+
   try {
+    // Rate limiting para API pública
+    const rateLimitResult = await checkPublicAPILimit(clientIP, '/api/v1/products');
+    if (!rateLimitResult.allowed) {
+      await logSecurityEvent({
+        type: SecurityEventType.RATE_LIMIT_EXCEEDED,
+        severity: 'LOW',
+        clientIP,
+        details: {
+          endpoint: '/api/v1/products',
+          remaining: rateLimitResult.remaining,
+          resetTime: rateLimitResult.resetTime,
+          totalHits: rateLimitResult.totalHits
+        }
+      });
+
+      return NextResponse.json({
+        error: 'Rate limit exceeded',
+        retryAfter: rateLimitResult.retryAfter || Math.ceil(rateLimitResult.resetTime / 1000)
+      }, { status: 429 });
+    }
+
     // Extract query parameters
     const { searchParams } = new URL(request.url);
-    
-    // Simple rate limiting based on IP
-    const forwardedFor = request.headers.get('x-forwarded-for');
-    const ip = forwardedFor?.split(',')[0] || 'unknown';
     
     // Parse pagination parameters with defaults
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
@@ -162,7 +185,7 @@ export async function GET(request: NextRequest) {
         source: 'cache',
         cached: true,
         authenticated: isAuthenticated,
-        ip: ip.substring(0, 10) + '***' // Partially masked IP for privacy
+        ip: clientIP.substring(0, 10) + '***' // Partially masked IP for privacy
       }
     });
 

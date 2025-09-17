@@ -387,6 +387,12 @@ export interface CachedQuestions {
   cache_ttl: number;
 }
 
+export interface TokenRotationHistoryEntry {
+  rotated_at: string;
+  old_token_hash: string;
+  new_token_hash: string;
+}
+
 export interface CachedUser {
   user_id: number;
   token?: string;
@@ -394,6 +400,8 @@ export interface CachedUser {
   expires_at?: string;
   nickname?: string;
   connected_at?: string;
+  session_token?: string;
+  token_rotation_history?: TokenRotationHistoryEntry[];
   [key: string]: unknown;
 }
 

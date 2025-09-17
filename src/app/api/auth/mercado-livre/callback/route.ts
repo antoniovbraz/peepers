@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getKVClient } from '@/lib/cache';
 import { cache } from '@/lib/cache';
 import { ML_CONFIG, CACHE_KEYS, API_ENDPOINTS, PAGES } from '@/config/routes';
+import { checkLoginLimit } from '@/lib/rate-limiter';
+import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
 
 /**
  * OAuth 2.0 Callback Handler com PKCE e Proteção CSRF
@@ -31,7 +33,31 @@ import { ML_CONFIG, CACHE_KEYS, API_ENDPOINTS, PAGES } from '@/config/routes';
  * @returns {Promise<NextResponse>} Redirect para admin ou erro
  */
 export async function GET(request: NextRequest) {
+  const clientIP = request.headers.get('x-forwarded-for') || 
+                   request.headers.get('x-real-ip') || 
+                   'unknown';
+
   try {
+    // Rate limiting para callback de autenticação
+    const rateLimitResult = await checkLoginLimit(clientIP);
+    if (!rateLimitResult.allowed) {
+      await logSecurityEvent({
+        type: SecurityEventType.RATE_LIMIT_EXCEEDED,
+        severity: 'MEDIUM',
+        clientIP,
+        details: {
+          endpoint: '/api/auth/mercado-livre/callback',
+          remaining: rateLimitResult.remaining,
+          resetTime: rateLimitResult.resetTime,
+          totalHits: rateLimitResult.totalHits
+        }
+      });
+
+      return NextResponse.redirect(
+        `${request.nextUrl.origin}${PAGES.ADMIN}?auth_error=rate_limit_exceeded`
+      );
+    }
+
     console.log('🔄 Callback OAuth ML iniciado');
 
     const searchParams = request.nextUrl.searchParams;
@@ -70,6 +96,21 @@ export async function GET(request: NextRequest) {
     
     if (!storedVerifier) {
       console.error('❌ CSRF DETECTED: State inválido ou expirado:', state);
+      
+      // Log evento de segurança crítico
+      await import('@/lib/security-events').then(m => m.logSecurityEvent({
+        type: m.SecurityEventType.CSRF_DETECTED,
+        severity: 'CRITICAL',
+        clientIP: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+        userAgent: request.headers.get('user-agent') || 'unknown',
+        details: {
+          provided_state: state,
+          error: 'State not found in cache or expired',
+          callback_url: request.nextUrl.toString()
+        },
+        path: request.nextUrl.pathname
+      }));
+      
       await kv.del(CACHE_KEYS.PKCE_VERIFIER(state)); // Limpar por segurança
       return NextResponse.redirect(`${request.nextUrl.origin}${PAGES.ADMIN}?auth_error=invalid_state`);
     }
@@ -77,6 +118,22 @@ export async function GET(request: NextRequest) {
     // 2. Validar formato do state (deve ser string base64url válida)
     if (!/^[A-Za-z0-9_-]+$/.test(state) || state.length < 32) {
       console.error('❌ CSRF DETECTED: State com formato inválido:', state);
+      
+      // Log evento de segurança crítico
+      await import('@/lib/security-events').then(m => m.logSecurityEvent({
+        type: m.SecurityEventType.CSRF_DETECTED,
+        severity: 'CRITICAL',
+        clientIP: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+        userAgent: request.headers.get('user-agent') || 'unknown',
+        details: {
+          provided_state: state,
+          state_length: state.length,
+          error: 'Malformed state parameter',
+          callback_url: request.nextUrl.toString()
+        },
+        path: request.nextUrl.pathname
+      }));
+      
       await kv.del(CACHE_KEYS.PKCE_VERIFIER(state));
       return NextResponse.redirect(`${request.nextUrl.origin}${PAGES.ADMIN}?auth_error=malformed_state`);
     }
