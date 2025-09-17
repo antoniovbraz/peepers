@@ -12,10 +12,10 @@ import {
   Cog6ToothIcon,
   Bars3Icon,
   XMarkIcon,
-  BellIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline';
 import { clsx } from 'clsx';
+import NotificationCenter from '../notifications/NotificationCenter';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -130,10 +130,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
             <div className="flex items-center space-x-4">
               {/* Notifications */}
-              <button className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 relative">
-                <BellIcon className="h-6 w-6" />
-                <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-400 ring-2 ring-white" />
-              </button>
+              <NotificationCenter />
 
               {/* User menu */}
               <div className="relative">
