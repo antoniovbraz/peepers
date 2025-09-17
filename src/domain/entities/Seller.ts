@@ -32,6 +32,10 @@ export interface SellerIdentification {
 export interface SellerReputation {
   level_id: string;
   power_seller_status: 'GOLD' | 'SILVER' | 'BRONZE' | null;
+  thermometer?: {
+    level: string;
+    rules: string[];
+  };
   transactions: {
     period: string;
     total: number;

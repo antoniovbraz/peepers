@@ -1,69 +1,48 @@
-/**
- * Admin Dashboard Page - v2.0
- * 
- * Modern dashboard with KPIs, charts, and quick actions
- * following Clean Architecture presentation layer patterns
- */
-
 'use client';
 
-import { Suspense } from 'react';
-import { 
+import { useState, useEffect } from 'react';
+import {
   ShoppingBagIcon,
   CurrencyDollarIcon,
   ChartBarIcon,
-  ExclamationTriangleIcon,
+  UserGroupIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   EyeIcon,
-  UserGroupIcon
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
-// Mock data - in real implementation, this would come from repositories
-const mockMetrics = {
-  products: {
-    total: 95,
-    active: 89,
-    paused: 4,
-    outOfStock: 2,
-    change: +12
-  },
-  sales: {
-    today: 15420.50,
-    week: 89350.75,
-    month: 342150.20,
-    change: +18.5
-  },
-  orders: {
-    pending: 8,
-    shipped: 23,
-    delivered: 156,
-    total: 187,
-    change: +5.2
-  },
-  reputation: {
-    score: 98,
-    level: 'Excelente',
-    transactions: 1247,
-    change: +0.3
-  }
-};
+import { DashboardMetricsDTO } from '../../../application/dtos/DashboardMetricsDTO';
+import { GetDashboardMetricsUseCase } from '../../../application/use-cases/GetDashboardMetricsUseCase';
+import { ProductRepository } from '../../../infrastructure/repositories/ProductRepository';
+import { OrderRepository } from '../../../infrastructure/repositories/OrderRepository';
+import { SellerRepository } from '../../../infrastructure/repositories/SellerRepository';
+
+// Initialize repositories and use case
+const productRepository = new ProductRepository();
+const orderRepository = new OrderRepository();
+const sellerRepository = new SellerRepository();
+const getDashboardMetrics = new GetDashboardMetricsUseCase(
+  productRepository,
+  orderRepository,
+  sellerRepository
+);
 
 interface MetricCardProps {
   title: string;
   value: string | number;
   change: number;
   icon: typeof ShoppingBagIcon;
-  color: 'primary' | 'secondary' | 'accent' | 'gray';
+  color: 'green' | 'blue' | 'purple' | 'yellow';
   subtitle?: string;
 }
 
 function MetricCard({ title, value, change, icon: Icon, color, subtitle }: MetricCardProps) {
   const colorClasses = {
-    primary: 'bg-primary-50 text-primary-600 border-primary-200',
-    secondary: 'bg-secondary-50 text-secondary-600 border-secondary-200',
-    accent: 'bg-accent-50 text-accent-600 border-accent-200',
-    gray: 'bg-gray-50 text-gray-600 border-gray-200'
+    green: 'bg-green-50 text-green-600 border-green-200',
+    blue: 'bg-blue-50 text-blue-600 border-blue-200',
+    purple: 'bg-purple-50 text-purple-600 border-purple-200',
+    yellow: 'bg-yellow-50 text-yellow-600 border-yellow-200'
   };
 
   const changeColor = change >= 0 ? 'text-green-600' : 'text-red-600';
@@ -73,7 +52,7 @@ function MetricCard({ title, value, change, icon: Icon, color, subtitle }: Metri
     <div className={`rounded-xl border p-6 transition-all duration-200 hover:shadow-md ${colorClasses[color]}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className={`rounded-lg p-2 ${color === 'primary' ? 'bg-primary-100' : color === 'secondary' ? 'bg-secondary-100' : color === 'accent' ? 'bg-accent-100' : 'bg-gray-100'}`}>
+          <div className={`rounded-lg p-2 ${color === 'green' ? 'bg-green-100' : color === 'blue' ? 'bg-blue-100' : color === 'purple' ? 'bg-purple-100' : 'bg-yellow-100'}`}>
             <Icon className="h-6 w-6" />
           </div>
           <div>
@@ -88,102 +67,6 @@ function MetricCard({ title, value, change, icon: Icon, color, subtitle }: Metri
           <ChangeIcon className="h-4 w-4" />
           <span className="text-sm font-medium">{Math.abs(change)}%</span>
         </div>
-      </div>
-    </div>
-  );
-}
-
-interface QuickActionProps {
-  title: string;
-  description: string;
-  icon: typeof ShoppingBagIcon;
-  href: string;
-  badge?: number;
-}
-
-function QuickAction({ title, description, icon: Icon, href, badge }: QuickActionProps) {
-  return (
-    <a
-      href={href}
-      className="group block rounded-xl border border-gray-200 p-4 transition-all duration-200 hover:border-primary-300 hover:shadow-md hover:bg-primary-50"
-    >
-      <div className="flex items-start space-x-3">
-        <div className="flex-shrink-0">
-          <div className="rounded-lg bg-gray-100 p-2 group-hover:bg-primary-100 transition-colors">
-            <Icon className="h-5 w-5 text-gray-600 group-hover:text-primary-600" />
-          </div>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-gray-900 group-hover:text-primary-900">
-              {title}
-            </p>
-            {badge && (
-              <span className="inline-flex items-center rounded-full bg-accent-100 px-2 py-1 text-xs font-medium text-accent-600">
-                {badge}
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-gray-500 group-hover:text-primary-700">
-            {description}
-          </p>
-        </div>
-      </div>
-    </a>
-  );
-}
-
-function ActivityFeed() {
-  const activities = [
-    {
-      id: 1,
-      type: 'sale',
-      message: 'Novo pedido recebido - R$ 89,90',
-      time: '2 min atrás',
-      icon: CurrencyDollarIcon,
-      color: 'text-green-600 bg-green-100'
-    },
-    {
-      id: 2,
-      type: 'product',
-      message: 'Produto "Smartphone XYZ" com estoque baixo',
-      time: '15 min atrás',
-      icon: ExclamationTriangleIcon,
-      color: 'text-yellow-600 bg-yellow-100'
-    },
-    {
-      id: 3,
-      type: 'message',
-      message: '3 novas perguntas de clientes',
-      time: '1h atrás',
-      icon: UserGroupIcon,
-      color: 'text-blue-600 bg-blue-100'
-    },
-    {
-      id: 4,
-      type: 'view',
-      message: 'Aumento de 25% nas visualizações hoje',
-      time: '2h atrás',
-      icon: EyeIcon,
-      color: 'text-purple-600 bg-purple-100'
-    }
-  ];
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Atividades Recentes</h3>
-      <div className="space-y-4">
-        {activities.map((activity) => (
-          <div key={activity.id} className="flex items-start space-x-3">
-            <div className={`rounded-lg p-2 ${activity.color}`}>
-              <activity.icon className="h-4 w-4" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-900">{activity.message}</p>
-              <p className="text-xs text-gray-500">{activity.time}</p>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -204,102 +87,229 @@ function LoadingCard() {
 }
 
 export default function AdminDashboard() {
-  return (
-    <div className="space-y-8">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">Visão geral do seu negócio no Mercado Livre</p>
-      </div>
+  const [metrics, setMetrics] = useState<DashboardMetricsDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Suspense fallback={<LoadingCard />}>
-          <MetricCard
-            title="Produtos Ativos"
-            value={mockMetrics.products.active}
-            change={mockMetrics.products.change}
-            icon={ShoppingBagIcon}
-            color="primary"
-            subtitle={`${mockMetrics.products.total} total`}
-          />
-        </Suspense>
+  useEffect(() => {
+    async function loadMetrics() {
+      try {
+        setLoading(true);
+        const result = await getDashboardMetrics.execute();
+        
+        if (result.success && result.data) {
+          setMetrics(result.data);
+          setError(null);
+        } else {
+          setError(result.error || 'Failed to load metrics');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+    }
 
-        <Suspense fallback={<LoadingCard />}>
-          <MetricCard
-            title="Vendas do Mês"
-            value={`R$ ${mockMetrics.sales.month.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-            change={mockMetrics.sales.change}
-            icon={CurrencyDollarIcon}
-            color="secondary"
-          />
-        </Suspense>
+    loadMetrics();
+  }, []);
 
-        <Suspense fallback={<LoadingCard />}>
-          <MetricCard
-            title="Pedidos Ativos"
-            value={mockMetrics.orders.pending + mockMetrics.orders.shipped}
-            change={mockMetrics.orders.change}
-            icon={ChartBarIcon}
-            color="accent"
-            subtitle={`${mockMetrics.orders.total} total`}
-          />
-        </Suspense>
-
-        <Suspense fallback={<LoadingCard />}>
-          <MetricCard
-            title="Reputação"
-            value={`${mockMetrics.reputation.score}%`}
-            change={mockMetrics.reputation.change}
-            icon={ArrowTrendingUpIcon}
-            color="gray"
-            subtitle={mockMetrics.reputation.level}
-          />
-        </Suspense>
-      </div>
-
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Ações Rápidas</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <QuickAction
-            title="Gerenciar Produtos"
-            description="Adicionar, editar ou pausar produtos"
-            icon={ShoppingBagIcon}
-            href="/admin/produtos"
-          />
-          <QuickAction
-            title="Ver Pedidos"
-            description="Acompanhar vendas e envios"
-            icon={CurrencyDollarIcon}
-            href="/admin/vendas"
-            badge={mockMetrics.orders.pending}
-          />
-          <QuickAction
-            title="Responder Clientes"
-            description="Perguntas e mensagens pendentes"
-            icon={UserGroupIcon}
-            href="/admin/comunicacao"
-            badge={5}
-          />
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <LoadingCard key={i} />
+          ))}
         </div>
       </div>
+    );
+  }
 
-      {/* Activity Feed */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ActivityFeed />
-        
-        {/* Placeholder for charts */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Vendas dos Últimos 7 Dias</h3>
-          <div className="h-64 flex items-center justify-center text-gray-500">
-            <div className="text-center">
-              <ChartBarIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-              <p>Gráfico de vendas em desenvolvimento</p>
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        </div>
+        <div className="rounded-md bg-red-50 p-4">
+          <div className="flex">
+            <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">
+                Erro ao carregar métricas
+              </h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error}</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (!metrics) return null;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Visão geral da sua loja no Mercado Livre
+          </p>
+        </div>
+        
+        {/* Quick Actions */}
+        <div className="flex space-x-3">
+          <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+            <ArrowTrendingUpIcon className="h-4 w-4 mr-2" />
+            Sincronizar
+          </button>
+          <button className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+            <EyeIcon className="h-4 w-4 mr-2" />
+            Ver Relatório
+          </button>
+        </div>
+      </div>
+
+      {/* Alerts */}
+      {metrics.alerts.length > 0 && (
+        <div className="space-y-3">
+          {metrics.alerts.map((alert) => (
+            <div
+              key={alert.id}
+              className={`rounded-md p-4 ${
+                alert.severity === 'critical' ? 'bg-red-50' :
+                alert.severity === 'high' ? 'bg-orange-50' :
+                alert.severity === 'medium' ? 'bg-yellow-50' :
+                'bg-blue-50'
+              }`}
+            >
+              <div className="flex">
+                <ExclamationTriangleIcon 
+                  className={`h-5 w-5 ${
+                    alert.severity === 'critical' ? 'text-red-400' :
+                    alert.severity === 'high' ? 'text-orange-400' :
+                    alert.severity === 'medium' ? 'text-yellow-400' :
+                    'text-blue-400'
+                  }`} 
+                />
+                <div className="ml-3">
+                  <h3 className={`text-sm font-medium ${
+                    alert.severity === 'critical' ? 'text-red-800' :
+                    alert.severity === 'high' ? 'text-orange-800' :
+                    alert.severity === 'medium' ? 'text-yellow-800' :
+                    'text-blue-800'
+                  }`}>
+                    {alert.title}
+                  </h3>
+                  <div className={`mt-2 text-sm ${
+                    alert.severity === 'critical' ? 'text-red-700' :
+                    alert.severity === 'high' ? 'text-orange-700' :
+                    alert.severity === 'medium' ? 'text-yellow-700' :
+                    'text-blue-700'
+                  }`}>
+                    <p>{alert.message}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Produtos Ativos"
+          value={metrics.products.active}
+          change={calculateProductChange(metrics.products)}
+          icon={ShoppingBagIcon}
+          subtitle={`${metrics.products.total} total`}
+          color="green"
+        />
+        
+        <MetricCard
+          title="Receita do Mês"
+          value={`R$ ${metrics.orders.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+          change={15.2} // Mock change for now
+          icon={CurrencyDollarIcon}
+          subtitle="Valor total"
+          color="blue"
+        />
+        
+        <MetricCard
+          title="Pedidos Ativos"
+          value={metrics.seller.performance.orders.pending + metrics.seller.performance.orders.shipped}
+          change={5.2}
+          icon={ChartBarIcon}
+          subtitle={`${metrics.orders.total} total`}
+          color="purple"
+        />
+        
+        <MetricCard
+          title="Reputação"
+          value={`${(metrics.seller.reputation.score * 20).toFixed(0)}%`} // Convert 5-star to percentage
+          change={metrics.seller.performance.reputation.trend}
+          icon={UserGroupIcon}
+          subtitle={metrics.seller.reputation.level}
+          color="yellow"
+        />
+      </div>
+
+      {/* Performance Summary */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Resumo de Performance</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="text-center">
+            <div className={`text-2xl font-bold ${
+              metrics.summary.performance === 'excellent' ? 'text-green-600' :
+              metrics.summary.performance === 'good' ? 'text-blue-600' :
+              metrics.summary.performance === 'fair' ? 'text-yellow-600' :
+              'text-red-600'
+            }`}>
+              {metrics.summary.performance === 'excellent' ? 'Excelente' :
+               metrics.summary.performance === 'good' ? 'Boa' :
+               metrics.summary.performance === 'fair' ? 'Regular' :
+               'Ruim'}
+            </div>
+            <div className="text-sm text-gray-500">Performance Geral</div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-2xl font-bold text-gray-900">
+              {metrics.summary.needsAttention}
+            </div>
+            <div className="text-sm text-gray-500">Itens precisam atenção</div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-2xl font-bold text-gray-900">
+              {metrics.summary.totalIssues}
+            </div>
+            <div className="text-sm text-gray-500">Problemas críticos</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Activity Placeholder */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Atividade Recente</h2>
+        <div className="text-sm text-gray-500">
+          Implementação futura: Lista de atividades recentes
+        </div>
+      </div>
     </div>
   );
+}
+
+function calculateProductChange(products: DashboardMetricsDTO['products']): number {
+  // Simple calculation: if more active than paused/closed, positive change
+  const activeRatio = products.active / products.total;
+  return activeRatio > 0.8 ? 12 : activeRatio > 0.6 ? 5 : -3;
 }
