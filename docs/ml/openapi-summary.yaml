@@ -1,0 +1,1117 @@
+openapi: 3.0.3
+info:
+  title: Mercado Livre API - Resumo para Sellers
+  version: 1.0.0
+  description: |
+    API do Mercado Livre focada em integrações para sellers no Brasil (site_id=MLB).
+    Documentação oficial: https://global-selling.mercadolibre.com/devsite/
+  contact:
+    name: Mercado Livre Developers
+    url: https://developers.mercadolibre.com.ar/support
+  license:
+    name: Mercado Libre Terms
+    url: https://global-selling.mercadolibre.com/devsite/mercado-libre-global-selling-developer-terms-and-conditions
+
+servers:
+  - url: https://api.mercadolibre.com
+    description: Production API
+  - url: https://auth.mercadolibre.com.ar
+    description: OAuth Authorization Server
+
+security:
+  - OAuth2: [read, write, offline_access]
+
+paths:
+  # OAuth & Authentication
+  /authorization:
+    get:
+      tags: [OAuth]
+      summary: Authorize Application
+      description: |
+        Inicia o fluxo OAuth 2.0 Authorization Code + PKCE.
+        Redireciona para consentimento do usuário.
+      parameters:
+        - name: response_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [code]
+        - name: client_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: code_challenge
+          in: query
+          schema:
+            type: string
+        - name: code_challenge_method
+          in: query
+          schema:
+            type: string
+            enum: [S256, plain]
+      responses:
+        '302':
+          description: Redirect to consent page
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /oauth/token:
+    post:
+      tags: [OAuth]
+      summary: Exchange Code for Token
+      description: Troca authorization code por access_token e refresh_token
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                grant_type:
+                  type: string
+                  enum: [authorization_code, refresh_token]
+                client_id:
+                  type: string
+                client_secret:
+                  type: string
+                code:
+                  type: string
+                redirect_uri:
+                  type: string
+                code_verifier:
+                  type: string
+                refresh_token:
+                  type: string
+              required:
+                - grant_type
+                - client_id
+                - client_secret
+      responses:
+        '200':
+          description: Token exchange successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/OAuth2Error'
+
+  # Items & Search
+  /sites/{site_id}/search:
+    get:
+      tags: [Items]
+      summary: Search Items
+      description: |
+        Busca pública de itens no marketplace.
+        Use site_id=MLB para Brasil.
+      parameters:
+        - $ref: '#/components/parameters/SiteId'
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: seller_id
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+
+  /items/{id}:
+    get:
+      tags: [Items]
+      summary: Get Item Details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Item details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+    put:
+      tags: [Items]
+      summary: Update Item
+      security:
+        - OAuth2: [write]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemUpdate'
+      responses:
+        '200':
+          description: Item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+
+  /items:
+    get:
+      tags: [Items]
+      summary: Multiget Items
+      description: Busca até 20 itens por IDs
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "MLB123,MLB456,MLB789"
+        - name: attributes
+          in: query
+          schema:
+            type: string
+            example: "id,title,price,status"
+      responses:
+        '200':
+          description: Items array
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MultigetResponse'
+    post:
+      tags: [Items]
+      summary: Create Item
+      security:
+        - OAuth2: [write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemCreate'
+      responses:
+        '201':
+          description: Item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+
+  # Orders
+  /marketplace/orders/search:
+    get:
+      tags: [Orders]
+      summary: Search Orders
+      security:
+        - OAuth2: [read]
+      parameters:
+        - name: seller.id
+          in: query
+          schema:
+            type: string
+        - name: buyer
+          in: query
+          schema:
+            type: string
+        - name: order.status
+          in: query
+          schema:
+            type: string
+            enum: [payment_required, payment_in_process, paid, cancelled]
+        - name: date_created.from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: date_created.to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Orders search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderSearchResponse'
+
+  /marketplace/orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Get Order Details
+      security:
+        - OAuth2: [read]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  # Shipments
+  /marketplace/shipments/{id}:
+    get:
+      tags: [Shipments]
+      summary: Get Shipment Details
+      security:
+        - OAuth2: [read]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-format-new
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: ["true"]
+      responses:
+        '200':
+          description: Shipment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shipment'
+
+  /marketplace/shipments/{id}/labels:
+    get:
+      tags: [Shipments]
+      summary: Get Shipping Label
+      security:
+        - OAuth2: [read]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PDF shipping label
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  # Questions
+  /marketplace/questions/search:
+    get:
+      tags: [Questions]
+      summary: Search Questions
+      security:
+        - OAuth2: [read]
+      parameters:
+        - name: seller_id
+          in: query
+          schema:
+            type: string
+        - name: item
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [UNANSWERED, ANSWERED, BANNED, CLOSED_UNANSWERED]
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Questions search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionSearchResponse'
+
+  /marketplace/answers:
+    post:
+      tags: [Questions]
+      summary: Answer Question
+      security:
+        - OAuth2: [write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnswerCreate'
+      responses:
+        '200':
+          description: Question answered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Question'
+
+  # Users
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get Current User
+      security:
+        - OAuth2: [read]
+      responses:
+        '200':
+          description: Current user details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.mercadolibre.com.ar/authorization
+          tokenUrl: https://api.mercadolibre.com/oauth/token
+          scopes:
+            read: Read access to user data
+            write: Write access to user data
+            offline_access: Ability to refresh tokens
+
+  parameters:
+    SiteId:
+      name: site_id
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [MLB]
+        example: MLB
+      description: Site ID for Brazil
+
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    OAuth2Error:
+      description: OAuth2 Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                enum: [invalid_client, invalid_grant, invalid_scope, invalid_request, unsupported_grant_type]
+              error_description:
+                type: string
+              status:
+                type: integer
+
+  schemas:
+    # OAuth Schemas
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: "APP_USR-1234567890-123456-abcdef1234567890-123456789"
+        token_type:
+          type: string
+          enum: [bearer]
+        expires_in:
+          type: integer
+          example: 10800
+        scope:
+          type: string
+          example: "offline_access read write"
+        user_id:
+          type: integer
+          example: 123456789
+        refresh_token:
+          type: string
+          example: "TG-abcdef1234567890-123456789"
+
+    # Items Schemas
+    Item:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "MLB123456789"
+        site_id:
+          type: string
+          example: "MLB"
+        title:
+          type: string
+          example: "Power Bank 10000mAh"
+        subtitle:
+          type: string
+          nullable: true
+        seller_id:
+          type: integer
+          example: 123456789
+        category_id:
+          type: string
+          example: "MLB1055"
+        price:
+          type: number
+          example: 99.90
+        base_price:
+          type: number
+          example: 99.90
+        currency_id:
+          type: string
+          example: "BRL"
+        available_quantity:
+          type: integer
+          example: 10
+        condition:
+          type: string
+          enum: [new, used, not_specified]
+        status:
+          type: string
+          enum: [active, paused, closed, under_review]
+        date_created:
+          type: string
+          format: date-time
+        last_updated:
+          type: string
+          format: date-time
+        pictures:
+          type: array
+          items:
+            $ref: '#/components/schemas/Picture'
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attribute'
+
+    ItemCreate:
+      type: object
+      required:
+        - title
+        - category_id
+        - price
+        - currency_id
+        - available_quantity
+        - condition
+        - listing_type_id
+      properties:
+        title:
+          type: string
+          maxLength: 60
+        category_id:
+          type: string
+        price:
+          type: number
+          minimum: 0
+        currency_id:
+          type: string
+          example: "BRL"
+        available_quantity:
+          type: integer
+          minimum: 1
+        condition:
+          type: string
+          enum: [new, used, not_specified]
+        listing_type_id:
+          type: string
+          example: "gold_special"
+        description:
+          type: string
+        pictures:
+          type: array
+          items:
+            type: object
+            properties:
+              source:
+                type: string
+                format: uri
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attribute'
+
+    ItemUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 60
+        price:
+          type: number
+          minimum: 0
+        available_quantity:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum: [active, paused, closed]
+        description:
+          type: string
+        pictures:
+          type: array
+          items:
+            type: object
+            properties:
+              source:
+                type: string
+                format: uri
+
+    Picture:
+      type: object
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+          format: uri
+        secure_url:
+          type: string
+          format: uri
+        size:
+          type: string
+        max_size:
+          type: string
+
+    Attribute:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        value_id:
+          type: string
+        value_name:
+          type: string
+        values:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              source:
+                type: integer
+
+    SearchResponse:
+      type: object
+      properties:
+        site_id:
+          type: string
+          example: "MLB"
+        query:
+          type: string
+        paging:
+          $ref: '#/components/schemas/Paging'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Item'
+        sort:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        available_sorts:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+        filters:
+          type: array
+          items:
+            type: object
+        available_filters:
+          type: array
+          items:
+            type: object
+
+    MultigetResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        body:
+          $ref: '#/components/schemas/Item'
+
+    # Orders Schemas
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 2000003508419013
+        date_created:
+          type: string
+          format: date-time
+        date_closed:
+          type: string
+          format: date-time
+        last_updated:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [payment_required, payment_in_process, paid, cancelled, invalid]
+        status_detail:
+          type: object
+          properties:
+            code:
+              type: string
+            description:
+              type: string
+        currency_id:
+          type: string
+          example: "BRL"
+        order_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+        shipping:
+          type: object
+          properties:
+            id:
+              type: integer
+        buyer:
+          $ref: '#/components/schemas/Buyer'
+        seller:
+          $ref: '#/components/schemas/Seller'
+        pack_id:
+          type: integer
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+
+    OrderItem:
+      type: object
+      properties:
+        item:
+          type: object
+          properties:
+            id:
+              type: string
+            title:
+              type: string
+            category_id:
+              type: string
+            variation_id:
+              type: string
+              nullable: true
+            seller_custom_field:
+              type: string
+              nullable: true
+            condition:
+              type: string
+        quantity:
+          type: integer
+        unit_price:
+          type: number
+        full_unit_price:
+          type: number
+        currency_id:
+          type: string
+        sale_fee:
+          type: number
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_id:
+          type: integer
+        payer_id:
+          type: integer
+        collector:
+          type: object
+          properties:
+            id:
+              type: integer
+        payment_method_id:
+          type: string
+        currency_id:
+          type: string
+        installments:
+          type: integer
+        status:
+          type: string
+          enum: [pending, approved, rejected, cancelled, refunded]
+        status_detail:
+          type: string
+        transaction_amount:
+          type: number
+        date_created:
+          type: string
+          format: date-time
+        date_approved:
+          type: string
+          format: date-time
+          nullable: true
+
+    OrderSearchResponse:
+      type: object
+      properties:
+        query:
+          type: string
+        paging:
+          $ref: '#/components/schemas/Paging'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        sort:
+          type: object
+        available_sorts:
+          type: array
+          items:
+            type: object
+
+    # Shipments Schemas
+    Shipment:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 40531399184
+        status:
+          type: string
+          enum: [pending, handling, ready_to_ship, shipped, delivered, not_delivered, cancelled]
+        substatus:
+          type: string
+        declared_value:
+          type: number
+        currency_id:
+          type: string
+        date_created:
+          type: string
+          format: date-time
+        last_updated:
+          type: string
+          format: date-time
+        tracking_number:
+          type: string
+        tracking_method:
+          type: string
+        logistic:
+          type: object
+          properties:
+            mode:
+              type: string
+              enum: [me1, me2]
+            type:
+              type: string
+              enum: [fulfillment, drop_off, cross_docking, default]
+            direction:
+              type: string
+        origin:
+          $ref: '#/components/schemas/ShippingAddress'
+        destination:
+          $ref: '#/components/schemas/ShippingAddress'
+        dimensions:
+          type: object
+          properties:
+            height:
+              type: number
+            length:
+              type: number
+            weight:
+              type: number
+            width:
+              type: number
+
+    ShippingAddress:
+      type: object
+      properties:
+        sender_id:
+          type: integer
+        receiver_id:
+          type: integer
+        receiver_name:
+          type: string
+        receiver_phone:
+          type: string
+        shipping_address:
+          type: object
+          properties:
+            address_line:
+              type: string
+            street_name:
+              type: string
+            street_number:
+              type: string
+            zip_code:
+              type: string
+            city:
+              type: object
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+            state:
+              type: object
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+            country:
+              type: object
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+
+    # Questions Schemas
+    Question:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 6789511129
+        seller_id:
+          type: integer
+        text:
+          type: string
+        text_translated:
+          type: string
+        status:
+          type: string
+          enum: [UNANSWERED, ANSWERED, BANNED, CLOSED_UNANSWERED, UNDER_REVIEW, DELETED, DISABLED]
+        item_id:
+          type: string
+        marketplace_item_id:
+          type: string
+        date_created:
+          type: string
+          format: date-time
+        hold:
+          type: boolean
+        deleted_from_listing:
+          type: boolean
+        answer:
+          type: object
+          nullable: true
+          properties:
+            text:
+              type: string
+            text_translated:
+              type: string
+            status:
+              type: string
+              enum: [ACTIVE, DISABLED]
+            date_created:
+              type: string
+              format: date-time
+        from:
+          type: object
+          properties:
+            id:
+              type: integer
+        site_id:
+          type: string
+
+    QuestionSearchResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Question'
+        filters:
+          type: object
+        available_filters:
+          type: array
+          items:
+            type: object
+        available_sorts:
+          type: array
+          items:
+            type: string
+
+    AnswerCreate:
+      type: object
+      required:
+        - question_id
+        - text
+      properties:
+        question_id:
+          type: integer
+        text:
+          type: string
+          maxLength: 2000
+        text_translated:
+          type: string
+
+    # Users Schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        nickname:
+          type: string
+        registration_date:
+          type: string
+          format: date-time
+        country_id:
+          type: string
+        site_id:
+          type: string
+        user_type:
+          type: string
+          enum: [normal, admin]
+        status:
+          type: object
+          properties:
+            site_status:
+              type: string
+        seller_reputation:
+          type: object
+        buyer_reputation:
+          type: object
+
+    Buyer:
+      type: object
+      properties:
+        id:
+          type: integer
+        nickname:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+
+    Seller:
+      type: object
+      properties:
+        id:
+          type: integer
+
+    # Common Schemas
+    Paging:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        primary_results:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        error:
+          type: string
+        status:
+          type: integer
+        cause:
+          type: array
+          items:
+            type: string
+
+tags:
+  - name: OAuth
+    description: Autenticação OAuth 2.0 + PKCE
+  - name: Items
+    description: Gestão de produtos e anúncios
+  - name: Orders
+    description: Gestão de pedidos e vendas
+  - name: Shipments
+    description: Gestão de envios e logística
+  - name: Questions
+    description: Perguntas e respostas de clientes
+  - name: Users
+    description: Informações de usuários
+
+externalDocs:
+  description: Documentação Oficial Global Selling
+  url: https://global-selling.mercadolibre.com/devsite/
