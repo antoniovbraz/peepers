@@ -1,53 +1,82 @@
-# Contributing Guidelines
+# Contributing to Peepers - Admin Panel v2.0
 
-## Welcome
+Bem-vindo ao projeto Peepers! Agradecemos seu interesse em contribuir para nosso painel administrativo moderno de e-commerce integrado ao Mercado Livre.
 
-Thank you for considering contributing to Peepers! We're excited to collaborate with you on building the best Mercado Livre integration platform. This guide will help you understand our development process and standards.
+**Data de Atualização**: 16 de setembro de 2025  
+**Versão**: 2.0.0  
+**Aplicável a**: Desenvolvimento do Admin Panel v2.0
 
-## Code of Conduct
+---
 
-### Our Pledge
+## 🎯 Visão Geral do Projeto
 
-We pledge to make participation in our project a harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, religion, or sexual identity and orientation.
+### **Sobre o Peepers**
 
-### Our Standards
+Peepers é uma aplicação Next.js 15 moderna que oferece um painel administrativo completo para vendedores do Mercado Livre. O projeto implementa Clean Architecture, OAuth 2.0 + PKCE, cache Redis inteligente, e integração em tempo real com webhooks.
 
-**Positive behavior includes**:
-- Using welcoming and inclusive language
-- Being respectful of differing viewpoints and experiences
-- Gracefully accepting constructive criticism
-- Focusing on what is best for the community
-- Showing empathy towards other community members
+### **Tecnologias Principais**
 
-**Unacceptable behavior includes**:
-- The use of sexualized language or imagery
-- Trolling, insulting/derogatory comments, and personal or political attacks
-- Public or private harassment
-- Publishing others' private information without explicit permission
-- Other conduct which could reasonably be considered inappropriate
+- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS v4
+- **Backend**: Next.js API Routes, Clean Architecture
+- **Cache**: Redis (Upstash) com estratégias TTL
+- **Autenticação**: OAuth 2.0 + PKCE (Mercado Livre)
+- **Deploy**: Vercel com ambientes staging/production
+- **Testes**: Vitest, Playwright (E2E)
+- **Qualidade**: ESLint, TypeScript, Prettier
 
-## Getting Started
+---
 
-### Prerequisites
+## 🚀 Quick Start
 
-Before contributing, ensure you have:
+### **1. Fork e Clone**
 
-- [x] Node.js 18+ installed
-- [x] Git configured with your GitHub account
-- [x] Basic understanding of TypeScript and React
-- [x] Familiarity with Next.js concepts
+```bash
+# Fork no GitHub e clone seu fork
+git clone https://github.com/SEU_USERNAME/peepers.git
+cd peepers
 
-### Development Setup
+# Adicione o repositório original como upstream
+git remote add upstream https://github.com/antoniovbraz/peepers.git
+```
 
-1. **Fork the repository**
+### **2. Configuração do Ambiente**
 
-   ```bash
-   # Fork on GitHub, then clone your fork
-   git clone https://github.com/YOUR_USERNAME/peepers.git
-   cd peepers
-   ```
+```bash
+# Instale as dependências
+npm install
 
-2. **Install dependencies**
+# Configure as variáveis de ambiente
+cp .env.example .env.local
+
+# Configure as seguintes variáveis:
+ML_CLIENT_ID=your_client_id
+ML_CLIENT_SECRET=your_client_secret
+UPSTASH_REDIS_REST_URL=your_redis_url
+UPSTASH_REDIS_REST_TOKEN=your_redis_token
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+ALLOWED_USER_IDS=your_user_id
+```
+
+### **3. Desenvolvimento Local**
+
+```bash
+# Desenvolvimento com mocks (recomendado)
+npm run dev:mock
+
+# Testes com ML API real (deploy no Vercel)
+vercel --prod        # Deploy rápido para testes
+# Teste via curl ou browser na URL deployada
+```
+
+### **4. Verificações de Qualidade**
+
+```bash
+# Execute todos os checks antes de abrir PR
+npm run type-check    # TypeScript validation
+npm run lint         # ESLint + Prettier
+npm run test         # Unit tests
+npm run build        # Build verification
+```
 
    ```bash
    npm install

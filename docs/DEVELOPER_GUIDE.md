@@ -215,23 +215,22 @@ peepers/
 
 ### ML Integration Testing
 
-1. **Setup HTTPS tunnel**:
+1. **Deploy to Vercel for testing**:
    ```bash
-   npm run tunnel
+   vercel --prod  # Fast deployment
    ```
 
-2. **Update ML app configuration** with tunnel URL
-
-3. **Test OAuth flow**:
+2. **Test via curl or browser**:
    ```bash
-   npm run dev
-   # Visit tunnel URL and test login
+   # Test endpoints on deployed URL
+   curl https://your-app.vercel.app/api/v1/products
+   curl https://your-app.vercel.app/api/auth/mercado-livre
    ```
 
-4. **Test webhooks**:
+3. **Use production testing scripts**:
    ```bash
-   # Trigger events in ML seller dashboard
-   # Check logs for webhook notifications
+   npm run test:prod all
+   npm run test:prod products-public
    ```
 
 ## Code Standards

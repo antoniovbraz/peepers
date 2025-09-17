@@ -1,20 +1,68 @@
-# Architecture Guide
+# Architecture Documentation - Peepers v2.0.0
 
-## System Overview
+## 🏗️ Clean Architecture Implementation
 
-Peepers is a modern Next.js 15 application designed for seamless integration with Mercado Livre's e-commerce ecosystem. The architecture emphasizes security, scalability, and developer experience while handling complex OAuth flows, real-time webhooks, and intelligent caching.
+Este documento define a arquitetura limpa implementada no Peepers para o novo painel administrativo, seguindo os princípios SOLID e Domain-Driven Design.
 
-## Architecture Principles
+**Data de Atualização**: 16 de setembro de 2025  
+**Versão**: 2.0.0  
+**Aplicável a**: Painel Administrativo v2.0.0
 
-### Design Philosophy
+---
+
+## 📐 Arquitetura Geral
+
+### **Clean Architecture Layers**
+
+```
+┌─────────────────────────────────────────┐
+│             PRESENTATION LAYER           │
+│  ┌─────────────────────────────────────┐ │
+│  │     Next.js App Router Pages        │ │
+│  │     React Components                │ │
+│  │     Tailwind CSS Styling           │ │
+│  └─────────────────────────────────────┘ │
+├─────────────────────────────────────────┤
+│             APPLICATION LAYER            │
+│  ┌─────────────────────────────────────┐ │
+│  │     API Routes (Controllers)       │ │
+│  │     Service Classes                │ │
+│  │     Use Cases                     │ │
+│  └─────────────────────────────────────┘ │
+├─────────────────────────────────────────┤
+│               DOMAIN LAYER               │
+│  ┌─────────────────────────────────────┐ │
+│  │     Entities                       │ │
+│  │     Value Objects                  │ │
+│  │     Domain Services                │ │
+│  │     Repository Interfaces          │ │
+│  └─────────────────────────────────────┘ │
+├─────────────────────────────────────────┤
+│            INFRASTRUCTURE LAYER          │
+│  ┌─────────────────────────────────────┐ │
+│  │     Repository Implementations     │ │
+│  │     External API Clients           │ │
+│  │     Database/Cache Access          │ │
+│  │     Third-party Integrations       │ │
+│  └─────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+```
+
+### **Legacy System Context**
+
+Peepers v1.0 é uma aplicação Next.js 15 moderna projetada para integração com o ecossistema de e-commerce do Mercado Livre. A arquitetura v2.0 mantém compatibilidade enquanto implementa Clean Architecture.
+
+### **Core Design Principles v2.0**
 
 - **Security First**: OAuth 2.0 + PKCE, HTTPS enforcement, secure token management
-- **Performance**: Redis caching with intelligent TTL strategies
-- **Developer Experience**: Mock development mode, comprehensive testing, clear abstractions
-- **Resilience**: Graceful error handling, automatic token refresh, fallback mechanisms
+- **Performance**: Redis caching com estratégias TTL inteligentes
+- **Clean Architecture**: Separação clara de responsabilidades por camadas
+- **Domain-Driven Design**: Entidades e regras de negócio no domínio
+- **Developer Experience**: Mock development mode, comprehensive testing
+- **Resilience**: Graceful error handling, automatic token refresh
 - **Scalability**: Stateless design, external cache, webhook processing
 
-### Core Patterns
+### **Legacy Patterns (v1.0) - Maintained**
 
 - **Centralized Configuration**: All routes, endpoints, and cache keys in `src/config/routes.ts`
 - **Singleton Cache Client**: Single Redis connection with automatic reconnection

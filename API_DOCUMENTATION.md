@@ -351,19 +351,19 @@ ML Event → Webhook → Processamento → Cache Update → Frontend Update
 # Testes locais (mock)
 npm run dev:mock
 
-# Testes de produção
-npm run test:prod all
+# Testes de produção (requer deploy no Vercel)
+vercel --prod                    # Deploy rápido
+npm run test:prod all            # Testa todos endpoints
 npm run test:prod products-public
 npm run test:prod health
 
-# Desenvolvimento com HTTPS
-npm run dev
-npm run tunnel  # LocalTunnel para HTTPS
+# Testes via curl no Vercel
+curl https://your-app.vercel.app/api/v1/products
 ```
 
 ### Ambiente de Desenvolvimento
 - **Mock Data**: Para desenvolvimento offline
-- **LocalTunnel**: Para testes HTTPS locais
+- **Deploy Vercel**: Para testes HTTPS com ML API
 - **Debug Endpoints**: Múltiplos `/api/debug-*` disponíveis
 
 ---

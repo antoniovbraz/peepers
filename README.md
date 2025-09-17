@@ -136,9 +136,9 @@ graph TB
 # Recommended: Mock development (no ML integration)
 npm run dev:mock
 
-# Real integration (requires HTTPS tunnel)
-npm run dev
-npm run tunnel  # In separate terminal
+# Real integration (deploy to Vercel for testing)
+vercel --prod    # Deploy and test on Vercel
+# Test via curl or browser on deployed URL
 
 # Production build
 npm run build
