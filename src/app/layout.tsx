@@ -4,6 +4,7 @@ import "./globals.css";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { WebVitals } from "@/components/WebVitals";
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import CookieConsentBanner from "@/components/CookieConsentBanner";
 
 // FORCE CACHE BUSTING - BUILD: 2025-09-15-20-35
 const FORCE_CACHE_BUST = "2025-09-15-20-35";
@@ -87,6 +88,7 @@ export default function RootLayout({
           <WebVitals />
           <SpeedInsights />
           {children}
+          <CookieConsentBanner />
         </ErrorBoundary>
       </body>
     </html>
