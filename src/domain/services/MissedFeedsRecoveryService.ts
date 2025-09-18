@@ -55,7 +55,14 @@ export class MissedFeedsRecoveryService {
       // Buscar tokens do tenant
       const tokens = await getMLTokens(tenantId);
       if (!tokens?.access_token) {
-        throw new Error('No valid ML tokens found for tenant');
+        logger.warn({ tenantId }, 'No valid ML tokens found for tenant - returning empty result');
+        return {
+          processed: 0,
+          failed: 0,
+          skipped: 0,
+          total: 0,
+          duration_ms: Date.now() - startTime
+        };
       }
 
       const mlApi = new MercadoLivreAPI(
@@ -510,9 +517,9 @@ async function getMLTokens(tenantId: string): Promise<{
   user_id?: string;
   expires_at?: string;
 } | null> {
-  const kv = getKVClient();
-
   try {
+    const kv = getKVClient();
+
     // Buscar dados do usuário no cache usando a chave correta
     const userData = await kv.get(`user:${tenantId}`) as {
       user_id?: number;
@@ -550,6 +557,7 @@ async function getMLTokens(tenantId: string): Promise<{
 
   } catch (error) {
     logger.error({ error, tenantId }, 'Error retrieving ML tokens for tenant');
+    // Em caso de erro, retornar null em vez de lançar erro
     return null;
   }
 }
