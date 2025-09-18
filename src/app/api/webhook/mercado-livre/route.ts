@@ -7,7 +7,7 @@ import {
   createWebhookErrorResponse,
   createWebhookSuccessResponse
 } from '@/middleware/webhook-validation';
-import { isValidWebhookTopic, WEBHOOK_TIMEOUT_MS, WEBHOOK_SECURITY } from '@/config/webhook';
+import { isValidWebhookTopic, WEBHOOK_TIMEOUT_MS, WEBHOOK_SECURITY, validateWebhookSignature } from '@/config/webhook';
 
 const WebhookSchema = z.object({
   user_id: z.number(),
@@ -22,6 +22,17 @@ const WebhookSchema = z.object({
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
+  // ==================== CRÍTICO: TIMEOUT ENFORCEMENT ====================
+  // Criar AbortController para forçar timeout de 500ms
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+    logger.error({
+      processingTime: Date.now() - startTime,
+      timeoutLimit: WEBHOOK_TIMEOUT_MS
+    }, '🚨 CRÍTICO: Webhook abortado por timeout de 500ms');
+  }, WEBHOOK_TIMEOUT_MS);
+
   try {
     logger.info('📡 Webhook ML recebido');
 
@@ -29,6 +40,7 @@ export async function POST(request: NextRequest) {
     const webhookValidation = validateMLWebhook(request);
 
     if (!webhookValidation.isValid) {
+      clearTimeout(timeoutId);
       return createWebhookErrorResponse(webhookValidation.error!, 403, {
         clientIP: webhookValidation.clientIP,
         processingTimeMs: Date.now() - startTime
@@ -46,6 +58,7 @@ export async function POST(request: NextRequest) {
     const rateLimit = await checkWebhookLimit(clientIP, userAgent);
 
     if (!rateLimit.allowed) {
+      clearTimeout(timeoutId);
       logger.warn({ 
         clientIP, 
         userAgent,
@@ -66,21 +79,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Autenticação: verificar header secreto
-    const webhookSecret = request.headers.get('x-ml-webhook-secret');
-    const expectedSecret = process.env.ML_WEBHOOK_SECRET;
-
-    if (expectedSecret && webhookSecret !== expectedSecret) {
-      logger.warn('Webhook authentication failed: invalid secret');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      logger.warn('Webhook received invalid JSON');
-      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+
+    // ==================== VALIDAÇÃO DE ASSINATURA HMAC ====================
+    // CRÍTICO: Validar assinatura se configurada
+    if (WEBHOOK_SECURITY.REQUIRE_SIGNATURE_VALIDATION) {
+      const signature = request.headers.get('x-ml-signature');
+      const webhookSecret = process.env.ML_WEBHOOK_SECRET;
+
+      if (!signature || !webhookSecret) {
+        clearTimeout(timeoutId);
+        logger.error({
+          hasSignature: !!signature,
+          hasSecret: !!webhookSecret,
+          clientIP
+        }, '🚨 CRÍTICO: Assinatura HMAC obrigatória mas não fornecida');
+        
+        return createWebhookErrorResponse('Missing or invalid webhook signature', 401, {
+          clientIP,
+          processingTimeMs: Date.now() - startTime
+        });
+      }
+
+      // Obter raw body para validação de assinatura
+      const rawBody = await request.text();
+      const isValidSignature = await validateWebhookSignature(rawBody, signature, webhookSecret);
+
+      if (!isValidSignature) {
+        clearTimeout(timeoutId);
+        logger.error({
+          clientIP,
+          signature: signature.substring(0, 10) + '...'
+        }, '🚨 CRÍTICO: Assinatura HMAC inválida - possível ataque');
+        
+        return createWebhookErrorResponse('Invalid webhook signature', 401, {
+          clientIP,
+          processingTimeMs: Date.now() - startTime
+        });
+      }
+
+      logger.info({ clientIP }, '✅ Assinatura HMAC validada com sucesso');
+
+      // Re-converter para JSON para processamento
+      try {
+        body = JSON.parse(rawBody);
+      } catch {
+        clearTimeout(timeoutId);
+        logger.warn('Webhook received invalid JSON after signature validation');
+        return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+      }
+    } else {
+      // Se não requer validação de assinatura, ler body normalmente
+      try {
+        body = await request.json();
+      } catch {
+        clearTimeout(timeoutId);
+        logger.warn('Webhook received invalid JSON');
+        return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+      }
     }
 
     // Validar schema do payload

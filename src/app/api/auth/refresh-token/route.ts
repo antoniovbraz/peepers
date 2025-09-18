@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     // NOVO: Usar serviço de rotação segura de tokens
-    const rotationResult = await tokenRotationService.rotateRefreshToken(userId, userData.refresh_token);
+    const rotationResult = await tokenRotationService.rotateToken(userId, userData.refresh_token);
 
     if (!rotationResult.success) {
       logger.error({ userId, error: rotationResult.error }, 'Token rotation failed');

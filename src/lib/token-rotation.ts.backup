@@ -1,7 +1,6 @@
 import { cache } from '@/lib/cache';
 import { logger } from '@/lib/logger';
 import { ML_CONFIG } from '@/config/routes';
-import { getKVClient } from '@/lib/cache';
 
 export interface RefreshTokenResponse {
   access_token: string;
@@ -43,7 +42,7 @@ export class TokenRotationService {
   ): Promise<{ isTheft: boolean; reason: string }> {
     try {
       // 1. Verificar se token foi usado recentemente (reutilização suspeita)
-      const recentUsage = await getKVClient().get(`token_usage:${userId}:${currentRefreshToken}`);
+      const recentUsage = await cache.get(`token_usage:${userId}:${currentRefreshToken}`);
       if (recentUsage) {
         const lastUsed = new Date(recentUsage as string);
         const timeSinceLastUse = Date.now() - lastUsed.getTime();
@@ -58,7 +57,7 @@ export class TokenRotationService {
       }
 
       // 2. Verificar se há múltiplas tentativas de rotação em curto período
-      const rotationAttempts = await getKVClient().get(`rotation_attempts:${userId}`);
+      const rotationAttempts = await cache.get(`rotation_attempts:${userId}`);
       if (rotationAttempts && (rotationAttempts as number) > 3) {
         return {
           isTheft: true,
@@ -79,7 +78,7 @@ export class TokenRotationService {
       }
 
       // 4. Verificar se há mudanças suspeitas no user agent ou IP
-      const lastKnownData = await getKVClient().get(`last_auth:${userId}`);
+      const lastKnownData = await cache.get(`last_auth:${userId}`);
       if (lastKnownData) {
         // TODO: Implementar comparação de user agent e IP para detectar mudanças suspeitas
       }
@@ -90,11 +89,6 @@ export class TokenRotationService {
       return { isTheft: false, reason: 'Detection error - allowing rotation' };
     }
   }
-
-  /**
-   * Executa rotação segura de tokens
-   */
-  async rotateToken(userId: string, currentRefreshToken: string): Promise<TokenRotationResult> {
     try {
       // 1. Validar token atual no cache
       const userData = await cache.getUser(userId);
@@ -103,28 +97,7 @@ export class TokenRotationService {
         return { success: false, error: 'No refresh token found' };
       }
 
-      // 2. Detectar tentativas avançadas de token theft
-      const theftDetection = await this.detectAdvancedTokenTheft(userId, currentRefreshToken, userData);
-      if (theftDetection.isTheft) {
-        logger.error({ userId, reason: theftDetection.reason }, 'Advanced token theft detected');
-        
-        // Log evento de segurança crítico
-        await import('@/lib/security-events').then(m => m.logSecurityEvent({
-          type: m.SecurityEventType.TOKEN_THEFT_DETECTED,
-          severity: 'CRITICAL',
-          userId,
-          details: {
-            detection_method: 'advanced_pattern_analysis',
-            reason: theftDetection.reason,
-            action_taken: 'invalidate_all_sessions'
-          }
-        }));
-        
-        await this.invalidateAllUserSessions(userId);
-        return { success: false, error: theftDetection.reason };
-      }
-
-      // 3. CRÍTICO: Verificar se o token corresponde ao armazenado
+      // 2. CRÍTICO: Verificar se o token corresponde ao armazenado
       if (userData.refresh_token !== currentRefreshToken) {
         // TOKEN THEFT DETECTED - invalidar TODAS as sessões
         logger.error({ userId }, 'TOKEN THEFT DETECTED: Refresh token mismatch');
@@ -146,26 +119,26 @@ export class TokenRotationService {
         return { success: false, error: 'Token theft detected - all sessions invalidated' };
       }
 
-      // 4. Verificar se token não está na blacklist
+      // 3. Verificar se token não está na blacklist
       if (await this.isTokenBlacklisted(currentRefreshToken)) {
         logger.warn({ userId }, 'Attempted reuse of blacklisted refresh token');
         return { success: false, error: 'Token already used' };
       }
 
-      // 5. Obter novo token do Mercado Livre
+      // 4. Obter novo token do Mercado Livre
       const newTokens = await this.fetchNewTokenFromML(currentRefreshToken);
       if (!newTokens.success) {
         return newTokens;
       }
 
-      // 6. CRÍTICO: Invalidar token anterior (adicionar à blacklist)
+      // 5. CRÍTICO: Invalidar token anterior (adicionar à blacklist)
       await this.blacklistToken(currentRefreshToken);
 
-      // 7. Calcular nova data de expiração
+      // 6. Calcular nova data de expiração
       const expiresAt = new Date();
       expiresAt.setSeconds(expiresAt.getSeconds() + newTokens.expires_in!);
 
-      // 8. Armazenar novos tokens e histórico
+      // 7. Armazenar novos tokens e histórico
       const updatedUserData = {
         ...userData,
         token: newTokens.access_token!,

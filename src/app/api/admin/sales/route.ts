@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getKVClient } from '@/lib/cache';
 import { CACHE_KEYS, API_ENDPOINTS } from '@/config/routes';
 import { getMockOrders, getMockSalesMetrics } from '@/data/mockSales';
+import { checkAuthAPILimit } from '@/lib/rate-limiter';
+import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
 
 interface MLOrder {
   id: number;
@@ -76,6 +78,50 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get('limit') || '50';
     const search = searchParams.get('search') || '';
     const days = parseInt(searchParams.get('days') || '30');
+
+    // Obter informações do cliente para rate limiting
+    const clientIP = request.headers.get('x-forwarded-for') ||
+                    request.headers.get('x-real-ip') ||
+                    'unknown';
+    const userId = 'admin'; // Endpoints admin usam usuário fixo
+
+    // Rate limiting para endpoints administrativos
+    const rateLimitResult = await checkAuthAPILimit(userId, clientIP, '/api/admin/sales');
+    if (!rateLimitResult.allowed) {
+      // Log evento de segurança
+      await logSecurityEvent({
+        type: SecurityEventType.RATE_LIMIT_EXCEEDED,
+        severity: 'HIGH',
+        userId,
+        clientIP,
+        details: {
+          endpoint: '/api/admin/sales',
+          limit: 500,
+          window_ms: 60 * 1000,
+          total_hits: rateLimitResult.totalHits,
+          retry_after: rateLimitResult.retryAfter
+        },
+        path: '/api/admin/sales'
+      });
+
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          retry_after: rateLimitResult.retryAfter,
+          limit: 500,
+          window_seconds: 60
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': rateLimitResult.retryAfter?.toString() || '60',
+            'X-RateLimit-Limit': '500',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime.toString()
+          }
+        }
+      );
+    }
     
     // Tentar obter token de acesso do cache
     const kv = getKVClient();

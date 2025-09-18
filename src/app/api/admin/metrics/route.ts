@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getKVClient } from '@/lib/cache';
 import { CACHE_KEYS, API_ENDPOINTS } from '@/config/routes';
+import { checkAuthAPILimit } from '@/lib/rate-limiter';
+import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
 
 interface MLMetrics {
   visits: {
@@ -133,6 +135,50 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || '30d';
+
+    // Obter informações do cliente para rate limiting
+    const clientIP = request.headers.get('x-forwarded-for') ||
+                    request.headers.get('x-real-ip') ||
+                    'unknown';
+    const userId = 'admin'; // Endpoints admin usam usuário fixo ou obtém do contexto
+
+    // Rate limiting para endpoints administrativos (mais permissivo que APIs públicas)
+    const rateLimitResult = await checkAuthAPILimit(userId, clientIP, '/api/admin/metrics');
+    if (!rateLimitResult.allowed) {
+      // Log evento de segurança
+      await logSecurityEvent({
+        type: SecurityEventType.RATE_LIMIT_EXCEEDED,
+        severity: 'HIGH',
+        userId,
+        clientIP,
+        details: {
+          endpoint: '/api/admin/metrics',
+          limit: 500, // Mesmo limite que authenticated APIs
+          window_ms: 60 * 1000,
+          total_hits: rateLimitResult.totalHits,
+          retry_after: rateLimitResult.retryAfter
+        },
+        path: '/api/admin/metrics'
+      });
+
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          retry_after: rateLimitResult.retryAfter,
+          limit: 500,
+          window_seconds: 60
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': rateLimitResult.retryAfter?.toString() || '60',
+            'X-RateLimit-Limit': '500',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime.toString()
+          }
+        }
+      );
+    }
     
     // Tentar obter token de acesso do cache
     const kv = getKVClient();

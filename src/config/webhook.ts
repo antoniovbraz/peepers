@@ -6,6 +6,8 @@
  * Status: ✅ CRÍTICO - Implementar validação obrigatória
  */
 
+import { logger } from '@/lib/logger';
+
 // ==================== IPs OFICIAIS MERCADO LIVRE ====================
 /**
  * IPs oficiais do Mercado Livre para validação de webhooks
@@ -80,6 +82,44 @@ export function extractRealIP(request: Request): string {
   return 'unknown';
 }
 
+/**
+ * Valida assinatura HMAC do webhook do Mercado Livre
+ * CRÍTICO: Deve ser implementado conforme documentação oficial do ML
+ */
+export async function validateWebhookSignature(
+  payload: string,
+  signature: string,
+  secret: string
+): Promise<boolean> {
+  try {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+
+    const signatureBytes = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(payload)
+    );
+
+    const expectedSignature = btoa(String.fromCharCode(...new Uint8Array(signatureBytes)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+
+    return signature === expectedSignature;
+  } catch (error) {
+    logger.error({ error }, 'Failed to validate webhook signature');
+    return false;
+  }
+}
+
+// ==================== VALIDAÇÃO ====================
 /**
  * Valida se um topic é suportado
  */
