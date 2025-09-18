@@ -25,6 +25,7 @@ export const API_ENDPOINTS = {
   PRODUCTS: '/api/products',
   PRODUCTS_PUBLIC: '/api/products-public',
   PRODUCTS_V1: '/api/v1/products', // ✅ NEW: Unified products API
+  TEST_V1_PRODUCTS: '/api/test-v1-products', // 🧪 TEST: Debug endpoint
   PRODUCT_BY_ID: (id: string) => `/api/products/${id}`,
   
   // Autenticação OAuth (público)
@@ -90,6 +91,7 @@ export const MIDDLEWARE_CONFIG = {
   PUBLIC_PATHS: [
     API_ENDPOINTS.PRODUCTS_PUBLIC,
     API_ENDPOINTS.PRODUCTS_V1, // ✅ V1 API é pública com query params para controle
+    API_ENDPOINTS.TEST_V1_PRODUCTS, // 🧪 TEST: Debug endpoint
     API_ENDPOINTS.HEALTH,
     API_ENDPOINTS.CACHE_DEBUG,
     API_ENDPOINTS.DEBUG,
