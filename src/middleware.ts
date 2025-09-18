@@ -10,6 +10,7 @@ import { entitlementsManager } from '@/lib/entitlements';
 import { PREMIUM_FEATURES } from '@/config/entitlements';
 import type { PeepersFeature } from '@/types/stripe';
 import { TenantMiddleware } from '@/infrastructure/middleware/TenantMiddleware';
+import { isSuperAdmin } from '@/config/platform-admin';
 
 /**
  * Middleware de Autenticação, Autorização e CORS
@@ -74,7 +75,6 @@ export async function middleware(request: NextRequest) {
     }
 
     // 3.5. Verificar se é super admin - se for, permitir acesso total
-    const { isSuperAdmin } = await import('@/config/platform-admin');
     const userEmail = request.cookies.get('user_email')?.value;
     
     if (userEmail && isSuperAdmin({ email: userEmail, id: userId })) {
@@ -153,7 +153,9 @@ export async function middleware(request: NextRequest) {
     }
     */
 
-    // 9. Verificar entitlements para features premium
+    // 9. SIMPLIFICADO: Remover verificação de entitlements por enquanto para focar no ML
+    // TODO: Reabilitar quando ML estiver 100% funcionando
+    /*
     const entitlementCheck = await checkEntitlements(request, userId);
     if (!entitlementCheck.allowed) {
       logger.warn({
@@ -189,6 +191,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(PAGES.ACESSO_NEGADO, request.url));
       }
     }
+    */
 
     // 9. Se chegou aqui, está tudo ok
     const response = NextResponse.next();
