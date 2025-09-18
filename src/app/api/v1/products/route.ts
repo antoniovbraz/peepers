@@ -3,6 +3,7 @@ import { cache } from '@/lib/cache';
 import { MLProduct } from '@/types/ml';
 import { checkPublicAPILimit } from '@/lib/rate-limiter';
 import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
+import { MOCK_PRODUCTS } from '@/lib/mocks';
 
 export async function GET(request: NextRequest) {
   const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0] || 
@@ -64,28 +65,14 @@ export async function GET(request: NextRequest) {
     const isAuthenticated = !!userId;
 
     // Get products from cache
-    const allProducts = await cache.getAllProducts();
+    let allProducts = await cache.getAllProducts();
+    let usingMockData = false;
     
+    // Se não há produtos no cache, usar mocks para desenvolvimento
     if (!allProducts || allProducts.length === 0) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          products: [],
-          total: 0,
-          page,
-          limit,
-          totalPages: 0,
-          hasNext: false,
-          hasPrev: false,
-          filters: { category, priceMin, priceMax, condition, status, freeShipping, search },
-          format
-        },
-        meta: {
-          source: 'cache',
-          cached: true,
-          message: 'No products available'
-        }
-      });
+      console.log('⚠️  No products in cache, using mocks for development');
+      allProducts = MOCK_PRODUCTS as MLProduct[];
+      usingMockData = true;
     }
 
     // Apply filters
