@@ -80,9 +80,9 @@ export default function AdminProductsPage() {
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.data?.products) {
+        if (data.success && data.data?.items) {
           // Transformar dados da API para o formato esperado
-          const transformedProducts = data.data.products.map((product: any) => ({
+          const transformedProducts = data.data.items.map((product: any) => ({
             id: product.id,
             title: product.title,
             price: product.price,

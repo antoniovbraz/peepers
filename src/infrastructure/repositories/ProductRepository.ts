@@ -95,7 +95,7 @@ export class ProductRepository implements IProductRepository {
       }
 
       // Transform API response to domain entities
-      const products = rawData.data.products.map((item: Record<string, unknown>) => {
+      const products = rawData.data.items.map((item: Record<string, unknown>) => {
         try {
           return Product.fromMLResponse(item);
         } catch (error) {
@@ -248,10 +248,10 @@ export class ProductRepository implements IProductRepository {
         active: products.filter(p => p.status === 'active').length,
         paused: products.filter(p => p.status === 'paused').length,
         closed: products.filter(p => p.status === 'closed').length,
-        outOfStock: products.filter(p => p.isOutOfStock()).length,
-        lowStock: products.filter(p => p.needsAttention()).length,
-        totalValue: products.reduce((sum, p) => sum + (p.price * p.available_quantity), 0),
-        averagePrice: products.length > 0 ? products.reduce((sum, p) => sum + p.price, 0) / products.length : 0
+        outOfStock: products.filter(p => (p.available_quantity || 0) === 0).length,
+        lowStock: products.filter(p => (p.available_quantity || 0) < 5 && (p.available_quantity || 0) > 0).length,
+        totalValue: products.reduce((sum, p) => sum + ((p.price || 0) * (p.available_quantity || 0)), 0),
+        averagePrice: products.length > 0 ? products.reduce((sum, p) => sum + (p.price || 0), 0) / products.length : 0
       };
 
       // Cache stats for 5 minutes
