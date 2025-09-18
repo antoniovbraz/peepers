@@ -21,12 +21,10 @@ export const API_ENDPOINTS = {
   DEBUG: '/api/debug', 
   CACHE_DEBUG: '/api/cache-debug',
   
-  // Produtos (público)
-  PRODUCTS: '/api/products',
-  PRODUCTS_PUBLIC: '/api/products-public',
-  PRODUCTS_V1: '/api/products-v1', // ✅ FIXED: Moved from /api/v1/products due to routing issues
-  PRODUCTS_V1_OLD: '/api/v1/products', // 🚫 DEPRECATED: Use PRODUCTS_V1 instead
-  TEST_V1_PRODUCTS: '/api/test-v1-products', // 🧪 TEST: Debug endpoint
+  // Produtos - CANONICAL ENDPOINTS
+  PRODUCTS: '/api/products',                    // 🔒 Main endpoint (auth required)
+  PRODUCTS_V1: '/api/products-v1',             // ✅ CANONICAL: Public products API  
+  PRODUCTS_PUBLIC: '/api/products-public',     // � DEPRECATED: Use PRODUCTS_V1 instead
   PRODUCT_BY_ID: (id: string) => `/api/products/${id}`,
   
   // Autenticação OAuth (público)
@@ -90,10 +88,9 @@ export const ML_CONFIG = {
 export const MIDDLEWARE_CONFIG = {
   // Rotas que NÃO precisam de autenticação
   PUBLIC_PATHS: [
-    API_ENDPOINTS.PRODUCTS_PUBLIC,
-    API_ENDPOINTS.PRODUCTS_V1, // ✅ Fixed path: /api/products-v1
-    API_ENDPOINTS.PRODUCTS_V1_OLD, // 🚫 Keep old path for compatibility
-    API_ENDPOINTS.TEST_V1_PRODUCTS, // 🧪 TEST: Debug endpoint
+    API_ENDPOINTS.PRODUCTS_PUBLIC,  // 🟡 DEPRECATED: Legacy endpoint
+    API_ENDPOINTS.PRODUCTS_V1,      // ✅ CANONICAL: Main public products API
+    '/api/v1/products',             // 🚫 PROBLEMATIC: Direct path for old structure
     API_ENDPOINTS.HEALTH,
     API_ENDPOINTS.CACHE_DEBUG,
     API_ENDPOINTS.DEBUG,
