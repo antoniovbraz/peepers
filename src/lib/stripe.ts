@@ -39,8 +39,8 @@ class StripeClient {
   private readonly cachePrefix = 'stripe:';
 
   constructor() {
-    // Skip Stripe initialization in test environment
-    if (process.env.NODE_ENV === 'test') {
+    // Skip Stripe initialization in test environment and build time
+    if (process.env.NODE_ENV === 'test' || process.env.NEXT_PHASE === 'phase-production-build') {
       this.stripe = {} as any;
       return;
     }
@@ -110,7 +110,7 @@ class StripeClient {
         priceId
       }, 'Created Stripe subscription');
 
-      return subscription as StripeSubscription;
+      return subscription as unknown as StripeSubscription;
 
     } catch (error) {
       logger.error({ error, customerId, priceId }, 'Failed to create subscription');
