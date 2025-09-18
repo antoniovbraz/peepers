@@ -179,12 +179,26 @@ export async function GET(request: NextRequest) {
     });
 
     if (!userResponse.ok) {
-      console.error('❌ Erro ao buscar dados do usuário');
+      const errorText = await userResponse.text();
+      console.error('❌ Erro ao buscar dados do usuário:', errorText);
+      
+      // Tratamento específico para invalid_operator_user_id
+      if (errorText.includes('invalid_operator_user_id') || userResponse.status === 403) {
+        console.error('❌ ERRO: Usuario operador tentando login - apenas administradores são permitidos');
+        return NextResponse.redirect(`${request.nextUrl.origin}${PAGES.ADMIN}?auth_error=operator_not_allowed&message=${encodeURIComponent('Apenas usuários administradores podem acessar o painel admin. Operadores devem usar outras ferramentas.')}`);
+      }
+      
       return NextResponse.redirect(`${request.nextUrl.origin}${PAGES.ADMIN}?auth_error=user_data_failed`);
     }
 
     const userData = await userResponse.json();
-    console.log('✅ Dados do usuário obtidos:', userData.id);
+    console.log('✅ Dados do usuário obtidos:', { user_id: userData.id, nickname: userData.nickname, user_type: userData.user_type });
+
+    // Verificar se é usuário administrador (não operador)
+    if (userData.user_type === 'operator') {
+      console.error('❌ ERRO: Usuario operador detectado após autenticação - apenas administradores são permitidos');
+      return NextResponse.redirect(`${request.nextUrl.origin}${PAGES.ADMIN}?auth_error=operator_not_allowed&message=${encodeURIComponent('Apenas usuários administradores podem acessar o painel admin.')}`);
+    }
 
     // Armazenar tokens no cache usando o método correto
     const userId = userData.id.toString();

@@ -104,6 +104,18 @@ export default function AdminDashboard() {
     async function loadMetrics() {
       try {
         setLoading(true);
+        
+        // Verificar se há erro de operador nos query params
+        const urlParams = new URLSearchParams(window.location.search);
+        const authError = urlParams.get('auth_error');
+        const message = urlParams.get('message');
+        
+        if (authError === 'operator_not_allowed') {
+          setError(`ACESSO_NEGADO_OPERADOR: ${decodeURIComponent(message || 'Apenas usuários administradores podem acessar o painel admin.')}`);
+          setLoading(false);
+          return;
+        }
+        
         const result = await getDashboardMetrics.execute();
         
         if (result.success && result.data) {
@@ -113,7 +125,14 @@ export default function AdminDashboard() {
           setError(result.error || 'Failed to load metrics');
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        
+        // Verificar se é erro de operador
+        if (errorMessage.includes('OPERATOR_NOT_ALLOWED') || errorMessage.includes('operator')) {
+          setError('ACESSO_NEGADO_OPERADOR: Apenas usuários administradores podem acessar o painel admin. Operadores devem usar outras ferramentas específicas.');
+        } else {
+          setError(errorMessage);
+        }
       } finally {
         setLoading(false);
       }
@@ -138,21 +157,44 @@ export default function AdminDashboard() {
   }
 
   if (error) {
+    const isOperatorError = error.includes('ACESSO_NEGADO_OPERADOR');
+    
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         </div>
-        <div className="rounded-md bg-red-50 p-4">
+        <div className={`rounded-md p-4 ${isOperatorError ? 'bg-yellow-50' : 'bg-red-50'}`}>
           <div className="flex">
-            <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
+            <ExclamationTriangleIcon className={`h-5 w-5 ${isOperatorError ? 'text-yellow-400' : 'text-red-400'}`} />
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">
-                Erro ao carregar métricas
+              <h3 className={`text-sm font-medium ${isOperatorError ? 'text-yellow-800' : 'text-red-800'}`}>
+                {isOperatorError ? 'Acesso Restrito - Usuário Operador' : 'Erro ao carregar métricas'}
               </h3>
-              <div className="mt-2 text-sm text-red-700">
-                <p>{error}</p>
+              <div className={`mt-2 text-sm ${isOperatorError ? 'text-yellow-700' : 'text-red-700'}`}>
+                <p>{error.replace('ACESSO_NEGADO_OPERADOR: ', '')}</p>
+                {isOperatorError && (
+                  <div className="mt-3">
+                    <p className="font-medium">O que você pode fazer:</p>
+                    <ul className="mt-1 list-disc list-inside space-y-1">
+                      <li>Solicitar acesso de administrador ao responsável pela conta</li>
+                      <li>Usar as ferramentas específicas do Mercado Livre para operadores</li>
+                      <li>Contatar o suporte técnico se necessário</li>
+                    </ul>
+                  </div>
+                )}
               </div>
+              {isOperatorError && (
+                <div className="mt-4">
+                  <a
+                    href="/produtos"
+                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                  >
+                    <EyeIcon className="h-4 w-4 mr-2" />
+                    Ver Produtos Públicos
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </div>

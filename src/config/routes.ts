@@ -58,8 +58,8 @@ export const ML_CONFIG = {
   API_BASE: 'https://api.mercadolibre.com',
   USER_ME: 'https://api.mercadolibre.com/users/me',
   
-  // Scopes necessários
-  SCOPES: 'read write',
+  // Scopes necessários - CRÍTICO: offline_access necessário para refresh_token
+  SCOPES: 'offline_access read write',
   
   // URLs completas para configuração no ML
   get REDIRECT_URI() {

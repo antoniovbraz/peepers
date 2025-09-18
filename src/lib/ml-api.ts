@@ -230,10 +230,35 @@ export class MercadoLivreAPI {
         }
 
         if (!response.ok) {
-          const error = await response
+          const errorData = await response
             .json()
             .catch(() => ({ message: `HTTP ${response.status}`, error: response.statusText }));
-          throw new Error(`API request failed: ${error.message || error.error}`);
+          
+          // Specific error handling based on ML documentation
+          switch (response.status) {
+            case 400:
+              throw new Error(`Bad Request: ${errorData.message || 'Invalid parameters'}`);
+            case 401:
+              if (errorData.error === 'invalid_operator_user_id') {
+                throw new Error('OPERATOR_NOT_ALLOWED: Only administrator users can access this resource');
+              }
+              throw new Error(`Unauthorized: ${errorData.message || 'Invalid or expired token'}`);
+            case 403:
+              if (errorData.message?.includes('operator')) {
+                throw new Error('OPERATOR_NOT_ALLOWED: Only administrator users can access this resource');
+              }
+              throw new Error(`Forbidden: ${errorData.message || 'Access denied'}`);
+            case 404:
+              throw new Error(`Not Found: ${errorData.message || 'Resource not found'}`);
+            case 500:
+              throw new Error(`Internal Server Error: ${errorData.message || 'ML API error'}`);
+            case 502:
+            case 503:
+            case 504:
+              throw new Error(`Service Unavailable: ${errorData.message || 'ML API temporarily unavailable'}`);
+            default:
+              throw new Error(`API request failed: ${errorData.message || errorData.error}`);
+          }
         }
 
         return await response.json();
@@ -303,8 +328,15 @@ export class MercadoLivreAPI {
   async getMultipleProducts(productIds: string[]): Promise<MLProduct[]> {
     if (productIds.length === 0) return [];
 
+    // Use multiget endpoint as recommended by ML documentation
+    // Maximum 20 items per request for optimal performance
+    if (productIds.length > 20) {
+      console.warn(`⚠️  getMultipleProducts recebeu ${productIds.length} IDs, limitando a 20 para performance`);
+      productIds = productIds.slice(0, 20);
+    }
+
     const ids = productIds.join(',');
-    const response = await this.makeRequest<MLProduct[]>(`/items?ids=${ids}`);
+    const response = await this.makeRequest<MLProduct[]>(`/items?ids=${ids}&attributes=id,title,price,currency_id,available_quantity,sold_quantity,status,pictures,permalink,listing_type_id,condition`);
 
     // Handle both array and object responses
     return Array.isArray(response) ? response : [response];
