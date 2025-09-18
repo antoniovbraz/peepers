@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       }, { status: 401 });
     }
 
-    // Criar cliente ML API
+    // Criar cliente ML API - Garantir que userId seja number
     const mlApi = createMercadoLivreAPI(
       { fetch },
       {
@@ -25,14 +25,14 @@ export async function GET(request: NextRequest) {
         clientSecret: process.env.ML_CLIENT_SECRET!,
         accessToken: tokenData.token,
         refreshToken: tokenData.refresh_token,
-        userId: userId
+        userId: userId // Manter como string na configuração
       }
     );
 
     console.log('🔍 Testando acesso direto à API do Mercado Livre...');
 
-    // Tentar buscar produtos diretamente da API ML
-    const productsResponse = await mlApi.getUserProducts('active');
+    // Tentar buscar produtos diretamente da API ML - especificar userId explicitamente
+    const productsResponse = await mlApi.getUserProducts(userId, 'active');
     const productIds = productsResponse.results;
     
     console.log(`📦 IDs de produtos encontrados na API ML: ${productIds.length}`);
