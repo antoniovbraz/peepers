@@ -61,6 +61,15 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
     }
 
+    // 3.5. Verificar se é super admin - se for, permitir acesso total
+    const { isSuperAdmin } = await import('@/config/platform-admin');
+    const userEmail = request.cookies.get('user_email')?.value;
+    
+    if (userEmail && isSuperAdmin({ email: userEmail, id: userId })) {
+      logger.info({ userId, email: userEmail }, 'Super admin access granted');
+      return NextResponse.next();
+    }
+
     // 4. Verificar se o usuário está na lista de autorizados
     const allowedUserIds = process.env.ALLOWED_USER_IDS?.split(',') || [];
     if (allowedUserIds.length > 0 && !allowedUserIds.includes(userId)) {
@@ -110,11 +119,12 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
     }
 
-    // 8. Verificar isolamento de tenant para rotas multi-tenant
-    if (request.nextUrl.pathname.startsWith('/api/tenant/') ||
-        request.nextUrl.pathname.startsWith('/api/v1/') ||
-        request.nextUrl.pathname.startsWith('/admin/')) {
+    // 8. Verificar isolamento de tenant APENAS para rotas que realmente precisam
+    const needsTenantIsolation = 
+      request.nextUrl.pathname.startsWith('/api/tenant/') ||
+      (request.nextUrl.pathname.startsWith('/admin/') && !request.nextUrl.pathname.startsWith('/admin/platform'));
 
+    if (needsTenantIsolation) {
       const tenantResult = await TenantMiddleware.handleTenantIsolation(request);
 
       if (tenantResult instanceof NextResponse && !tenantResult.ok) {

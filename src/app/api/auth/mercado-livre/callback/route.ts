@@ -251,6 +251,17 @@ export async function GET(request: NextRequest) {
       path: '/'
     });
 
+    // Cookie com email do usuário (para detecção de super admin)
+    if (userData.email) {
+      response.cookies.set('user_email', userData.email, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60, // 24 horas
+        path: '/'
+      });
+    }
+
     // Armazenar session token no cache para validação
     const existingUserData = await cache.getUser(userId) || { user_id: parseInt(userId, 10) };
     await cache.setUser(userId, {

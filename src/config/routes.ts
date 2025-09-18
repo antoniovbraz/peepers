@@ -89,7 +89,7 @@ export const MIDDLEWARE_CONFIG = {
   // Rotas que NÃO precisam de autenticação
   PUBLIC_PATHS: [
     API_ENDPOINTS.PRODUCTS_PUBLIC,
-    API_ENDPOINTS.PRODUCTS,
+    API_ENDPOINTS.PRODUCTS_V1, // ✅ V1 API é pública com query params para controle
     API_ENDPOINTS.HEALTH,
     API_ENDPOINTS.CACHE_DEBUG,
     API_ENDPOINTS.DEBUG,
