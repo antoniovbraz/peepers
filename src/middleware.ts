@@ -48,11 +48,7 @@ export async function middleware(request: NextRequest) {
 
   // 1. Verificar se é uma rota pública - se for, permitir acesso imediato
   const isPublicPath = MIDDLEWARE_CONFIG.PUBLIC_PATHS.some(path => {
-    const matches = pathname.startsWith(path);
-    if (pathname.startsWith('/api/v1/products')) {
-      console.log(`🔍 Checking ${pathname} against ${path}: ${matches}`);
-    }
-    return matches;
+    return pathname.startsWith(path);
   });
   
   if (isPublicPath) {
@@ -302,7 +298,6 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/api/sync/:path*',
-    '/api/products/:path*',
     '/api/auth/logout',
     '/api/admin/:path*',
     '/api/entitlements',
