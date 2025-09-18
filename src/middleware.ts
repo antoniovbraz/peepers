@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger';
 import { MIDDLEWARE_CONFIG } from '@/config/routes';
 import { corsHandler } from '@/lib/cors';
 import { stripeClient } from '@/lib/stripe';
+import { entitlementsManager } from '@/lib/entitlements';
 import { PREMIUM_FEATURES } from '@/config/entitlements';
 import type { PeepersFeature } from '@/types/stripe';
 
@@ -178,10 +179,26 @@ async function checkEntitlements(request: NextRequest, userId: string) {
       return { allowed: true };
     }
 
-    // Verificar entitlement no Stripe
-    const entitlementCheck = await stripeClient.checkEntitlement(userId, requiredFeature);
+    // Obter entitlement do tenant
+    const entitlement = await stripeClient.getTenantEntitlement(userId);
 
-    return entitlementCheck;
+    // Verificar entitlement usando o manager
+    const context = {
+      tenantId: userId, // Usando userId como tenantId por enquanto
+      userId,
+      feature: requiredFeature,
+      clientIP: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown'
+    };
+
+    const result = await entitlementsManager.checkEntitlement(context, entitlement);
+
+    return {
+      allowed: result.allowed,
+      reason: result.reason,
+      upgrade_required: !result.allowed && result.reason?.includes('not included'),
+      limit_exceeded: result.limit_exceeded
+    };
 
   } catch (error) {
     logger.error({ error, userId, path: request.nextUrl.pathname }, 'Error checking entitlements');
