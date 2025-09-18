@@ -4,6 +4,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { useState } from 'react';
+import { getPlaceholderImage } from '@/lib/utils';
 
 interface ProductCardProps {
   id: string;
@@ -75,7 +76,7 @@ export default function ProductCard({
   // Validações de segurança
   const safeTitle = title || 'Produto indisponível';
   const safePrice = typeof price === 'number' && price >= 0 ? price : 0;
-  const safeImage = image || '/api/placeholder/300/300';
+  const safeImage = image || getPlaceholderImage();
   const safeId = id || 'unknown';
   
   // Determinar o fit da imagem de forma segura

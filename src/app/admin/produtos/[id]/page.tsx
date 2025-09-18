@@ -18,6 +18,7 @@ import {
   PlayIcon,
   PauseIcon,
 } from '@heroicons/react/24/outline';
+import { handleImageError } from '@/lib/utils';
 
 interface ProductDetail {
   id: string;
@@ -257,6 +258,7 @@ export default function ProductDetailPage() {
                   src={product.pictures[currentImageIndex]}
                   alt={product.title}
                   className="w-full h-full object-cover"
+                  onError={handleImageError}
                 />
               </div>
               {product.pictures.length > 1 && (
@@ -275,6 +277,7 @@ export default function ProductDetailPage() {
                         src={picture}
                         alt={`${product.title} ${index + 1}`}
                         className="w-full h-full object-cover"
+                        onError={handleImageError}
                       />
                     </button>
                   ))}

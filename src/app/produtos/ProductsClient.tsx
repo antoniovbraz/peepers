@@ -23,6 +23,7 @@ import {
   ProductFilters as IProductFilters,
   CategorizedProduct
 } from '@/utils/productCategories';
+import { getPlaceholderImage } from '@/lib/utils';
 
 interface ProductsResponse {
   // Old format support
@@ -418,7 +419,7 @@ export default function ProductsClient() {
               id={product.id}
               title={product.title}
               price={product.price || 0}
-              image={product.thumbnail || '/api/placeholder/300/300'} // Fallback for compatibility
+              image={product.thumbnail || getPlaceholderImage()} // Fallback for compatibility
               availableQuantity={product.available_quantity}
               mercadoLivreLink={PAGES.PRODUTO_DETALHE(product.id)}
               imageFit="contain"

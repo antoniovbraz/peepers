@@ -17,6 +17,7 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { API_ENDPOINTS } from '@/config/routes';
+import { handleImageError } from '@/lib/utils';
 
 // Mock data para fallback
 const mockProducts = [
@@ -314,13 +315,10 @@ export default function AdminProductsPage() {
                   <div className="flex items-center">
                     <div className="flex-shrink-0 h-16 w-16">
                       <img
-                        className="h-16 w-16 rounded-md object-cover"
+                        className="h-16 w-16 rounded-md object-cover bg-gray-100"
                         src={product.thumbnail}
                         alt={product.title}
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/placeholder-product.png';
-                        }}
+                        onError={handleImageError}
                       />
                     </div>
                     <div className="ml-4 flex-1">

@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import { getMockOrders } from '@/data/mockSales';
+import { handleImageError } from '@/lib/utils';
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -106,6 +107,7 @@ export default function OrderDetailPage() {
                     src={item.thumbnail}
                     alt={item.title}
                     className="w-16 h-16 rounded object-cover"
+                    onError={handleImageError}
                   />
                   <div className="flex-1">
                     <h4 className="font-medium text-gray-900">{item.title}</h4>

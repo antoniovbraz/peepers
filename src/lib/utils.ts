@@ -263,5 +263,24 @@ export function getBestImageUrl(product: { thumbnail?: string; pictures?: Array<
   }
   
   // Fallback to thumbnail
-  return ensureHttps(product.thumbnail || '/images/placeholder-product.jpg');
+  return ensureHttps(product.thumbnail || getPlaceholderImage());
+}
+
+/**
+ * Returns a safe placeholder image as data URL to avoid 404 errors
+ */
+export function getPlaceholderImage(): string {
+  // Simple gray placeholder SVG as data URL
+  return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMDAgMTAwSDE5MFYxOTBIMTcwVjE3MEgxMjBWMTUwSDE3MFYxMjBIMTAwVjEwMFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTEyMCAxMjBIMTcwVjE3MEgxMjBWMTIwWiIgZmlsbD0iI0Q1RDlEOSIvPgo8L3N2Zz4K';
+}
+
+/**
+ * Helper function to handle image errors safely in React components
+ */
+export function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>): void {
+  const target = e.target as HTMLImageElement;
+  if (target.src !== getPlaceholderImage()) {
+    target.src = getPlaceholderImage();
+    target.onerror = null; // Prevent infinite loop
+  }
 }

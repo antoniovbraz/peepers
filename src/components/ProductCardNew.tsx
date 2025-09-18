@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/primitives/Badge';
 import { Button } from '@/components/ui/primitives/Button';
 import { VStack, HStack } from '@/components/ui/layout/Stack';
 import { Container } from '@/components/ui/layout/Container';
-import { ensureHttps, getBestImageUrl } from '@/lib/utils';
+import { ensureHttps, getBestImageUrl, getPlaceholderImage } from '@/lib/utils';
 
 // ==================== TYPES ====================
 
@@ -106,7 +106,7 @@ export default function ProductCard({
   // Use the best available image (priority: pictures > image prop > fallback)
   const safeImage = product 
     ? getBestImageUrl(product)
-    : ensureHttps(image || '/api/placeholder/300/300');
+    : ensureHttps(image || getPlaceholderImage());
   
   const safeId = id || 'unknown';
   
