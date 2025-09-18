@@ -10,39 +10,30 @@ import { stripeClient } from '@/lib/stripe';
 import { logger } from '@/lib/logger';
 import { PeepersFeature } from '@/types/stripe';
 import { getKVClient } from '@/lib/cache';
+import { headers } from 'next/headers';
+import { isSuperAdmin, getSuperAdminEntitlements } from '@/config/platform-admin';
 
 export async function GET(request: NextRequest) {
   try {
-    // Extrair userId do cookie de sessão
-    const sessionToken = request.cookies.get('session_token')?.value;
-    const userId = request.cookies.get('user_id')?.value;
+    // Extrair user info dos headers (adicionado pelo middleware)
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
+    const userEmail = headersList.get('x-user-email');
 
-    if (!sessionToken || !userId) {
+    if (!userId) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    // Verificar se o token existe no cache
-    const cache = getKVClient();
-    const tokenData = await cache.get(`user:${userId}`);
-    if (!tokenData) {
-      return NextResponse.json(
-        { error: 'Invalid session' },
-        { status: 401 }
-      );
+    // Verificar se é super admin PRIMEIRO
+    if (isSuperAdmin({ email: userEmail || undefined, id: userId })) {
+      logger.info(`Super admin entitlements requested for ${userEmail}`);
+      return NextResponse.json(getSuperAdminEntitlements());
     }
 
-    const userData = JSON.parse(tokenData as string);
-    if (userData.session_token !== sessionToken) {
-      return NextResponse.json(
-        { error: 'Session mismatch' },
-        { status: 401 }
-      );
-    }
-
-    // Buscar entitlements
+    // Para usuários normais, buscar entitlements Stripe
     const entitlements = await stripeClient.getTenantEntitlement(userId);
 
     if (!entitlements) {
@@ -60,14 +51,19 @@ export async function GET(request: NextRequest) {
           storage_limit_gb: 0.1
         },
         subscription_status: 'none',
-        trial_available: true
+        trial_available: true,
+        is_super_admin: false
       });
     }
 
-    return NextResponse.json(entitlements);
+    // Adicionar flag de super admin para entitlements normais
+    return NextResponse.json({
+      ...entitlements,
+      is_super_admin: false
+    });
 
   } catch (error) {
-    logger.error({ error }, 'Failed to get tenant entitlements');
+    logger.error('Failed to get tenant entitlements');
 
     return NextResponse.json(
       { error: 'Failed to retrieve entitlements' },

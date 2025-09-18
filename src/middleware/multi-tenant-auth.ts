@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { cache } from '@/lib/cache';
 import { logger } from '@/lib/logger';
+import { isSuperAdmin, PLATFORM_CONFIG } from '@/config/platform-admin';
 
 // Interfaces
 interface OrganizationMembership {
@@ -26,6 +27,7 @@ interface UserSession {
   name: string;
   organizations: OrganizationMembership[];
   current_organization?: string; // org_id
+  is_super_admin?: boolean; // NEW: Flag para super admin
   created_at: string;
   last_seen: string;
 }
@@ -58,6 +60,16 @@ const ADMIN_ROUTES = [
   '/admin'
 ];
 
+// Routes de SUPER admin (platform owner)
+const SUPER_ADMIN_ROUTES = [
+  '/admin/platform',
+  '/admin/organizations',
+  '/admin/users',
+  '/admin/billing',
+  '/admin/analytics',
+  '/admin/system'
+];
+
 /**
  * Verifica se uma rota é pública
  */
@@ -74,6 +86,13 @@ function isPublicRoute(pathname: string): boolean {
  */
 function isAdminRoute(pathname: string): boolean {
   return ADMIN_ROUTES.some(route => pathname.startsWith(route));
+}
+
+/**
+ * Verifica se uma rota precisa de permissões super admin
+ */
+function isSuperAdminRoute(pathname: string): boolean {
+  return SUPER_ADMIN_ROUTES.some(route => pathname.startsWith(route));
 }
 
 /**
@@ -155,12 +174,28 @@ async function getUserSession(sessionToken: string): Promise<UserSession | null>
     // Por enquanto, vamos criar uma sessão mock simples para desenvolvimento
     // TODO: Implementar busca real no banco quando migrarmos
     
-    // Simular uma sessão válida baseada no token
+    // Detectar se é super admin baseado no token/email
+    const userEmail = 'antonio@peepers.com'; // TODO: Extrair do token real
+    const userId = 'dev_user_' + sessionToken.substring(0, 8);
+    const isUserSuperAdmin = isSuperAdmin({ email: userEmail, id: userId });
+    
     const userSession: UserSession = {
-      user_id: 'dev_user_' + sessionToken.substring(0, 8),
-      email: 'dev@peepers.com',
-      name: 'Developer User',
-      organizations: [
+      user_id: userId,
+      email: userEmail,
+      name: isUserSuperAdmin ? 'Antonio (Super Admin)' : 'Developer User',
+      is_super_admin: isUserSuperAdmin,
+      organizations: isUserSuperAdmin ? [
+        // Super admin tem acesso à organização da plataforma
+        {
+          organization_id: PLATFORM_CONFIG.PLATFORM_ORGANIZATION_ID,
+          organization_slug: 'platform-admin',
+          organization_name: 'Peepers Platform Admin',
+          role: 'owner',
+          status: 'active',
+          joined_at: new Date().toISOString()
+        }
+      ] : [
+        // Usuários normais têm suas organizações
         {
           organization_id: 'org_dev_1',
           organization_slug: 'dev-organization',
@@ -170,7 +205,7 @@ async function getUserSession(sessionToken: string): Promise<UserSession | null>
           joined_at: new Date().toISOString()
         }
       ],
-      current_organization: 'org_dev_1',
+      current_organization: isUserSuperAdmin ? PLATFORM_CONFIG.PLATFORM_ORGANIZATION_ID : 'org_dev_1',
       created_at: new Date().toISOString(),
       last_seen: new Date().toISOString()
     };
@@ -228,8 +263,8 @@ export async function middleware(request: NextRequest) {
       throw new Error('Invalid session token');
     }
 
-    // Verificar se usuário tem organizações
-    if (userSession.organizations.length === 0) {
+    // Verificar se usuário tem organizações (exceto super admins)
+    if (!userSession.is_super_admin && userSession.organizations.length === 0) {
       // Usuário sem organizações - redirecionar para onboarding
       if (pathname !== '/onboarding') {
         const onboardingUrl = new URL('/onboarding', request.url);
@@ -240,8 +275,24 @@ export async function middleware(request: NextRequest) {
     // Extrair contexto da organização
     const organizationId = extractOrganizationContext(request);
 
-    // Verificar acesso admin se necessário
-    if (isAdminRoute(pathname)) {
+    // Verificar acesso SUPER ADMIN primeiro
+    if (isSuperAdminRoute(pathname)) {
+      if (!userSession.is_super_admin) {
+        logger.warn(`Super admin access denied for user ${userSession.user_id} on ${pathname}`);
+
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json(
+            { error: 'Super admin access required' },
+            { status: 403 }
+          );
+        }
+
+        return NextResponse.redirect(new URL('/admin', request.url));
+      }
+    }
+
+    // Verificar acesso admin se necessário (para rotas normais de admin)
+    else if (isAdminRoute(pathname)) {
       const hasAccess = hasOrganizationAccess(
         userSession,
         organizationId || undefined,
