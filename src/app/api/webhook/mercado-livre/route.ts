@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
-import { checkWebhookLimit } from '@/lib/rate-limiter';
+import { checkWebhookLimit, checkUserDailyLimit } from '@/lib/rate-limiter';
 import {
   validateMLWebhook,
   createWebhookErrorResponse,
@@ -161,6 +161,35 @@ export async function POST(request: NextRequest) {
       application_id: payload.application_id,
       processingTimeMs: Date.now() - startTime
     }, '✅ Webhook payload validado');
+
+    // ==================== RATE LIMITING DIÁRIO POR USUÁRIO ====================
+    // CRÍTICO: ML permite até 5000 calls/dia por usuário
+    const userDailyLimit = await checkUserDailyLimit(payload.user_id.toString(), clientIP);
+
+    if (!userDailyLimit.allowed) {
+      clearTimeout(timeoutId);
+      logger.error({
+        userId: payload.user_id,
+        clientIP,
+        totalHits: userDailyLimit.totalHits,
+        limit: 5000,
+        resetTime: userDailyLimit.resetTime
+      }, '🚨 CRÍTICO: Rate limit diário por usuário excedido (5000/day)');
+
+      return NextResponse.json(
+        { error: 'Daily user rate limit exceeded' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': userDailyLimit.retryAfter?.toString() || '86400', // 24 horas
+            'X-RateLimit-Remaining': userDailyLimit.remaining.toString(),
+            'X-RateLimit-Reset': userDailyLimit.resetTime.toString(),
+            'X-RateLimit-Limit': '5000',
+            'X-RateLimit-Window': '86400' // 24 horas em segundos
+          }
+        }
+      );
+    }
 
     // Processar diferentes tipos de notificação
     switch (payload.topic) {

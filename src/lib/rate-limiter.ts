@@ -203,6 +203,35 @@ export class AdvancedRateLimiter {
   }
 
   /**
+   * Rate limiting diário por usuário (conforme ML API limits)
+   */
+  async limitUserDaily(
+    userId: string,
+    clientIP: string
+  ): Promise<RateLimitResult> {
+    return this.limitByUser(userId, {
+      maxRequests: 5000, // 5000 requests por dia por usuário (ML limit)
+      windowMs: 24 * 60 * 60 * 1000, // 24 horas
+      keyGenerator: (user) => `rate_limit:daily:user:${user}`,
+      onLimitReached: (user, result) => {
+        logSecurityEvent({
+          type: SecurityEventType.RATE_LIMIT_EXCEEDED,
+          severity: 'HIGH',
+          userId: user,
+          clientIP,
+          details: {
+            limit_type: 'daily_user',
+            limit: 5000,
+            window_ms: 24 * 60 * 60 * 1000,
+            total_hits: result.totalHits
+          },
+          path: '/api/webhook/mercado-livre'
+        });
+      }
+    });
+  }
+
+  /**
    * Rate limiting para APIs autenticadas (mais permissivo)
    */
   async limitAuthenticatedAPI(
@@ -389,3 +418,6 @@ export const checkPublicAPILimit = (ip: string, endpoint: string) =>
 
 export const checkAuthAPILimit = (userId: string, ip: string, endpoint: string) => 
   rateLimiter.limitAuthenticatedAPI(userId, ip, endpoint);
+
+export const checkUserDailyLimit = (userId: string, ip: string) => 
+  rateLimiter.limitUserDaily(userId, ip);
