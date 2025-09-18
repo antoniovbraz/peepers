@@ -4,6 +4,7 @@ import { MLProduct } from '@/types/ml';
 import { checkPublicAPILimit } from '@/lib/rate-limiter';
 import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
 import { MOCK_PRODUCTS } from '@/lib/mocks';
+import { createMercadoLivreAPI } from '@/lib/ml-api';
 
 export async function GET(request: NextRequest) {
   const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0] || 
@@ -67,12 +68,65 @@ export async function GET(request: NextRequest) {
     // Get products from cache
     let allProducts = await cache.getAllProducts();
     let usingMockData = false;
+    let dataSource = 'cache';
     
-    // Se não há produtos no cache, usar mocks para desenvolvimento
+    // Se não há produtos no cache, tentar buscar da API ML
     if (!allProducts || allProducts.length === 0) {
-      console.log('⚠️  No products in cache, using mocks for development');
-      allProducts = MOCK_PRODUCTS as MLProduct[];
-      usingMockData = true;
+      console.log('⚠️  No products in cache, trying to fetch from ML API...');
+      
+      try {
+        // Tentar buscar produtos reais da API ML
+        const mlUserId = process.env.ML_USER_ID || '669073070';
+        const tokenData = await cache.getUser(mlUserId);
+        
+        if (tokenData && tokenData.token) {
+          const mlApi = createMercadoLivreAPI(
+            { fetch },
+            {
+              clientId: process.env.ML_CLIENT_ID!,
+              clientSecret: process.env.ML_CLIENT_SECRET!,
+              accessToken: tokenData.token,
+              refreshToken: tokenData.refresh_token,
+              userId: mlUserId
+            }
+          );
+          
+          // Buscar produtos ativos da API ML
+          const productsResponse = await mlApi.getUserProducts(mlUserId, 'active', 20);
+          const productIds = productsResponse.results;
+          
+          if (productIds.length > 0) {
+            console.log(`✅ Found ${productIds.length} products in ML API, fetching details...`);
+            
+            // Buscar detalhes dos produtos
+            const productDetails = [];
+            for (let i = 0; i < Math.min(20, productIds.length); i++) {
+              try {
+                const product = await mlApi.getProduct(productIds[i]);
+                productDetails.push(product);
+              } catch (err) {
+                console.warn(`Error fetching product ${productIds[i]}:`, err);
+              }
+            }
+            
+            if (productDetails.length > 0) {
+              allProducts = productDetails;
+              dataSource = 'ml-api-direct';
+              console.log(`✅ Successfully loaded ${productDetails.length} products from ML API`);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to fetch from ML API:', error);
+      }
+      
+      // Se ainda não temos produtos, usar mocks como último recurso
+      if (!allProducts || allProducts.length === 0) {
+        console.log('⚠️ Using mock products as fallback');
+        allProducts = MOCK_PRODUCTS as MLProduct[];
+        usingMockData = true;
+        dataSource = 'mock-fallback';
+      }
     }
 
     // Apply filters
@@ -169,8 +223,9 @@ export async function GET(request: NextRequest) {
         format
       },
       meta: {
-        source: 'cache',
-        cached: true,
+        source: dataSource,
+        cached: dataSource === 'cache',
+        usingMockData,
         authenticated: isAuthenticated,
         ip: clientIP.substring(0, 10) + '***' // Partially masked IP for privacy
       }
