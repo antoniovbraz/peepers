@@ -40,26 +40,26 @@ export async function GET(request: NextRequest) {
     false
   );
 
-  // Teste 2: Moedas (endpoint público)
+  // Teste 2: Informações do site (endpoint público)
   await testEndpoint(
-    'Moedas MLB',
-    'https://api.mercadolibre.com/sites/MLB/currencies', 
+    'Site MLB Info',
+    'https://api.mercadolibre.com/sites/MLB', 
     results,
     false
   );
 
-  // Teste 3: Usuário de teste (endpoint público)
+  // Teste 3: Busca pública (endpoint público que DEVE funcionar)
   await testEndpoint(
-    'Usuário de Teste',
-    'https://api.mercadolibre.com/users/test_user',
+    'Busca Pública',
+    'https://api.mercadolibre.com/sites/MLB/search?q=smartphone&limit=1',
     results,
     false
   );
 
-  // Teste 4: Status do site (endpoint público)
+  // Teste 4: Moedas (endpoint público)
   await testEndpoint(
-    'Status do Site MLB',
-    'https://api.mercadolibre.com/sites/MLB',
+    'Moedas',
+    'https://api.mercadolibre.com/currencies',
     results,
     false
   );

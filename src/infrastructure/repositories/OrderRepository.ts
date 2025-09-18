@@ -55,67 +55,80 @@ export class OrderRepository implements IOrderRepository {
     pagination?: PaginationParams
   ): Promise<RepositoryResult<PaginatedResult<Order>>> {
     try {
-      // Mock implementation for now - ML Orders API requires special authentication
-      const mockOrders: Order[] = [
-        new Order(
-          'ORDER-001',
-          'paid',
-          'approved',
-          new Date('2024-12-15T10:00:00Z'),
-          new Date('2024-12-15T10:30:00Z'),
-          new Date('2024-12-15T10:30:00Z'),
-          'BRL',
-          299.99,
-          315.98,
-          299.99,
+      // Use real sales data based on actual products
+      const salesResponse = await fetch(`${this.apiBaseUrl}/api/admin/sales?days=30`);
+      
+      if (!salesResponse.ok) {
+        throw new Error('Failed to fetch sales data');
+      }
+      
+      const salesData = await salesResponse.json();
+      
+      if (!salesData.success) {
+        throw new Error('Sales API returned error');
+      }
+      
+      // Convert sales to Order entities
+      const orders: Order[] = salesData.data.sales.map((sale: any) => {
+        return new Order(
+          sale.id,
+          sale.status === 'completed' ? 'paid' : 'payment_in_process',
+          sale.status === 'completed' ? 'approved' : 'pending',
+          new Date(sale.date),
+          new Date(sale.date),
+          sale.status === 'completed' ? new Date(sale.date) : undefined,
+          sale.currency,
+          sale.sale_price * sale.quantity,
+          sale.sale_price * sale.quantity + (sale.shipping?.cost || 0),
+          sale.sale_price * sale.quantity,
           undefined,
           [
             {
               item: {
-                id: 'MLB123456789',
-                title: 'Produto Exemplo',
-                category_id: 'MLB5672',
+                id: sale.product_id,
+                title: sale.product_title,
+                category_id: 'MLB5672', // Default category
                 variation_id: undefined,
                 seller_custom_field: undefined,
                 variation_attributes: []
               },
-              quantity: 1,
-              unit_price: 299.99,
-              currency_id: 'BRL',
-              full_unit_price: 299.99,
+              quantity: sale.quantity,
+              unit_price: sale.sale_price,
+              currency_id: sale.currency,
+              full_unit_price: sale.sale_price,
               seller_sku: undefined
             }
           ],
           {
-            id: 123456,
-            nickname: 'buyer_user',
-            email: 'buyer@example.com',
-            first_name: 'João',
-            last_name: 'Silva',
+            id: sale.buyer.id,
+            nickname: sale.buyer.nickname,
+            email: `${sale.buyer.nickname}@example.com`,
+            first_name: sale.buyer.nickname.split('_')[0] || 'Cliente',
+            last_name: sale.buyer.nickname.split('_')[1] || 'ML',
             phone: {
               area_code: '11',
               number: '99999-9999'
             }
           },
-          789012
-        )
-      ];
+          669073070 // Your seller ID
+        );
+      });
 
       // Apply filters if provided
-      let filteredOrders = mockOrders;
+      let filteredOrders = orders;
       
       if (filters) {
         if (filters.status) {
-          filteredOrders = filteredOrders.filter(order => order.status === filters.status);
+          filteredOrders = filteredOrders.filter((order: Order) => order.status === filters.status);
         }
-        if (filters.buyerId && filteredOrders.some(order => order.buyer)) {
-          filteredOrders = filteredOrders.filter(order => order.buyer?.id === filters.buyerId);
+        if (filters.buyerId && filteredOrders.some((order: Order) => order.buyer)) {
+          filteredOrders = filteredOrders.filter((order: Order) => order.buyer?.id === filters.buyerId);
         }
         if (filters.dateFrom) {
-          filteredOrders = filteredOrders.filter(order => order.date_created >= filters.dateFrom!);
+          filteredOrders = filteredOrders.filter((order: Order) => order.date_created >= filters.dateFrom!);
         }
         if (filters.dateTo) {
-          filteredOrders = filteredOrders.filter(order => order.date_created <= filters.dateTo!);
+          filteredOrders = filteredOrders.filter((order: Order) => order.date_created <= filters.dateTo!);
         }
       }
 

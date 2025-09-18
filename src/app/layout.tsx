@@ -6,8 +6,8 @@ import { WebVitals } from "@/components/WebVitals";
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import CookieConsentBanner from "@/components/CookieConsentBanner";
 
-// FORCE CACHE BUSTING - BUILD: 2025-09-15-20-35
-const FORCE_CACHE_BUST = "2025-09-15-20-35";
+// FORCE CACHE BUSTING - BUILD: 2025-09-18-01-15 
+const FORCE_CACHE_BUST = "2025-09-18-01-15-v2";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,6 +55,9 @@ export const metadata: Metadata = {
   },
   other: {
     "cache-bust": FORCE_CACHE_BUST,
+    "cache-control": "no-cache, no-store, must-revalidate",
+    "pragma": "no-cache", 
+    "expires": "0",
   },
 };
 
