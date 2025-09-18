@@ -1,0 +1,21 @@
+[0;34m[19:00:35][0m 🏥 TESTE 1: Health Check
+[0;31m❌ Health check failed - HTTP 000[0m
+[0;34m[19:00:36][0m 📡 TESTE 2: Webhook Endpoint Status
+[0;31m❌ Webhook endpoint failed - HTTP 000[0m
+[0;34m[19:00:36][0m 🛍️  TESTE 3: API de Produtos (Sem Auth)
+[0;31m❌ Produtos API failed - HTTP 000[0m
+[0;34m[19:00:37][0m 💾 TESTE 4: Cache Debug
+[0;31m❌ Cache debug failed - HTTP 000[0m
+[0;34m[19:00:37][0m 🔐 TESTE 5: OAuth Flow - Início
+[0;34m[19:00:37][0m 🔑 State: 4b038a804a3dcd37b6c699bfa1a48285
+[0;34m[19:00:37][0m 🔐 Code Verifier: CGh4mY288frW8mPwFQXpXorqdQio8lpeMuPhDQKUZw
+[0;34m[19:00:37][0m 🔒 Code Challenge: rqBzkYtynQ4RdktQkMBKnkij5kUih5NzyYCshF75y5c
+[0;32m✅ OAuth endpoint OK - Redirect disponível[0m
+[1;33m⚠️  Por favor, abra esta URL no navegador para completar o OAuth[0m
+[1;33m⚠️  Após o login, o sistema redirecionará e você verá os dados do usuário[0m
+[0;34m[19:00:38][0m 🔒 TESTE 6: API de Produtos (Com Auth)
+[1;33m⚠️  Este teste requer autenticação via OAuth[0m
+[1;33m⚠️  Execute após completar o login no navegador[0m
+[0;31m❌ Produtos autenticados failed - HTTP 000[0m
+[0;34m[19:00:38][0m 📬 TESTE 7: Simulação de Webhook
+[0;31m❌ Webhook simulation failed - HTTP 000[0m
