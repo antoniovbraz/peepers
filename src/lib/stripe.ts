@@ -140,20 +140,156 @@ class StripeClient {
   }
 
   /**
-   * Cancela subscription
+   * Atualiza subscription existente
    */
-  async cancelSubscription(subscriptionId: string, cancelAtPeriodEnd = true): Promise<StripeSubscription> {
+  async updateSubscription(subscriptionId: string, newPriceId: string): Promise<StripeSubscription> {
     try {
-      const subscription = await this.stripe.subscriptions.update(subscriptionId, {
-        cancel_at_period_end: cancelAtPeriodEnd
+      // Cancelar items existentes
+      const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
+
+      // Atualizar com novo price
+      const updatedSubscription = await this.stripe.subscriptions.update(subscriptionId, {
+        items: [{
+          id: subscription.items.data[0].id,
+          price: newPriceId,
+        }],
+        proration_behavior: 'create_prorations',
       });
 
-      logger.info({ subscriptionId }, 'Cancelled Stripe subscription');
+      logger.info({
+        subscriptionId,
+        newPriceId
+      }, 'Updated Stripe subscription');
+
+      return updatedSubscription as unknown as StripeSubscription;
+
+    } catch (error) {
+      logger.error({ error, subscriptionId, newPriceId }, 'Failed to update subscription');
+      throw error;
+    }
+  }
+
+  /**
+   * Cancela uma subscription
+   */
+  async cancelSubscription(subscriptionId: string, cancelAtPeriodEnd: boolean = false): Promise<StripeSubscription> {
+    try {
+      const subscription = await this.stripe.subscriptions.update(subscriptionId, {
+        cancel_at_period_end: cancelAtPeriodEnd,
+      });
+
+      if (!cancelAtPeriodEnd) {
+        // Cancelar imediatamente
+        await this.stripe.subscriptions.cancel(subscriptionId);
+      }
+
+      logger.info({
+        subscriptionId,
+        cancelAtPeriodEnd
+      }, 'Cancelled Stripe subscription');
+
       return subscription as unknown as StripeSubscription;
 
     } catch (error) {
       logger.error({ error, subscriptionId }, 'Failed to cancel subscription');
       throw error;
+    }
+  }
+
+  /**
+   * Reativa uma subscription cancelada
+   */
+  async reactivateSubscription(subscriptionId: string): Promise<StripeSubscription> {
+    try {
+      const subscription = await this.stripe.subscriptions.update(subscriptionId, {
+        cancel_at_period_end: false,
+      });
+
+      logger.info({ subscriptionId }, 'Reactivated Stripe subscription');
+      return subscription as unknown as StripeSubscription;
+
+    } catch (error) {
+      logger.error({ error, subscriptionId }, 'Failed to reactivate subscription');
+      throw error;
+    }
+  }
+
+  /**
+   * Busca subscription por ID
+   */
+  async getSubscription(subscriptionId: string): Promise<StripeSubscription> {
+    try {
+      const subscription = await this.stripe.subscriptions.retrieve(subscriptionId, {
+        expand: ['latest_invoice.payment_intent']
+      });
+
+      return subscription as unknown as StripeSubscription;
+
+    } catch (error) {
+      logger.error({ error, subscriptionId }, 'Failed to get subscription');
+      throw error;
+    }
+  }
+
+  /**
+   * Busca customer por ID
+   */
+  async getCustomer(customerId: string): Promise<StripeCustomer> {
+    try {
+      const customer = await this.stripe.customers.retrieve(customerId);
+      return customer as StripeCustomer;
+
+    } catch (error) {
+      logger.error({ error, customerId }, 'Failed to get customer');
+      throw error;
+    }
+  }
+
+  /**
+   * Busca invoices de um customer
+   */
+  async getCustomerInvoices(customerId: string): Promise<any[]> {
+    try {
+      const invoices = await this.stripe.invoices.list({
+        customer: customerId,
+        limit: 10
+      });
+
+      return invoices.data;
+
+    } catch (error) {
+      logger.error({ error, customerId }, 'Failed to get customer invoices');
+      throw error;
+    }
+  }
+
+  /**
+   * Busca próxima invoice
+   */
+  async getUpcomingInvoice(customerId: string): Promise<any> {
+    try {
+      // Para upcoming invoice, precisamos de uma subscription ativa
+      const subscriptions = await this.stripe.subscriptions.list({
+        customer: customerId,
+        status: 'active',
+        limit: 1
+      });
+
+      if (subscriptions.data.length === 0) {
+        return null;
+      }
+
+      const invoice = await this.stripe.invoices.create({
+        customer: customerId,
+        subscription: subscriptions.data[0].id
+      });
+
+      return invoice;
+
+    } catch (error) {
+      logger.error({ error, customerId }, 'Failed to get upcoming invoice');
+      // Pode não ter upcoming invoice, retornar null
+      return null;
     }
   }
 

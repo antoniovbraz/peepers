@@ -13,7 +13,8 @@ export const PEEPERS_PLANS: Record<PeepersPlanType, PeepersPlan> = {
     name: 'Starter',
     price: {
       monthly: 14900, // R$ 149,00
-      yearly: 149900   // R$ 1.499,00 (10% desconto)
+      quarterly: 39900, // R$ 399,00 (10% desconto)
+      yearly: 149900   // R$ 1.499,00 (20% desconto)
     },
     limits: {
       api_calls_per_month: 5000,
@@ -28,6 +29,7 @@ export const PEEPERS_PLANS: Record<PeepersPlanType, PeepersPlan> = {
     ],
     stripe_price_ids: {
       monthly: process.env.STRIPE_PRICE_STARTER_MONTHLY || '',
+      quarterly: process.env.STRIPE_PRICE_STARTER_QUARTERLY || '',
       yearly: process.env.STRIPE_PRICE_STARTER_YEARLY || ''
     }
   },
@@ -36,7 +38,8 @@ export const PEEPERS_PLANS: Record<PeepersPlanType, PeepersPlan> = {
     name: 'Professional',
     price: {
       monthly: 49900, // R$ 499,00
-      yearly: 499900   // R$ 4.999,00 (10% desconto)
+      quarterly: 134900, // R$ 1.349,00 (10% desconto)
+      yearly: 499900   // R$ 4.999,00 (20% desconto)
     },
     limits: {
       api_calls_per_month: 50000,
@@ -53,6 +56,7 @@ export const PEEPERS_PLANS: Record<PeepersPlanType, PeepersPlan> = {
     ],
     stripe_price_ids: {
       monthly: process.env.STRIPE_PRICE_PROFESSIONAL_MONTHLY || '',
+      quarterly: process.env.STRIPE_PRICE_PROFESSIONAL_QUARTERLY || '',
       yearly: process.env.STRIPE_PRICE_PROFESSIONAL_YEARLY || ''
     }
   },
@@ -61,7 +65,8 @@ export const PEEPERS_PLANS: Record<PeepersPlanType, PeepersPlan> = {
     name: 'Enterprise',
     price: {
       monthly: 149900, // R$ 1.499,00
-      yearly: 1499900  // R$ 14.999,00 (10% desconto)
+      quarterly: 404900, // R$ 4.049,00 (10% desconto)
+      yearly: 1499900  // R$ 14.999,00 (20% desconto)
     },
     limits: {
       api_calls_per_month: -1, // Unlimited
@@ -82,6 +87,7 @@ export const PEEPERS_PLANS: Record<PeepersPlanType, PeepersPlan> = {
     ],
     stripe_price_ids: {
       monthly: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || '',
+      quarterly: process.env.STRIPE_PRICE_ENTERPRISE_QUARTERLY || '',
       yearly: process.env.STRIPE_PRICE_ENTERPRISE_YEARLY || ''
     }
   }

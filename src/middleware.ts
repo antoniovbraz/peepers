@@ -9,6 +9,7 @@ import { stripeClient } from '@/lib/stripe';
 import { entitlementsManager } from '@/lib/entitlements';
 import { PREMIUM_FEATURES } from '@/config/entitlements';
 import type { PeepersFeature } from '@/types/stripe';
+import { TenantMiddleware } from '@/infrastructure/middleware/TenantMiddleware';
 
 /**
  * Middleware de Autenticação, Autorização e CORS
@@ -109,7 +110,25 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
     }
 
-    // 8. Verificar entitlements para features premium
+    // 8. Verificar isolamento de tenant para rotas multi-tenant
+    if (request.nextUrl.pathname.startsWith('/api/tenant/') ||
+        request.nextUrl.pathname.startsWith('/api/v1/') ||
+        request.nextUrl.pathname.startsWith('/admin/')) {
+
+      const tenantResult = await TenantMiddleware.handleTenantIsolation(request);
+
+      if (tenantResult instanceof NextResponse && !tenantResult.ok) {
+        logger.warn({ userId, path: request.nextUrl.pathname }, 'Tenant isolation failed');
+        return tenantResult;
+      }
+
+      // Se o middleware retornou uma resposta modificada, usar ela
+      if (tenantResult instanceof NextResponse) {
+        return tenantResult;
+      }
+    }
+
+    // 9. Verificar entitlements para features premium
     const entitlementCheck = await checkEntitlements(request, userId);
     if (!entitlementCheck.allowed) {
       logger.warn({
@@ -253,6 +272,8 @@ export const config = {
     '/api/auth/logout',
     '/api/admin/:path*',
     '/api/entitlements',
+    '/api/tenant/:path*',
+    '/api/v1/:path*',
     '/upgrade',
     '/billing'
   ]

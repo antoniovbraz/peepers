@@ -12,6 +12,11 @@ export interface StripeSubscription {
   current_period_start: number;
   current_period_end: number;
   cancel_at_period_end: boolean;
+  latest_invoice?: {
+    payment_intent?: {
+      client_secret: string;
+    };
+  };
   items: {
     data: Array<{
       id: string;
@@ -65,6 +70,7 @@ export interface PeepersPlan {
   name: string;
   price: {
     monthly: number;
+    quarterly: number;
     yearly: number;
   };
   limits: {
@@ -76,6 +82,7 @@ export interface PeepersPlan {
   features: PeepersFeature[];
   stripe_price_ids: {
     monthly: string;
+    quarterly: string;
     yearly: string;
   };
 }

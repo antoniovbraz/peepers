@@ -5,6 +5,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { WebVitals } from "@/components/WebVitals";
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import CookieConsentBanner from "@/components/CookieConsentBanner";
+import { TenantProvider } from "@/contexts/TenantContext";
 
 // FORCE CACHE BUSTING - BUILD: 2025-09-18-01-15 
 const FORCE_CACHE_BUST = "2025-09-18-01-15-v2";
@@ -88,10 +89,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ErrorBoundary>
-          <WebVitals />
-          <SpeedInsights />
-          {children}
-          <CookieConsentBanner />
+          <TenantProvider>
+            <WebVitals />
+            <SpeedInsights />
+            {children}
+            <CookieConsentBanner />
+          </TenantProvider>
         </ErrorBoundary>
       </body>
     </html>
