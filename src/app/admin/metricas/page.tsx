@@ -16,61 +16,6 @@ import {
 import { clsx } from 'clsx';
 import KPICard from '@/components/admin/dashboard/KPICard';
 
-  // Load metrics from API
-  useEffect(() => {
-    loadMetrics();
-  }, [selectedPeriod]);
-
-  const loadMetrics = async () => {
-    setLoading(true);
-    try {
-      // Tentar obter token do localStorage (usuário logado)
-      const userToken = localStorage.getItem('ml_user_token');
-      
-      if (userToken) {
-        // Tentar buscar métricas reais do ML
-        try {
-          const response = await fetch(`/api/admin/metrics?period=${selectedPeriod}`, {
-            headers: {
-              'Authorization': `Bearer ${userToken}`,
-              'Content-Type': 'application/json',
-            },
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.data?.metrics) {
-              setMetrics(data.data.metrics);
-              setIsRealData(true);
-              setDataSource('mercado_livre');
-              console.log('✅ Métricas reais do ML carregadas!');
-              return;
-            }
-          }
-        } catch (error) {
-          console.warn('Erro ao buscar métricas do ML:', error);
-        }
-      }
-
-      // Fallback: usar dados mockados
-      setMetrics(mockMetrics);
-      setIsRealData(false);
-      setDataSource('mock');
-      console.log('⚠️ Usando métricas de demonstração');
-      
-    } catch (error) {
-      console.error('Erro ao carregar métricas:', error);
-      setMetrics(mockMetrics);
-      setIsRealData(false);
-      setDataSource('error_fallback');
-    } finally {
-      setLoading(false);
-    }
-  };con,
-  ClockIcon,
-} from '@heroicons/react/24/outline';
-import KPICard from '@/components/admin/dashboard/KPICard';
-
 // Types
 interface MetricsData {
   sales: {
@@ -334,7 +279,7 @@ export default function MetricasPage() {
             className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
           >
             <ArrowTrendingUpIcon className="h-4 w-4 mr-2" />
-            {loading ? 'Atualizando...' : 'Exportar Relatório'}
+            {loading ? 'Atualizando...' : 'Atualizar Métricas'}
           </button>
         </div>
       </div>
