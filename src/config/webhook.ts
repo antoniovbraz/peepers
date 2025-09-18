@@ -129,17 +129,22 @@ export function isValidWebhookTopic(topic: string): boolean {
 
 // ==================== CONFIGURAÇÃO DE SEGURANÇA ====================
 export const WEBHOOK_SECURITY = {
-  // ⚠️ CRÍTICO: Validação obrigatória de IP conforme spec ML
-  REQUIRE_IP_VALIDATION: process.env.NODE_ENV === 'production' ? true : false, // Flexível para desenvolvimento
+  // 🚨 CRÍTICO: Validação obrigatória de IP conforme spec oficial ML
+  // SEMPRE ativa em produção - ML exige IP whitelist obrigatório
+  REQUIRE_IP_VALIDATION: process.env.NODE_ENV === 'production' ? true : 
+    (process.env.FORCE_IP_VALIDATION === 'true'), // Forçar em dev se necessário
 
-  // Validação de assinatura (opcional mas recomendado)
-  REQUIRE_SIGNATURE_VALIDATION: false,
+  // Validação de assinatura (opcional mas recomendado para v2.0)
+  REQUIRE_SIGNATURE_VALIDATION: process.env.ML_WEBHOOK_SECRET ? true : false,
 
   // Log detalhado para debugging
   ENABLE_DETAILED_LOGGING: process.env.NODE_ENV === 'development',
 
-  // ⚠️ CRÍTICO: Timeout enforcement obrigatório
-  ENFORCE_TIMEOUT: true
+  // 🚨 CRÍTICO: Timeout enforcement obrigatório - ML desabilita se > 500ms
+  ENFORCE_TIMEOUT: true,
+
+  // 🚨 CRÍTICO: Fail fast em produção para compliance
+  FAIL_FAST_ON_VIOLATIONS: process.env.NODE_ENV === 'production'
 } as const;
 
 export default {

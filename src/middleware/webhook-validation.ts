@@ -38,14 +38,30 @@ export function validateMLWebhook(request: NextRequest): WebhookValidationResult
   const clientIP = extractRealIP(request);
 
   // ==================== VALIDAÇÃO DE IP WHITELIST ====================
+  // 🚨 CRÍTICO: Conforme especificação oficial ML - IPs obrigatórios em produção
   if (WEBHOOK_SECURITY.REQUIRE_IP_VALIDATION && !isValidMLWebhookIP(clientIP)) {
-    const error = 'IP not in ML whitelist';
+    const error = `IP ${clientIP} not in ML official whitelist`;
     logger.error({
       clientIP,
       allowedIPs: require('@/config/webhook').ML_WEBHOOK_IPS,
       userAgent: request.headers.get('user-agent'),
+      headers: {
+        'x-forwarded-for': request.headers.get('x-forwarded-for'),
+        'x-real-ip': request.headers.get('x-real-ip'),
+        'cf-connecting-ip': request.headers.get('cf-connecting-ip')
+      },
+      environment: process.env.NODE_ENV,
       processingTimeMs: Date.now() - performanceStart
-    }, `🚨 CRÍTICO: ${error}`);
+    }, `🚨 CRÍTICO ML COMPLIANCE: ${error}`);
+
+    // Em produção, fail fast conforme compliance
+    if (WEBHOOK_SECURITY.FAIL_FAST_ON_VIOLATIONS) {
+      return {
+        isValid: false,
+        clientIP,
+        error: 'Unauthorized IP - ML compliance violation'
+      };
+    }
 
     return {
       isValid: false,
