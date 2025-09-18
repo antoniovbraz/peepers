@@ -153,7 +153,7 @@ const nextConfig: NextConfig = {
           // Security headers adicionais
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; img-src * data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.mlstatic.com https://*.upstash.io; frame-ancestors 'none';",
+            value: "default-src 'self'; img-src * data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.mlstatic.com https://*.upstash.io; frame-ancestors 'none';",
           },
           {
             key: "Strict-Transport-Security",
@@ -161,7 +161,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Cross-Origin-Embedder-Policy",
-            value: "require-corp",
+            value: "credentialless",
           },
           {
             key: "Cross-Origin-Opener-Policy",
@@ -169,7 +169,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Cross-Origin-Resource-Policy",
-            value: "same-origin",
+            value: "cross-origin",
           },
           // Mobile-specific headers
           {

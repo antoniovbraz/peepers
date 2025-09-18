@@ -8,6 +8,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -314,11 +315,14 @@ export default function AdminProductsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="flex-shrink-0 h-16 w-16">
-                      <img
+                      <Image
                         className="h-16 w-16 rounded-md object-cover bg-gray-100"
-                        src={product.thumbnail}
+                        src={product.thumbnail || '/placeholder-image.svg'}
                         alt={product.title}
+                        width={64}
+                        height={64}
                         onError={handleImageError}
+                        unoptimized
                       />
                     </div>
                     <div className="ml-4 flex-1">
