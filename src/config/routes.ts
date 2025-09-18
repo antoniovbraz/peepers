@@ -1,5 +1,8 @@
 /**
- * CONFIGURAÇÃO CENTRALIZADA DE ROTAS E ENDPOINTS
+ * CONFIGURAÇÃO CE  // Produtos - SIMPLIFICADO
+  PRODUCTS: '/api/products',                    // ✅ PÚBLICO: Para home e /produtos
+  ADMIN_PRODUCTS: '/api/admin/products',       // ✅ PROTEGIDO: Para administração
+  PRODUCT_BY_ID: (id: string) => `/api/products/${id}`,IZADA DE ROTAS E ENDPOINTS
  * 
  * Este arquivo é a fonte única da verdade para todas as rotas da aplicação.
  * NUNCA use strings hardcoded - sempre importe deste arquivo.
@@ -88,9 +91,7 @@ export const ML_CONFIG = {
 export const MIDDLEWARE_CONFIG = {
   // Rotas que NÃO precisam de autenticação
   PUBLIC_PATHS: [
-    API_ENDPOINTS.PRODUCTS_PUBLIC,  // 🟡 DEPRECATED: Legacy endpoint
-    API_ENDPOINTS.PRODUCTS_V1,      // ✅ CANONICAL: Main public products API
-    '/api/v1/products',             // 🚫 PROBLEMATIC: Direct path for old structure
+    API_ENDPOINTS.PRODUCTS,         // ✅ PÚBLICO: Simplificado para home/produtos
     API_ENDPOINTS.HEALTH,
     API_ENDPOINTS.CACHE_DEBUG,
     API_ENDPOINTS.DEBUG,
@@ -99,7 +100,7 @@ export const MIDDLEWARE_CONFIG = {
     API_ENDPOINTS.AUTH_ME,
     API_ENDPOINTS.AUTH_LOGOUT,
     API_ENDPOINTS.WEBHOOK_ML,
-    API_ENDPOINTS.TEST_WEBHOOK_SECURITY, // ✅ CRÍTICO: Endpoint de teste deve ser público
+    API_ENDPOINTS.TEST_WEBHOOK_SECURITY,
     PAGES.ACESSO_NEGADO
   ],
   

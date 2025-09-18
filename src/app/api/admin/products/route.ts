@@ -2,30 +2,37 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '20');
+    // Este endpoint é protegido pelo middleware
+    const userId = request.cookies.get('user_id')?.value;
+    
+    if (!userId) {
+      return NextResponse.json({
+        error: 'Unauthorized'
+      }, { status: 401 });
+    }
 
     const products = [
       {
         id: "MLB123456789",
         title: "Camiseta Básica",
         price: 29.90,
-        thumbnail: "https://via.placeholder.com/300x300",
-        condition: "new"
+        status: "active",
+        stock: 50
       },
       {
         id: "MLB987654321",
         title: "Calça Jeans",
         price: 89.90,
-        thumbnail: "https://via.placeholder.com/300x300",
-        condition: "new"
+        status: "paused",
+        stock: 25
       }
     ];
 
     return NextResponse.json({
       success: true,
-      products: products.slice(0, limit),
-      total: products.length
+      products,
+      total: products.length,
+      message: "Produtos para administração"
     });
 
   } catch (error) {
