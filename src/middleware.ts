@@ -131,7 +131,9 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
     }
 
-    // 8. Verificar isolamento de tenant APENAS para rotas que realmente precisam
+    // 8. TEMPORÁRIO: Desabilitar isolamento de tenant para focar na integração ML
+    // TODO: Reabilitar quando implementar multi-tenant completo
+    /*
     const needsTenantIsolation = 
       request.nextUrl.pathname.startsWith('/api/tenant/') ||
       (request.nextUrl.pathname.startsWith('/admin/') && !request.nextUrl.pathname.startsWith('/admin/platform'));
@@ -149,6 +151,7 @@ export async function middleware(request: NextRequest) {
         return tenantResult;
       }
     }
+    */
 
     // 9. Verificar entitlements para features premium
     const entitlementCheck = await checkEntitlements(request, userId);
