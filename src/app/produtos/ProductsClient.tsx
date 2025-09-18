@@ -90,6 +90,7 @@ export default function ProductsClient() {
       const url = new URL(API_ENDPOINTS.PRODUCTS_V1, window.location.origin);
       url.searchParams.set('format', 'summary'); // Summary format includes pictures array
       url.searchParams.set('limit', '100'); // Get more products
+      url.searchParams.set('_t', Date.now().toString()); // Cache busting
       
       const response = await fetch(url.toString(), {
         cache: 'no-store',
