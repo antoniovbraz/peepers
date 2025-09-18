@@ -1,19 +1,35 @@
-# Copilot Instructions for Peepers - Mercado Livre Integration
+# Copilot Instructions for Peepers - Enterprise ML Integration
 
 ## Project Overview
 
-Peepers is a Next.js 15 application integrating with Mercado Livre's e-commerce API. The app handles OAuth 2.0 + PKCE authentication, product management, and real-time webhooks for the Brazilian marketplace. Built with React 19, Tailwind CSS v4, TypeScript, and Vitest.
+Peepers is an enterprise-grade Next.js 15 SaaS platform for Mercado Livre seller management. Built for multi-tenant architecture with complete ERP functionality including OAuth 2.0 + PKCE authentication, real-time webhooks, product management, order processing, and analytics dashboard.
 
-**Architecture**: Clean Architecture with Domain-Driven Design patterns. Features a unified API approach with `/api/v1/products` consolidating legacy endpoints.
+**Architecture**: Clean Architecture with Domain-Driven Design patterns, unified API endpoints, and microservices-ready infrastructure.
 
-**Evolution Status**: v2.0.0 in development - transforming from product showcase to complete ERP for Mercado Livre sellers.
+**Current Status**: v2.0.0 Enterprise transformation - evolving from MVP to production-ready SaaS with Stripe billing integration and multi-tenant support.
+
+**Official ML API Compliance**: All implementations must follow the official Mercado Livre API specification documented in `/docs/ml/ml-official-spec.md`. Critical requirements include 500ms webhook timeout, IP whitelist validation, and proper rate limiting.
 
 ## Critical Development Context
+
+### ML API Compliance Requirements ⚠️ CRITICAL
+- **MANDATORY 500ms webhook timeout**: All webhook handlers MUST respond within 500ms per ML official spec
+- **IP Whitelist validation**: Only accept webhooks from official ML IPs (54.88.218.97, 18.215.140.160, 18.213.114.129, 18.206.34.84)
+- **Rate Limiting**: Strict enforcement of 1000 calls/hour (app) + 5000 calls/day (user) limits
+- **OAuth 2.0 + PKCE**: Full compliance with SHA-256 code challenge and state parameter CSRF protection
+- **Token Refresh Rotation**: Single-use refresh tokens with proper rotation and 6-hour access token lifecycle
+
+### Enterprise SaaS Architecture (v2.0.0)
+- **Multi-Tenant Support**: Full tenant isolation with per-tenant ML user management and billing
+- **Stripe Integration**: Complete SaaS billing with subscription management (starter/professional/enterprise plans)
+- **Clean Architecture**: Domain/Application/Infrastructure layers with dependency inversion
+- **Event-Driven**: Webhook-based real-time sync with background job processing
+- **Monitoring**: Comprehensive observability with SLA monitoring and incident response procedures
 
 ### HTTPS Requirement
 - **Mercado Livre REQUIRES HTTPS for ALL operations** - OAuth redirects, webhooks, and API calls
 - Local development with real ML integration is not practical due to HTTPS requirements
-- **Recommended approach**: Use Vercel for all ML API testing (deploy is fast with `vercel --prod`)
+- **Recommended approach**: Use Vercel for all ML API testing (deploy with `vercel --prod`)
 - Use `npm run dev:mock` for local development without ML integration
 
 ### v2.0.0 Admin Panel Implementation (IN PROGRESS)
@@ -27,7 +43,8 @@ Peepers is a Next.js 15 application integrating with Mercado Livre's e-commerce 
 - **Phase 1 (COMPLETED)**: Endpoint consolidation, Service Layer implementation, shared utilities
 - **Phase 2 (COMPLETED)**: Performance optimization, intelligent caching, code splitting, image optimization
 - **Phase 3 (COMPLETED)**: Design System implementation, Storybook integration, comprehensive testing
-- **Phase 4 (IN PROGRESS)**: Complete admin panel, microservices consideration, advanced monitoring
+- **Phase 4 (COMPLETED)**: Complete admin panel, ML API compliance audit, enterprise documentation
+- **Phase 5 (IN PROGRESS)**: Multi-tenant SaaS transformation, Stripe billing, production deployment
 
 ### Key Architecture Patterns
 
@@ -168,6 +185,17 @@ npm run test:admin                      # Future: Admin panel testing
 3. **Rate limits**: ML enforces 1000 calls/hour per app, 5000/day per user
 4. **Cache issues**: Use `/api/cache-debug` endpoint for diagnostics
 5. **Middleware auth**: Check session cookies and `ALLOWED_USER_IDS` configuration
+6. **Webhook timeouts**: CRITICAL - Must respond within 500ms or ML will disable webhooks
+7. **IP validation**: Webhooks must validate origin from ML official IPs only
+
+### Enterprise Development Patterns (v2.0.0)
+- **Documentation-First**: All implementations must reference `/docs/ml/ml-official-spec.md`
+- **Compliance-Driven**: ML API compliance takes precedence over convenience
+- **Multi-Tenant Ready**: All features must support tenant isolation
+- **SaaS Billing**: Stripe integration patterns for subscription management
+- **Observability**: Comprehensive logging, monitoring, and alerting
+- **Security-First**: LGPD compliance, data protection, and access controls
+- **Performance**: Sub-500ms webhook responses, efficient caching, optimized queries
 
 ### v2.0.0 Development Patterns
 - **Conventional Commits**: Use `feat(scope): description` format for all commits
@@ -184,6 +212,8 @@ npm run test:admin                      # Future: Admin panel testing
 - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (cache)
 - `NEXT_PUBLIC_APP_URL` (for OAuth redirects)
 - `ALLOWED_USER_IDS` (comma-separated list for user authorization)
+- `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` (billing - TODO: implement)
+- `WEBHOOK_SECRET` (ML webhook signature validation - TODO: implement)
 
 ## Integration Specifics
 
@@ -199,3 +229,25 @@ npm run test:admin                      # Future: Admin panel testing
 3. **Webhooks**: ML notifications → Background processing → Cache updates
 
 When working on this codebase, prioritize HTTPS compliance, use centralized configurations, and leverage the existing cache/auth patterns. For ML API testing, always deploy to Vercel first - it's faster than setting up complex local tunneling.
+
+## Enterprise Documentation Reference
+
+### Official ML API Compliance
+- **Primary Reference**: `/docs/ml/ml-official-spec.md` - Complete official specification
+- **Implementation Flows**: `/docs/ml/implementation-flows.md` - Technical implementation patterns
+- **Enterprise Overview**: `/docs/enterprise/overview.md` - Business transformation roadmap
+- **Data Model**: `/docs/enterprise/data-model.md` - Complete entity specifications
+- **Operational Runbooks**: `/docs/enterprise/runbooks.md` - Production operations guide
+
+### Critical Compliance Gaps (MUST FIX)
+1. **Webhook 500ms timeout enforcement** - Currently missing, will cause ML to disable webhooks
+2. **IP whitelist validation** - Currently accepts any IP, security vulnerability
+3. **User-level rate limiting** - Only app-level implemented, missing 5K/day per user
+4. **Stripe billing integration** - Completely absent, required for SaaS transformation
+5. **Multi-tenant architecture** - Hardcoded user authorization, not scalable
+
+### Development Priorities
+1. **P0 (Critical)**: Implement 500ms webhook timeout and IP whitelist validation
+2. **P1 (High)**: Add user-level rate limiting and comprehensive error handling
+3. **P2 (Medium)**: Implement Stripe billing and multi-tenant support
+4. **P3 (Low)**: Enhanced monitoring, analytics, and automation features
