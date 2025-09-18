@@ -445,6 +445,70 @@ export class MercadoLivreAPI {
     return this.makeRequest<MLCategory>(`/categories/${categoryId}`);
   }
 
+  /**
+   * Busca feeds perdidos (missed feeds) do Mercado Livre
+   * CRÍTICO: Recupera notificações que falharam (não retornaram HTTP 200)
+   */
+  async getMissedFeeds(
+    appId: string,
+    accessToken: string,
+    options: {
+      topic?: string;
+      limit?: number;
+      offset?: number;
+    } = {}
+  ): Promise<{
+    feeds: Array<{
+      id: string;
+      resource: string;
+      user_id: number;
+      topic: string;
+      application_id: number;
+      attempts: number;
+      sent: string;
+      received?: string;
+    }>;
+    paging: {
+      total: number;
+      limit: number;
+      offset: number;
+    };
+  }> {
+    const params = new URLSearchParams({
+      app_id: appId,
+      ...(options.topic && { topic: options.topic }),
+      ...(options.limit && { limit: options.limit.toString() }),
+      ...(options.offset && { offset: options.offset.toString() })
+    });
+
+    const response = await this.makeRequest<{
+      feeds: Array<any>;
+      paging: any;
+    }>(`/missed_feeds?${params.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+
+    return {
+      feeds: response.feeds.map(feed => ({
+        id: feed.id || feed._id,
+        resource: feed.resource,
+        user_id: feed.user_id,
+        topic: feed.topic,
+        application_id: feed.application_id,
+        attempts: feed.attempts,
+        sent: feed.sent,
+        received: feed.received
+      })),
+      paging: {
+        total: response.paging?.total || 0,
+        limit: response.paging?.limit || options.limit || 50,
+        offset: response.paging?.offset || options.offset || 0
+      }
+    };
+  }
+
   // Utility Methods
   async validateWebhook(payload: unknown, signature?: string): Promise<boolean> {
     // In production, implement proper webhook signature validation
