@@ -19,7 +19,7 @@
 
 ```typescript
 // src/config/platform-admin.ts
-SUPER_ADMIN_EMAIL: 'antonio@peepers.com'
+SUPER_ADMIN_EMAIL: 'peepers.shop@gmail.com'
 ```
 
 **Quando você faz login:**
@@ -92,9 +92,9 @@ SUPER_ADMIN_FEATURES: [
 1. **Acessa `/signup`** → Self-service registration
 2. **Cria organização** → Automaticamente com trial de 14 dias
 3. **Escolhe plano** em `/upgrade`:
-   - 🥉 **Starter**: R$ 47/mês
-   - 🥈 **Professional**: R$ 97/mês 
-   - 🥇 **Enterprise**: R$ 297/mês
+   - 🥉 **Starter**: R$ 19/mês
+   - 🥈 **Professional**: R$ 34/mês 
+   - 🥇 **Enterprise**: R$ 54/mês
 4. **Paga via Stripe** → Subscription ativa
 5. **Acessa features** conforme o plano
 

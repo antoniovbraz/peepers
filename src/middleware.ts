@@ -38,10 +38,22 @@ import { TenantMiddleware } from '@/infrastructure/middleware/TenantMiddleware';
  * @returns NextResponse com redirecionamento ou continuação
  */
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  
+  // Debug: log para entender quais rotas estão sendo processadas
+  if (pathname.startsWith('/api/')) {
+    console.log(`🔍 Middleware processing: ${pathname}`);
+  }
+
   // 1. Verificar se é uma rota pública - se for, permitir acesso imediato
-  if (MIDDLEWARE_CONFIG.PUBLIC_PATHS.some(path => request.nextUrl.pathname.startsWith(path))) {
+  const isPublicPath = MIDDLEWARE_CONFIG.PUBLIC_PATHS.some(path => pathname.startsWith(path));
+  
+  if (isPublicPath) {
+    console.log(`✅ Public path allowed: ${pathname}`);
     return NextResponse.next();
   }
+  
+  console.log(`🔒 Protected path detected: ${pathname}`);
 
   // 2. CORS: Verificar e aplicar política CORS para APIs
   if (request.nextUrl.pathname.startsWith('/api/')) {
