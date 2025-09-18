@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
 import { checkWebhookLimit } from '@/lib/rate-limiter';
+import {
+  validateMLWebhook,
+  createWebhookErrorResponse,
+  createWebhookSuccessResponse
+} from '@/middleware/webhook-validation';
+import { isValidWebhookTopic, WEBHOOK_TIMEOUT_MS, WEBHOOK_SECURITY } from '@/config/webhook';
 
 const WebhookSchema = z.object({
   user_id: z.number(),
@@ -14,13 +20,27 @@ const WebhookSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     logger.info('📡 Webhook ML recebido');
 
-    // Rate limiting avançado: baseado em IP e User-Agent
-    const clientIP = request.headers.get('x-forwarded-for') ||
-                     request.headers.get('x-real-ip') ||
-                     'unknown';
+    // ==================== CRÍTICO: VALIDAÇÃO DE SEGURANÇA ====================
+    const webhookValidation = validateMLWebhook(request);
+
+    if (!webhookValidation.isValid) {
+      return createWebhookErrorResponse(webhookValidation.error!, 403, {
+        clientIP: webhookValidation.clientIP,
+        processingTimeMs: Date.now() - startTime
+      });
+    }
+
+    if (webhookValidation.warning) {
+      logger.warn({ warning: webhookValidation.warning, clientIP: webhookValidation.clientIP });
+    }
+
+    const clientIP = webhookValidation.clientIP;
+    logger.info({ clientIP }, '✅ Validação de segurança do webhook passou');
     const userAgent = request.headers.get('user-agent') || 'unknown';
     
     const rateLimit = await checkWebhookLimit(clientIP, userAgent);
@@ -64,19 +84,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar schema do payload
-    const validation = WebhookSchema.safeParse(body);
-    if (!validation.success) {
-      logger.warn({ errors: validation.error.issues }, 'Webhook payload validation failed');
+    const schemaValidation = WebhookSchema.safeParse(body);
+    if (!schemaValidation.success) {
+      logger.warn({ errors: schemaValidation.error.issues }, 'Webhook payload validation failed');
       return NextResponse.json({ error: 'Invalid payload schema' }, { status: 400 });
     }
 
-    const payload = validation.data;
+    const payload = schemaValidation.data;
+
+    // ==================== CRÍTICO: VALIDAÇÃO DE TOPIC ====================
+    if (!isValidWebhookTopic(payload.topic)) {
+      logger.warn({ topic: payload.topic }, '⚠️ Webhook com topic não suportado');
+      // Mesmo com topic inválido, retornar 200 para não causar retry infinito
+    }
+
     logger.info({
       topic: payload.topic,
       resource: payload.resource,
       user_id: payload.user_id,
-      application_id: payload.application_id
-    }, 'Webhook payload validated');
+      application_id: payload.application_id,
+      processingTimeMs: Date.now() - startTime
+    }, '✅ Webhook payload validado');
 
     // Processar diferentes tipos de notificação
     switch (payload.topic) {
@@ -104,18 +132,49 @@ export async function POST(request: NextRequest) {
         logger.warn({ topic: payload.topic }, 'Unknown webhook topic');
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Webhook processed successfully',
-      received_at: new Date().toISOString(),
+    // ==================== CRÍTICO: TIMEOUT ENFORCEMENT ====================
+    const processingTime = Date.now() - startTime;
+
+    if (WEBHOOK_SECURITY.ENFORCE_TIMEOUT && processingTime > WEBHOOK_TIMEOUT_MS) {
+      logger.error({
+        processingTime,
+        timeoutLimit: WEBHOOK_TIMEOUT_MS,
+        topic: payload.topic
+      }, '🚨 CRÍTICO: Webhook excedeu timeout de 500ms - ML pode desabilitar webhooks');
+
+      // Mesmo assim retornar 200 para evitar retry, mas logar o problema
+      return createWebhookSuccessResponse(payload.topic, processingTime, {
+        warning: 'Processing exceeded 500ms timeout'
+      });
+    }
+
+    logger.info({
+      processingTime,
       topic: payload.topic
-    });
+    }, '✅ Webhook processado com sucesso dentro do timeout');
+
+    return createWebhookSuccessResponse(payload.topic, processingTime);
 
   } catch (error) {
-    logger.error({ error }, 'Webhook processing error');
+    const processingTime = Date.now() - startTime;
+
+    logger.error({
+      error,
+      processingTime
+    }, '❌ Erro no processamento do webhook');
+
+    // Mesmo em erro, verificar timeout
+    if (WEBHOOK_SECURITY.ENFORCE_TIMEOUT && processingTime > WEBHOOK_TIMEOUT_MS) {
+      logger.error({
+        processingTime,
+        timeoutLimit: WEBHOOK_TIMEOUT_MS
+      }, '🚨 CRÍTICO: Erro de webhook excedeu timeout de 500ms');
+    }
+
     return NextResponse.json({
       error: 'Internal server error',
-      message: 'Failed to process webhook'
+      message: 'Failed to process webhook',
+      processing_time_ms: processingTime
     }, { status: 500 });
   }
 }

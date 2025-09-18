@@ -1,0 +1,114 @@
+/**
+ * CONFIGURAÇÃO DE WEBHOOK - MERCADO LIVRE
+ *
+ * Configurações críticas para conformidade com especificação oficial do ML.
+ * Última atualização: 2025-09-18
+ * Status: ✅ CRÍTICO - Implementar validação obrigatória
+ */
+
+// ==================== IPs OFICIAIS MERCADO LIVRE ====================
+/**
+ * IPs oficiais do Mercado Livre para validação de webhooks
+ * CRÍTICO: Conforme documentação oficial - deve ser validado obrigatoriamente
+ *
+ * Referência: https://developers.mercadolivre.com.br/pt_br/produto-receba-notificacoes
+ */
+export const ML_WEBHOOK_IPS = [
+  '54.88.218.97',
+  '18.215.140.160',
+  '18.213.114.129',
+  '18.206.34.84'
+] as const;
+
+// ==================== TIMEOUT CONFIGURAÇÃO ====================
+/**
+ * Timeout máximo para resposta de webhook
+ * CRÍTICO: ML desabilita webhooks se > 500ms consistentemente
+ */
+export const WEBHOOK_TIMEOUT_MS = 500;
+
+// ==================== RATE LIMITING ====================
+/**
+ * Rate limiting para webhooks
+ * ML permite até 1000 calls/hora por app + 5000 calls/dia por usuário
+ */
+export const WEBHOOK_RATE_LIMITS = {
+  PER_HOUR_APP: 1000,
+  PER_DAY_USER: 5000,
+  WINDOW_MS: 60 * 60 * 1000, // 1 hora
+  DAILY_WINDOW_MS: 24 * 60 * 60 * 1000 // 24 horas
+} as const;
+
+// ==================== TOPICS SUPORTADOS ====================
+/**
+ * Topics de webhook suportados pelo Mercado Livre
+ */
+export const SUPPORTED_WEBHOOK_TOPICS = [
+  'orders_v2',
+  'items',
+  'questions',
+  'messages',
+  'shipments',
+  'payments'
+] as const;
+
+// ==================== VALIDAÇÃO ====================
+/**
+ * Valida se um IP está na whitelist oficial do ML
+ */
+export function isValidMLWebhookIP(ip: string): boolean {
+  return ML_WEBHOOK_IPS.includes(ip as any);
+}
+
+/**
+ * Extrai IP real do request (considerando proxies)
+ */
+export function extractRealIP(request: Request): string {
+  // Headers comuns para IP real atrás de proxy
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  const realIP = request.headers.get('x-real-ip');
+  const cfConnectingIP = request.headers.get('cf-connecting-ip');
+
+  // Prioridade: CF > X-Real-IP > primeiro IP do X-Forwarded-For
+  if (cfConnectingIP) return cfConnectingIP;
+  if (realIP) return realIP;
+  if (forwardedFor) {
+    // X-Forwarded-For pode conter múltiplos IPs separados por vírgula
+    return forwardedFor.split(',')[0].trim();
+  }
+
+  return 'unknown';
+}
+
+/**
+ * Valida se um topic é suportado
+ */
+export function isValidWebhookTopic(topic: string): boolean {
+  return SUPPORTED_WEBHOOK_TOPICS.includes(topic as any);
+}
+
+// ==================== CONFIGURAÇÃO DE SEGURANÇA ====================
+export const WEBHOOK_SECURITY = {
+  // Validação obrigatória de IP
+  REQUIRE_IP_VALIDATION: true,
+
+  // Validação de assinatura (opcional mas recomendado)
+  REQUIRE_SIGNATURE_VALIDATION: false,
+
+  // Log detalhado para debugging
+  ENABLE_DETAILED_LOGGING: process.env.NODE_ENV === 'development',
+
+  // Timeout enforcement
+  ENFORCE_TIMEOUT: true
+} as const;
+
+export default {
+  ML_WEBHOOK_IPS,
+  WEBHOOK_TIMEOUT_MS,
+  WEBHOOK_RATE_LIMITS,
+  SUPPORTED_WEBHOOK_TOPICS,
+  WEBHOOK_SECURITY,
+  isValidMLWebhookIP,
+  extractRealIP,
+  isValidWebhookTopic
+};

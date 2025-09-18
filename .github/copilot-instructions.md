@@ -69,10 +69,10 @@ Peepers is an enterprise-grade Next.js 15 SaaS platform for Mercado Livre seller
 
 #### Cache Strategy (`src/lib/cache.ts`)
 - Uses Upstash Redis via `@vercel/kv` client with singleton pattern
-- All cache operations go through centralized functions
+- All cache operations go through centralized CacheManager class
 - Cache keys follow pattern: `CACHE_KEYS.PRODUCTS_ALL`, `CACHE_KEYS.USER_TOKEN(userId)`
 - Implements automatic token refresh and fallback strategies
-- TTL constants: `PRODUCTS: 7200s`, `USER_DATA: 1800s`, `CATEGORIES: 86400s`
+- TTL constants: `PRODUCTS: 21600s (6h)`, `USER_DATA: 7200s (2h)`, `CATEGORIES: 86400s (24h)`
 
 #### OAuth 2.0 + PKCE Security
 - **CSRF protection is critical** - always validate `state` parameter
@@ -108,6 +108,9 @@ npm run lint                            # ESLint
 # Development tools
 # Fast deployment for ML testing
 vercel --prod                           # Quick deploy for HTTPS testing with ML API
+
+# HTTPS development (when needed for ML integration)
+npm run dev:https                       # Next dev with experimental HTTPS support
 
 # Storybook (Design System Development)
 npm run storybook                       # Start Storybook dev server on port 6006
@@ -171,11 +174,13 @@ npm run test:admin                      # Future: Admin panel testing
 - **Future v2.0.0**: Unit tests (70%), Integration tests (20%), E2E tests (10%) with Cypress/Playwright
 
 ### Component Development Patterns
-- **Storybook Stories**: Create `.stories.ts` files for all reusable components
+- **Storybook Stories**: Create `.stories.ts` files for all reusable components in `src/components/`
 - **Accessibility**: Use `@storybook/addon-a11y` for automated accessibility testing
 - **Documentation**: Auto-generated docs with `@storybook/addon-docs`
 - **Design Tokens**: Standardized Tailwind CSS v4 classes with Peepers brand colors
 - **Component Library**: Located in `src/components/` with clear separation between UI and business logic
+- **Hook Patterns**: Custom hooks in `src/hooks/` following React patterns
+- **Utilities**: Shared utilities in `src/utils/` and `src/shared/` for cross-component functionality
 
 ## Critical Debugging Points
 
