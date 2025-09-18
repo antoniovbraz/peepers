@@ -513,11 +513,11 @@ async function getMLTokens(tenantId: string): Promise<{
   const kv = getKVClient();
 
   try {
-    // Buscar dados do usuário no cache
+    // Buscar dados do usuário no cache usando a chave correta
     const userData = await kv.get(`user:${tenantId}`) as {
+      user_id?: number;
       token?: string;
       refresh_token?: string;
-      user_id?: number;
       expires_at?: string;
     } | null;
 
