@@ -47,7 +47,13 @@ export async function middleware(request: NextRequest) {
   }
 
   // 1. Verificar se é uma rota pública - se for, permitir acesso imediato
-  const isPublicPath = MIDDLEWARE_CONFIG.PUBLIC_PATHS.some(path => pathname.startsWith(path));
+  const isPublicPath = MIDDLEWARE_CONFIG.PUBLIC_PATHS.some(path => {
+    const matches = pathname.startsWith(path);
+    if (pathname.startsWith('/api/v1/products')) {
+      console.log(`🔍 Checking ${pathname} against ${path}: ${matches}`);
+    }
+    return matches;
+  });
   
   if (isPublicPath) {
     console.log(`✅ Public path allowed: ${pathname}`);
