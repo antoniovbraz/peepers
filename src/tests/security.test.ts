@@ -9,7 +9,46 @@
  * - Sistema de eventos de segurança
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Mock all external dependencies at the top level
+vi.mock('@/lib/cache', () => ({
+  getKVClient: vi.fn(() => ({
+    get: vi.fn().mockResolvedValue(null),
+    set: vi.fn().mockResolvedValue('OK'),
+    del: vi.fn().mockResolvedValue(1),
+    incr: vi.fn().mockResolvedValue(1),
+    expire: vi.fn().mockResolvedValue(1),
+    pipeline: vi.fn(() => ({
+      get: vi.fn().mockReturnThis(),
+      set: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue([null, null])
+    }))
+  }))
+}));
+
+vi.mock('@/lib/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn()
+  }
+}));
+
+const mockLogSecurityEvent = vi.fn();
+const mockGetSecurityStats = vi.fn();
+
+vi.mock('@/lib/security-events', () => ({
+  logSecurityEvent: mockLogSecurityEvent,
+  getSecurityStats: mockGetSecurityStats,
+  SecurityEventType: {
+    RATE_LIMIT_EXCEEDED: 'rate_limit_exceeded',
+    AUTH_FAILED: 'auth_failed',
+    SUSPICIOUS_IP: 'suspicious_ip',
+    CSRF_DETECTED: 'csrf_detected'
+  }
+}));
 
 // Rate Limiting Tests
 describe('Rate Limiting Security', () => {
@@ -22,8 +61,8 @@ describe('Rate Limiting Security', () => {
       const { checkIPLimit } = await import('@/lib/rate-limiter');
       
       const result = await checkIPLimit('192.168.1.100', {
-        windowMs: 60000,
-        max: 100
+        maxRequests: 100,
+        windowMs: 60000
       });
       
       expect(result.allowed).toBe(true);
@@ -36,7 +75,7 @@ describe('Rate Limiting Security', () => {
       
       // Simular múltiplas requests do mesmo IP
       const ip = '192.168.1.200';
-      const config = { windowMs: 60000, max: 3 };
+      const config = { maxRequests: 3, windowMs: 60000 };
       
       // Primeiras requests devem passar
       for (let i = 0; i < 3; i++) {

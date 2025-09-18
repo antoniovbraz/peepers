@@ -1,13 +1,15 @@
 /**
- * Tenant Entitlements API - Peepers Enterprise v2.0.0
- *
- * Endpoint para consultar entitlements e limites do tenant atual
+ * Entitlements API - Consulta de features e limites do tenant
+ * 
+ * Endpoint para verificar entitlements, limites e uso atual
+ * Usado pelo frontend para mostrar/ocultar features e aplicar limitações
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { stripeClient } from '@/lib/stripe';
-import { cache } from '@/lib/cache';
 import { logger } from '@/lib/logger';
+import { PeepersFeature } from '@/types/stripe';
+import { getKVClient } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,10 +25,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Verificar se o token existe no cache
-    const tokenData = await cache.getUser(userId);
-    if (!tokenData || tokenData.session_token !== sessionToken) {
+    const cache = getKVClient();
+    const tokenData = await cache.get(`user:${userId}`);
+    if (!tokenData) {
       return NextResponse.json(
         { error: 'Invalid session' },
+        { status: 401 }
+      );
+    }
+
+    const userData = JSON.parse(tokenData as string);
+    if (userData.session_token !== sessionToken) {
+      return NextResponse.json(
+        { error: 'Session mismatch' },
         { status: 401 }
       );
     }

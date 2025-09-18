@@ -3,6 +3,9 @@ import path from 'path';
 
 export default defineConfig({
   test: {
+    setupFiles: [
+      './src/tests/setup/test-env.ts'
+    ],
     coverage: {
       provider: 'v8',
       thresholds: {

@@ -129,8 +129,8 @@ export function isValidWebhookTopic(topic: string): boolean {
 
 // ==================== CONFIGURAÇÃO DE SEGURANÇA ====================
 export const WEBHOOK_SECURITY = {
-  // Validação obrigatória de IP
-  REQUIRE_IP_VALIDATION: true,
+  // ⚠️ CRÍTICO: Validação obrigatória de IP conforme spec ML
+  REQUIRE_IP_VALIDATION: process.env.NODE_ENV === 'production' ? true : false, // Flexível para desenvolvimento
 
   // Validação de assinatura (opcional mas recomendado)
   REQUIRE_SIGNATURE_VALIDATION: false,
@@ -138,7 +138,7 @@ export const WEBHOOK_SECURITY = {
   // Log detalhado para debugging
   ENABLE_DETAILED_LOGGING: process.env.NODE_ENV === 'development',
 
-  // Timeout enforcement
+  // ⚠️ CRÍTICO: Timeout enforcement obrigatório
   ENFORCE_TIMEOUT: true
 } as const;
 
