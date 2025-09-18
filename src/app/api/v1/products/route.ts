@@ -91,21 +91,31 @@ export async function GET(request: NextRequest) {
             }
           );
           
-          // Buscar produtos ativos da API ML
-          const productsResponse = await mlApi.getUserProducts(mlUserId, 'active', 20);
-          const productIds = productsResponse.results;
+          // Buscar TODOS os produtos (ativos e pausados) usando scan
+          console.log('🔍 Fetching ALL products using scan method...');
           
-          if (productIds.length > 0) {
-            console.log(`✅ Found ${productIds.length} products in ML API, fetching details...`);
+          // Buscar produtos ativos
+          const activeProductsResponse = await mlApi.getUserProducts(mlUserId, 'active', 200, 0, 'scan');
+          const activeProductIds = activeProductsResponse.results;
+          
+          // Buscar produtos pausados  
+          const pausedProductsResponse = await mlApi.getUserProducts(mlUserId, 'paused', 200, 0, 'scan');
+          const pausedProductIds = pausedProductsResponse.results;
+          
+          // Combinar todos os IDs
+          const allProductIds = [...activeProductIds, ...pausedProductIds];
+          
+          if (allProductIds.length > 0) {
+            console.log(`✅ Found ${allProductIds.length} products total (${activeProductIds.length} active, ${pausedProductIds.length} paused), fetching details...`);
             
             // Buscar detalhes dos produtos
             const productDetails = [];
-            for (let i = 0; i < Math.min(20, productIds.length); i++) {
+            for (let i = 0; i < Math.min(50, allProductIds.length); i++) {
               try {
-                const product = await mlApi.getProduct(productIds[i]);
+                const product = await mlApi.getProduct(allProductIds[i]);
                 productDetails.push(product);
               } catch (err) {
-                console.warn(`Error fetching product ${productIds[i]}:`, err);
+                console.warn(`Error fetching product ${allProductIds[i]}:`, err);
               }
             }
             
@@ -227,7 +237,16 @@ export async function GET(request: NextRequest) {
         cached: dataSource === 'cache',
         usingMockData,
         authenticated: isAuthenticated,
-        ip: clientIP.substring(0, 10) + '***' // Partially masked IP for privacy
+        ip: clientIP.substring(0, 10) + '***', // Partially masked IP for privacy
+        timestamp: new Date().toISOString() // Para forçar cache busting
+      }
+    }, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'ETag': `"${Date.now()}"`, // ETag único para cada resposta
+        'Last-Modified': new Date().toUTCString()
       }
     });
 
