@@ -42,7 +42,15 @@ export const API_ENDPOINTS = {
   ADMIN_METRICS: '/api/admin/metrics',
   
   // Sync (protegido)
-  SYNC: '/api/sync'
+  SYNC: '/api/sync',
+  
+  // Stripe & Billing (protegido)
+  STRIPE_WEBHOOK: '/api/stripe/webhook',
+  ENTITLEMENTS: '/api/entitlements',
+  
+  // Upgrade & Billing
+  UPGRADE: '/upgrade',
+  BILLING: '/billing',
 } as const;
 
 // ==================== PÁGINAS FRONTEND ====================

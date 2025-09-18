@@ -5,6 +5,9 @@ import { cache } from '@/lib/cache';
 import { logger } from '@/lib/logger';
 import { MIDDLEWARE_CONFIG } from '@/config/routes';
 import { corsHandler } from '@/lib/cors';
+import { stripeClient } from '@/lib/stripe';
+import { PREMIUM_FEATURES } from '@/config/entitlements';
+import type { PeepersFeature } from '@/types/stripe';
 
 /**
  * Middleware de Autenticação, Autorização e CORS
@@ -33,24 +36,17 @@ import { corsHandler } from '@/lib/cors';
  * @returns NextResponse com redirecionamento ou continuação
  */
 export async function middleware(request: NextRequest) {
-  // 1. CORS: Verificar e aplicar política CORS para APIs
+  // 1. Verificar se é uma rota pública - se for, permitir acesso imediato
+  if (MIDDLEWARE_CONFIG.PUBLIC_PATHS.some(path => request.nextUrl.pathname.startsWith(path))) {
+    return NextResponse.next();
+  }
+
+  // 2. CORS: Verificar e aplicar política CORS para APIs
   if (request.nextUrl.pathname.startsWith('/api/')) {
     const corsResponse = corsHandler.handleAPIRequest(request);
     if (corsResponse) {
       return corsResponse; // CORS bloqueou ou tratou OPTIONS
     }
-  }
-
-  // 2. Se a rota é pública, permite o acesso
-  if (MIDDLEWARE_CONFIG.PUBLIC_PATHS.some(path => request.nextUrl.pathname.startsWith(path))) {
-    const response = NextResponse.next();
-    
-    // Aplicar headers CORS mesmo para rotas públicas
-    if (request.nextUrl.pathname.startsWith('/api/')) {
-      return await corsHandler.applyCORSHeaders(request, response);
-    }
-    
-    return response;
   }
 
   try {
@@ -69,18 +65,23 @@ export async function middleware(request: NextRequest) {
       logger.warn(`Unauthorized user attempt: ${userId}`);
       
       // Log evento de segurança
-      await import('@/lib/security-events').then(m => m.logSecurityEvent({
-        type: m.SecurityEventType.UNAUTHORIZED_ACCESS,
-        severity: 'HIGH',
-        userId,
-        clientIP: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
-        userAgent: request.headers.get('user-agent') || 'unknown',
-        details: {
-          attempted_path: request.nextUrl.pathname,
-          reason: 'User not in ALLOWED_USER_IDS'
-        },
-        path: request.nextUrl.pathname
-      }));
+      try {
+        await import('@/lib/security-events').then(m => m.logSecurityEvent({
+          type: m.SecurityEventType.UNAUTHORIZED_ACCESS,
+          severity: 'HIGH',
+          userId,
+          clientIP: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+          userAgent: request.headers.get('user-agent') || 'unknown',
+          details: {
+            attempted_path: request.nextUrl.pathname,
+            reason: 'User not in ALLOWED_USER_IDS'
+          },
+          path: request.nextUrl.pathname
+        }));
+      } catch (error) {
+        // Ignore errors in security logging during tests
+        logger.warn({ error }, 'Failed to log security event');
+      }
       
       // Usuário autenticado mas não autorizado - redirecionar para página de vendas
       return NextResponse.redirect(new URL(PAGES.ACESSO_NEGADO, request.url));
@@ -107,7 +108,44 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
     }
 
-    // 8. Se chegou aqui, está tudo ok
+    // 8. Verificar entitlements para features premium
+    const entitlementCheck = await checkEntitlements(request, userId);
+    if (!entitlementCheck.allowed) {
+      logger.warn({
+        userId,
+        path: request.nextUrl.pathname,
+        reason: entitlementCheck.reason
+      }, 'Access denied due to entitlement check');
+
+      // Log evento de segurança
+      try {
+        await import('@/lib/security-events').then(m => m.logSecurityEvent({
+          type: m.SecurityEventType.UNAUTHORIZED_ACCESS,
+          severity: 'MEDIUM',
+          userId,
+          clientIP: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+          userAgent: request.headers.get('user-agent') || 'unknown',
+          details: {
+            attempted_path: request.nextUrl.pathname,
+            reason: entitlementCheck.reason,
+            upgrade_required: entitlementCheck.upgrade_required
+          },
+          path: request.nextUrl.pathname
+        }));
+      } catch (error) {
+        // Ignore errors in security logging during tests
+        logger.warn({ error }, 'Failed to log security event');
+      }
+
+      // Redirecionar para página de upgrade ou acesso negado
+      if (entitlementCheck.upgrade_required) {
+        return NextResponse.redirect(new URL('/upgrade?reason=plan_required', request.url));
+      } else {
+        return NextResponse.redirect(new URL(PAGES.ACESSO_NEGADO, request.url));
+      }
+    }
+
+    // 9. Se chegou aqui, está tudo ok
     const response = NextResponse.next();
     
     // Aplicar headers CORS se for request para API
@@ -119,17 +157,74 @@ export async function middleware(request: NextRequest) {
 
   } catch (error) {
     logger.error({ error }, 'Middleware error');
-    return new NextResponse(
-      JSON.stringify({
-        error: 'Internal Server Error',
-        message: 'Ocorreu um erro ao verificar sua autenticação'
-      }),
-      {
-        status: 500,
-        headers: { 'content-type': 'application/json' }
-      }
-    );
+    
+    // Em caso de erro, redirecionar para login ao invés de retornar erro 500
+    // Isso evita quebrar a experiência do usuário
+    return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
   }
+}
+
+/**
+ * Verifica entitlements para acesso a features premium
+ */
+async function checkEntitlements(request: NextRequest, userId: string) {
+  try {
+    // Verificar se a rota requer feature premium
+    const path = request.nextUrl.pathname;
+    const requiredFeature = getRequiredFeatureForPath(path);
+
+    if (!requiredFeature) {
+      // Rota não requer premium, permitir acesso
+      return { allowed: true };
+    }
+
+    // Verificar entitlement no Stripe
+    const entitlementCheck = await stripeClient.checkEntitlement(userId, requiredFeature);
+
+    return entitlementCheck;
+
+  } catch (error) {
+    logger.error({ error, userId, path: request.nextUrl.pathname }, 'Error checking entitlements');
+
+    // Em caso de erro, permitir acesso para evitar downtime
+    // TODO: implementar circuit breaker para múltiplas falhas
+    return {
+      allowed: true,
+      reason: 'Error checking entitlements, allowing access to prevent downtime'
+    };
+  }
+}
+
+/**
+ * Determina qual feature é requerida para uma rota específica
+ */
+function getRequiredFeatureForPath(path: string): PeepersFeature | null {
+  // Verificar rotas específicas
+  for (const [routePattern, requiredPlan] of Object.entries(PREMIUM_FEATURES)) {
+    if (path.startsWith(routePattern)) {
+      // Mapear plano para feature principal
+      switch (requiredPlan) {
+        case 'professional':
+          return 'advanced_analytics'; // Feature que representa acesso ao admin
+        case 'enterprise':
+          return 'api_access'; // Feature que representa acesso enterprise
+        default:
+          return null;
+      }
+    }
+  }
+
+  // Verificar padrões de rota admin
+  if (path.startsWith('/admin/') || path.startsWith('/api/admin/')) {
+    return 'advanced_analytics'; // Professional plan feature
+  }
+
+  // Verificar API v1 (enterprise)
+  if (path.startsWith('/api/v1/')) {
+    return 'api_access'; // Enterprise plan feature
+  }
+
+  return null; // Rota pública ou básica
 }
 
 // Configurar em quais rotas o middleware deve ser executado
@@ -138,6 +233,10 @@ export const config = {
     '/admin/:path*',
     '/api/sync/:path*',
     '/api/products/:path*',
-    '/api/auth/logout'
+    '/api/auth/logout',
+    '/api/admin/:path*',
+    '/api/entitlements',
+    '/upgrade',
+    '/billing'
   ]
 };
