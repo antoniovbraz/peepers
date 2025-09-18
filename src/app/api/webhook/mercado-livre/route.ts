@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
       // Mesmo assim retornar 200 para evitar retry, mas logar o problema
       return createWebhookSuccessResponse(payload.topic, processingTime, {
         warning: 'Processing exceeded 500ms timeout'
-      });
+      }, timeoutId);
     }
 
     logger.info({
@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
       topic: payload.topic
     }, '✅ Webhook processado com sucesso dentro do timeout');
 
-    return createWebhookSuccessResponse(payload.topic, processingTime);
+    return createWebhookSuccessResponse(payload.topic, processingTime, undefined, timeoutId);
 
   } catch (error) {
     const processingTime = Date.now() - startTime;

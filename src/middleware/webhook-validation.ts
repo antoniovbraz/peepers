@@ -140,8 +140,14 @@ export function createWebhookErrorResponse(
 export function createWebhookSuccessResponse(
   topic: string,
   processingTimeMs: number,
-  additionalData?: any
+  additionalData?: any,
+  timeoutId?: NodeJS.Timeout
 ): NextResponse {
+  // Limpar timeout se fornecido
+  if (timeoutId) {
+    clearTimeout(timeoutId);
+  }
+
   const response = {
     success: true,
     message: 'Webhook processed successfully',
