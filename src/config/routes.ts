@@ -33,8 +33,9 @@ export const API_ENDPOINTS = {
   AUTH_ME: '/api/auth/me',
   AUTH_LOGOUT: '/api/auth/logout',
   
-  // Webhook (público)
+  // Webhook (público - CRÍTICO para ML)
   WEBHOOK_ML: '/api/webhook/mercado-livre',
+  TEST_WEBHOOK_SECURITY: '/api/test-webhook-security',
   
   // Admin APIs (protegido)
   ADMIN_SALES: '/api/admin/sales',
@@ -97,6 +98,7 @@ export const MIDDLEWARE_CONFIG = {
     API_ENDPOINTS.AUTH_ME,
     API_ENDPOINTS.AUTH_LOGOUT,
     API_ENDPOINTS.WEBHOOK_ML,
+    API_ENDPOINTS.TEST_WEBHOOK_SECURITY, // ✅ CRÍTICO: Endpoint de teste deve ser público
     PAGES.ACESSO_NEGADO
   ],
   

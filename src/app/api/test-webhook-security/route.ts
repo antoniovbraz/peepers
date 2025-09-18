@@ -4,7 +4,14 @@
  * Permite testar as validações críticas de IP whitelist e timeout enforcement
  * sem depender do Mercado Livre real.
  *
- * USO: Para desenvolvimento e testes de segurança
+ * ⚠️ IMPORTANTE: Este endpoint deve ser PUBLICamente acessível
+ * ❌ NÃO funciona em desenvolvimento local sem HTTPS
+ * ✅ Use sempre em produção (Vercel) para testes reais
+ *
+ * 📚 REFERÊNCIAS:
+ * - https://developers.mercadolivre.com.br/pt_br/produto-receba-notificacoes
+ * - Use "vercel --prod" para deploy com HTTPS
+ * - Configure webhook URL no painel do ML Developer
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -16,6 +23,7 @@ import {
   createWebhookSuccessResponse
 } from '@/middleware/webhook-validation';
 import { isValidWebhookTopic, WEBHOOK_TIMEOUT_MS } from '@/config/webhook';
+import { validateWebhookEnvironment, generateWebhookSetupGuide } from '@/config/webhook-https-requirements';
 
 const TestWebhookSchema = z.object({
   topic: z.string(),
@@ -134,23 +142,36 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
+  const envValidation = validateWebhookEnvironment();
+  const setupGuide = generateWebhookSetupGuide();
+
   return NextResponse.json({
     message: 'Test Webhook Security Endpoint',
     description: 'Test IP whitelist validation and timeout enforcement',
+    environment: envValidation,
+    setup_guide: setupGuide,
     usage: {
       method: 'POST',
-      body: {
-        topic: 'orders_v2',
-        test_ip: '54.88.218.97', // IP válido do ML
-        simulate_delay: 100, // ms para testar timeout
-        force_error: false
+      examples: {
+        valid_ip_test: {
+          url: 'https://your-domain.vercel.app/api/test-webhook-security',
+          body: '{"topic":"orders_v2","test_ip":"54.88.218.97"}'
+        },
+        timeout_test: {
+          url: 'https://your-domain.vercel.app/api/test-webhook-security',
+          body: '{"topic":"orders_v2","simulate_delay":600}'
+        },
+        error_test: {
+          url: 'https://your-domain.vercel.app/api/test-webhook-security',
+          body: '{"topic":"orders_v2","force_error":true}'
+        }
       }
     },
-    test_cases: {
-      valid_ip: '54.88.218.97',
-      invalid_ip: '192.168.1.1',
-      timeout_test: { simulate_delay: 600 },
-      error_test: { force_error: true }
-    }
+    critical_notes: [
+      '⚠️ HTTPS obrigatório - use sempre URLs públicas',
+      '⚠️ Desenvolvimento local: IMPOSSÍVEL com webhooks reais',
+      '⚠️ Configure webhook URL no painel do ML Developer',
+      '✅ Use "vercel --prod" para testes com ML real'
+    ]
   });
 }
