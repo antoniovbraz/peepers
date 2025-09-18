@@ -24,7 +24,8 @@ export const API_ENDPOINTS = {
   // Produtos (público)
   PRODUCTS: '/api/products',
   PRODUCTS_PUBLIC: '/api/products-public',
-  PRODUCTS_V1: '/api/v1/products', // ✅ NEW: Unified products API
+  PRODUCTS_V1: '/api/products-v1', // ✅ FIXED: Moved from /api/v1/products due to routing issues
+  PRODUCTS_V1_OLD: '/api/v1/products', // 🚫 DEPRECATED: Use PRODUCTS_V1 instead
   TEST_V1_PRODUCTS: '/api/test-v1-products', // 🧪 TEST: Debug endpoint
   PRODUCT_BY_ID: (id: string) => `/api/products/${id}`,
   
@@ -90,7 +91,8 @@ export const MIDDLEWARE_CONFIG = {
   // Rotas que NÃO precisam de autenticação
   PUBLIC_PATHS: [
     API_ENDPOINTS.PRODUCTS_PUBLIC,
-    API_ENDPOINTS.PRODUCTS_V1, // ✅ V1 API é pública com query params para controle
+    API_ENDPOINTS.PRODUCTS_V1, // ✅ Fixed path: /api/products-v1
+    API_ENDPOINTS.PRODUCTS_V1_OLD, // 🚫 Keep old path for compatibility
     API_ENDPOINTS.TEST_V1_PRODUCTS, // 🧪 TEST: Debug endpoint
     API_ENDPOINTS.HEALTH,
     API_ENDPOINTS.CACHE_DEBUG,
