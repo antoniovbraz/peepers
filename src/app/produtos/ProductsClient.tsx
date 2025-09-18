@@ -88,7 +88,7 @@ export default function ProductsClient() {
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       
       // ✅ NEW: Use unified v1 endpoint with summary format for high-quality images
-      const url = new URL(API_ENDPOINTS.PRODUCTS_V1, window.location.origin);
+      const url = new URL(API_ENDPOINTS.PRODUCTS, window.location.origin);
       url.searchParams.set('format', 'summary'); // Summary format includes pictures array
       url.searchParams.set('limit', '100'); // Get more products
       url.searchParams.set('_t', Date.now().toString()); // Cache busting

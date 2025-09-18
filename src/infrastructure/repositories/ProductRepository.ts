@@ -68,7 +68,7 @@ export class ProductRepository implements IProductRepository {
 
       params.append('format', 'full');
       
-      const url = `${this.apiBaseUrl}${API_ENDPOINTS.PRODUCTS_V1}?${params.toString()}`;
+      const url = `${this.apiBaseUrl}${API_ENDPOINTS.PRODUCTS}?${params.toString()}`;
       
       // Try cache first
       const cacheKey = `products_${params.toString()}`;
@@ -155,7 +155,7 @@ export class ProductRepository implements IProductRepository {
         };
       }
 
-      const url = `${this.apiBaseUrl}${API_ENDPOINTS.PRODUCTS_V1}?id=${id}&format=full`;
+      const url = `${this.apiBaseUrl}${API_ENDPOINTS.PRODUCTS}?id=${id}&format=full`;
       const response = await fetch(url);
       
       if (!response.ok) {

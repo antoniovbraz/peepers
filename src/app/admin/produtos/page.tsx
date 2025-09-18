@@ -70,7 +70,7 @@ export default function AdminProductsPage() {
         ...(statusFilter !== 'all' && { status: statusFilter }),
       });
 
-      const response = await fetch(`${API_ENDPOINTS.PRODUCTS_V1}?${params.toString()}`, {
+      const response = await fetch(`${API_ENDPOINTS.PRODUCTS}?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('ml_access_token')}`,
           'Content-Type': 'application/json',

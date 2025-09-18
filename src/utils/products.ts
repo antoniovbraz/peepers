@@ -10,7 +10,7 @@ export async function fetchProducts(limit?: number): Promise<MLProduct[]> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
   
   // ✅ NEW: Use unified v1 endpoint with public format
-  const url = new URL(API_ENDPOINTS.PRODUCTS_V1, baseUrl);
+  const url = new URL(API_ENDPOINTS.PRODUCTS, baseUrl);
   url.searchParams.set('format', 'minimal'); // Public-friendly format
   if (limit) {
     url.searchParams.set('limit', limit.toString());

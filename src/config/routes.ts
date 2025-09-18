@@ -1,5 +1,8 @@
 /**
- * CONFIGURAÇÃO CE  /  // Produtos - SIMPLIFICADO
+ * CONFIGURAÇÃO CE  /  /  // Produtos - SIMPLIFICADO
+  PRODUCTS: '/api/products',                    // ✅ PÚBLICO: Para home e /produtos
+  ADMIN_PRODUCTS: '/api/admin/products',       // ✅ PROTEGIDO: Para administração
+  PRODUCT_BY_ID: (id: string) => `/api/products/${id}`,dutos - SIMPLIFICADO
   PRODUCTS: '/api/products',                    // ✅ PÚBLICO: Para home e /produtos
   ADMIN_PRODUCTS: '/api/admin/products',       // ✅ PROTEGIDO: Para administração
   PRODUCT_BY_ID: (id: string) => `/api/products/${id}`,dutos - SIMPLIFICADO

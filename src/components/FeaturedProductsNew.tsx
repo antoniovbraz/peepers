@@ -147,7 +147,7 @@ export default function FeaturedProductsNew({
           ? window.location.origin 
           : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         
-        const url = new URL(API_ENDPOINTS.PRODUCTS_V1, baseUrl);
+        const url = new URL(API_ENDPOINTS.PRODUCTS, baseUrl);
         url.searchParams.set('format', 'summary'); // Use summary format to get pictures array
         url.searchParams.set('limit', limit.toString());
         
