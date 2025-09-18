@@ -10,6 +10,64 @@ import {
   CurrencyDollarIcon,
   UserGroupIcon,
   ClockIcon,
+  ExclamationTriangleIcon,
+  CheckCircleIcon,
+} from '@heroicons/react/24/outline';
+import { clsx } from 'clsx';
+import KPICard from '@/components/admin/dashboard/KPICard';
+
+  // Load metrics from API
+  useEffect(() => {
+    loadMetrics();
+  }, [selectedPeriod]);
+
+  const loadMetrics = async () => {
+    setLoading(true);
+    try {
+      // Tentar obter token do localStorage (usuário logado)
+      const userToken = localStorage.getItem('ml_user_token');
+      
+      if (userToken) {
+        // Tentar buscar métricas reais do ML
+        try {
+          const response = await fetch(`/api/admin/metrics?period=${selectedPeriod}`, {
+            headers: {
+              'Authorization': `Bearer ${userToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data?.metrics) {
+              setMetrics(data.data.metrics);
+              setIsRealData(true);
+              setDataSource('mercado_livre');
+              console.log('✅ Métricas reais do ML carregadas!');
+              return;
+            }
+          }
+        } catch (error) {
+          console.warn('Erro ao buscar métricas do ML:', error);
+        }
+      }
+
+      // Fallback: usar dados mockados
+      setMetrics(mockMetrics);
+      setIsRealData(false);
+      setDataSource('mock');
+      console.log('⚠️ Usando métricas de demonstração');
+      
+    } catch (error) {
+      console.error('Erro ao carregar métricas:', error);
+      setMetrics(mockMetrics);
+      setIsRealData(false);
+      setDataSource('error_fallback');
+    } finally {
+      setLoading(false);
+    }
+  };con,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 import KPICard from '@/components/admin/dashboard/KPICard';
 
@@ -188,10 +246,64 @@ function SimpleLineChart({ data, labels, title, color = '#0D6832' }: LineChartPr
 export default function MetricasPage() {
   const [metrics, setMetrics] = useState<MetricsData>(mockMetrics);
   const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [isRealData, setIsRealData] = useState(false);
+  const [dataSource, setDataSource] = useState<string>('');
 
   const monthLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   const dayLabels = Array.from({ length: 14 }, (_, i) => `${i + 1}`);
+
+  // Load metrics from API
+  useEffect(() => {
+    loadMetrics();
+  }, [selectedPeriod]);
+
+  const loadMetrics = async () => {
+    setLoading(true);
+    try {
+      // Tentar obter token do localStorage (usuário logado)
+      const userToken = localStorage.getItem('ml_user_token');
+      
+      if (userToken) {
+        // Tentar buscar métricas reais do ML
+        try {
+          const response = await fetch(`/api/admin/metrics?period=${selectedPeriod}`, {
+            headers: {
+              'Authorization': `Bearer ${userToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data?.metrics) {
+              setMetrics(data.data.metrics);
+              setIsRealData(true);
+              setDataSource('mercado_livre');
+              console.log('✅ Métricas reais do ML carregadas!');
+              return;
+            }
+          }
+        } catch (error) {
+          console.warn('Erro ao buscar métricas do ML:', error);
+        }
+      }
+
+      // Fallback: usar dados mockados
+      setMetrics(mockMetrics);
+      setIsRealData(false);
+      setDataSource('mock');
+      console.log('⚠️ Usando métricas de demonstração');
+      
+    } catch (error) {
+      console.error('Erro ao carregar métricas:', error);
+      setMetrics(mockMetrics);
+      setIsRealData(false);
+      setDataSource('error_fallback');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -216,12 +328,40 @@ export default function MetricasPage() {
             <option value="1y">Último ano</option>
           </select>
           
-          <button className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+          <button 
+            onClick={loadMetrics}
+            disabled={loading}
+            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+          >
             <ArrowTrendingUpIcon className="h-4 w-4 mr-2" />
-            Exportar Relatório
+            {loading ? 'Atualizando...' : 'Exportar Relatório'}
           </button>
         </div>
       </div>
+
+      {/* Data Source Indicator */}
+      {!loading && (
+        <div className={clsx(
+          'rounded-md p-3 text-sm',
+          isRealData 
+            ? 'bg-green-50 text-green-800 border border-green-200'
+            : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
+        )}>
+          <div className="flex items-center">
+            {isRealData ? (
+              <CheckCircleIcon className="h-4 w-4 mr-2" />
+            ) : (
+              <ExclamationTriangleIcon className="h-4 w-4 mr-2" />
+            )}
+            <span className="font-medium">
+              {isRealData 
+                ? '✅ Métricas reais do Mercado Livre'
+                : '⚠️ Dados de demonstração - faça login para ver métricas reais'
+              }
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Overview KPIs */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">

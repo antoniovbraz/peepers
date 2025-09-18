@@ -16,8 +16,9 @@ import {
   PencilIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
+import { API_ENDPOINTS } from '@/config/routes';
 
-// Mock data for now
+// Mock data para fallback
 const mockProducts = [
   {
     id: 'MLB123456789',
@@ -54,6 +55,65 @@ export default function AdminProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProductStatus | 'all'>('all');
   const [sortBy, setSortBy] = useState<SortOption>('title');
+  const [isRealData, setIsRealData] = useState(false);
+
+  // Função para carregar produtos reais da API
+  const loadRealProducts = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        format: 'summary',
+        limit: '50',
+        ...(searchQuery && { q: searchQuery }),
+        ...(statusFilter !== 'all' && { status: statusFilter }),
+      });
+
+      const response = await fetch(`${API_ENDPOINTS.PRODUCTS_V1}?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('ml_access_token')}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data?.products) {
+          // Transformar dados da API para o formato esperado
+          const transformedProducts = data.data.products.map((product: any) => ({
+            id: product.id,
+            title: product.title,
+            price: product.price,
+            thumbnail: product.thumbnail,
+            status: product.status,
+            available_quantity: product.available_quantity,
+            condition: product.condition,
+            visits: product.visits || 0,
+            questions: product.questions || 0,
+            sold_quantity: product.sold_quantity || 0,
+          }));
+          
+          setProducts(transformedProducts);
+          setIsRealData(true);
+        } else {
+          throw new Error('Dados inválidos da API');
+        }
+      } else {
+        throw new Error(`API Error: ${response.status}`);
+      }
+    } catch (error) {
+      console.warn('Erro ao carregar produtos reais, usando mock:', error);
+      setProducts(mockProducts);
+      setIsRealData(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Tentar carregar dados reais primeiro
+    loadRealProducts();
+  }, [searchQuery, statusFilter]);
 
   const getStatusBadge = (status: ProductStatus) => {
     switch (status) {

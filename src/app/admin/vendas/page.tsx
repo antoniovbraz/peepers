@@ -9,22 +9,51 @@ import { ArrowPathIcon, CurrencyDollarIcon, ClockIcon, EyeIcon } from '@heroicon
 import { Order } from '@/types/sales';
 import { getMockOrders, getMockSalesMetrics } from '@/data/mockSales';
 import { useNotificationActions } from '@/contexts/NotificationContext';
+import { API_ENDPOINTS } from '@/config/routes';
 
 export default function SalesPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [metrics, setMetrics] = useState(getMockSalesMetrics()); // Fallback para mock
   
   const { notifyError } = useNotificationActions();
 
   const loadOrders = async () => {
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Tentar buscar dados reais da API do Mercado Livre
+      const response = await fetch(`${API_ENDPOINTS.ADMIN}/sales?limit=10&search=${encodeURIComponent(searchTerm)}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('ml_access_token')}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data?.orders) {
+          setOrders(data.data.orders);
+          // Atualizar métricas se disponíveis
+          if (data.data.metrics) {
+            setMetrics(data.data.metrics);
+          }
+        } else {
+          throw new Error('Dados inválidos da API');
+        }
+      } else {
+        // Fallback para dados mockados se a API falhar
+        console.warn('API de vendas não disponível, usando dados mockados');
+        const { orders: newOrders } = getMockOrders(10, 0, { search: searchTerm });
+        setOrders(newOrders);
+      }
+    } catch (error) {
+      console.warn('Erro ao carregar vendas reais, usando mock:', error);
+      notifyError('Conectado ao modo demonstração - alguns dados podem ser fictícios');
+      // Fallback para dados mockados
       const { orders: newOrders } = getMockOrders(10, 0, { search: searchTerm });
       setOrders(newOrders);
-    } catch (error) {
-      notifyError('Erro ao carregar pedidos');
     } finally {
       setLoading(false);
     }
@@ -33,8 +62,6 @@ export default function SalesPage() {
   useEffect(() => {
     loadOrders();
   }, [searchTerm]);
-
-  const metrics = getMockSalesMetrics();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {

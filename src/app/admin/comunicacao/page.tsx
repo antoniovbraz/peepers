@@ -211,12 +211,66 @@ const formatDate = (dateString: string) => {
 };
 
 export default function ComunicacaoPage() {
-  const [messages, setMessages] = useState<Message[]>(mockMessages);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [responseText, setResponseText] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [isRealData, setIsRealData] = useState(false);
+  const [dataSource, setDataSource] = useState<string>('');
+
+  // Load messages from API
+  useEffect(() => {
+    loadMessages();
+  }, []);
+
+  const loadMessages = async () => {
+    setLoading(true);
+    try {
+      // Tentar obter token do localStorage (usuário logado)
+      const userToken = localStorage.getItem('ml_user_token');
+      
+      if (userToken) {
+        // Tentar buscar mensagens reais do ML
+        try {
+          const response = await fetch('/api/admin/messages', {
+            headers: {
+              'Authorization': `Bearer ${userToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data?.messages) {
+              setMessages(data.data.messages);
+              setIsRealData(true);
+              setDataSource('mercado_livre');
+              console.log('✅ Mensagens reais do ML carregadas!');
+              return;
+            }
+          }
+        } catch (error) {
+          console.warn('Erro ao buscar mensagens do ML:', error);
+        }
+      }
+
+      // Fallback: usar dados mockados
+      setMessages(mockMessages);
+      setIsRealData(false);
+      setDataSource('mock');
+      console.log('⚠️ Usando mensagens de demonstração');
+      
+    } catch (error) {
+      console.error('Erro ao carregar mensagens:', error);
+      setMessages(mockMessages);
+      setIsRealData(false);
+      setDataSource('error_fallback');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Calculate metrics
   const metrics = {
@@ -355,9 +409,13 @@ export default function ComunicacaoPage() {
         </div>
         
         <div className="flex space-x-3">
-          <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+          <button 
+            onClick={loadMessages}
+            disabled={loading}
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+          >
             <ChatBubbleLeftRightIcon className="h-4 w-4 mr-2" />
-            Sincronizar Mensagens
+            {loading ? 'Sincronizando...' : 'Sincronizar Mensagens'}
           </button>
           <button className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
             <CheckCircleIcon className="h-4 w-4 mr-2" />
@@ -365,6 +423,30 @@ export default function ComunicacaoPage() {
           </button>
         </div>
       </div>
+
+      {/* Data Source Indicator */}
+      {!loading && (
+        <div className={clsx(
+          'rounded-md p-3 text-sm',
+          isRealData 
+            ? 'bg-green-50 text-green-800 border border-green-200'
+            : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
+        )}>
+          <div className="flex items-center">
+            {isRealData ? (
+              <CheckCircleIcon className="h-4 w-4 mr-2" />
+            ) : (
+              <ExclamationTriangleIcon className="h-4 w-4 mr-2" />
+            )}
+            <span className="font-medium">
+              {isRealData 
+                ? '✅ Mensagens reais do Mercado Livre'
+                : '⚠️ Dados de demonstração - faça login para ver mensagens reais'
+              }
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
