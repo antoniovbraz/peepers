@@ -13,6 +13,7 @@
     "lint": "eslint",
     "test": "vitest run --coverage",
     "test:prod": "node test-prod.js",
+    "test:ml-compliance": "node test-ml-compliance.js",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
