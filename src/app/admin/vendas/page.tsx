@@ -23,7 +23,7 @@ export default function SalesPage() {
     setLoading(true);
     try {
       // Tentar buscar dados reais da API do Mercado Livre
-      const response = await fetch(`${API_ENDPOINTS.ADMIN}/sales?limit=10&search=${encodeURIComponent(searchTerm)}`, {
+      const response = await fetch(`${API_ENDPOINTS.ADMIN_SALES}?limit=10&search=${encodeURIComponent(searchTerm)}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('ml_access_token')}`,
           'Content-Type': 'application/json',

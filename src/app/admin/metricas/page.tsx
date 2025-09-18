@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { clsx } from 'clsx';
 import KPICard from '@/components/admin/dashboard/KPICard';
+import { API_ENDPOINTS } from '@/config/routes';
 
 // Types
 interface MetricsData {
@@ -212,7 +213,7 @@ export default function MetricasPage() {
       if (userToken) {
         // Tentar buscar métricas reais do ML
         try {
-          const response = await fetch(`/api/admin/metrics?period=${selectedPeriod}`, {
+          const response = await fetch(`${API_ENDPOINTS.ADMIN_METRICS}?period=${selectedPeriod}`, {
             headers: {
               'Authorization': `Bearer ${userToken}`,
               'Content-Type': 'application/json',

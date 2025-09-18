@@ -36,6 +36,11 @@ export const API_ENDPOINTS = {
   // Webhook (público)
   WEBHOOK_ML: '/api/webhook/mercado-livre',
   
+  // Admin APIs (protegido)
+  ADMIN_SALES: '/api/admin/sales',
+  ADMIN_MESSAGES: '/api/admin/messages',
+  ADMIN_METRICS: '/api/admin/metrics',
+  
   // Sync (protegido)
   SYNC: '/api/sync'
 } as const;

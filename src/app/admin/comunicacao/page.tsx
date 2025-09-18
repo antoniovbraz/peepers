@@ -14,6 +14,7 @@ import {
 import { clsx } from 'clsx';
 import KPICard from '@/components/admin/dashboard/KPICard';
 import DataTable from '@/components/ui/data-display/DataTable';
+import { API_ENDPOINTS } from '@/config/routes';
 
 // Types
 interface Message {
@@ -234,7 +235,7 @@ export default function ComunicacaoPage() {
       if (userToken) {
         // Tentar buscar mensagens reais do ML
         try {
-          const response = await fetch('/api/admin/messages', {
+          const response = await fetch(API_ENDPOINTS.ADMIN_MESSAGES, {
             headers: {
               'Authorization': `Bearer ${userToken}`,
               'Content-Type': 'application/json',
