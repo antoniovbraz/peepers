@@ -73,16 +73,16 @@ export class OrderRepository implements IOrderRepository {
       // Convert sales to Order entities
       const orders: Order[] = salesData.data.sales.map((sale: any) => {
         return new Order(
-          String(sale.id),
-          sale.status === 'completed' ? 'paid' : 'payment_in_process',
-          sale.status === 'completed' ? 'approved' : 'pending',
-          new Date(sale.date),
-          new Date(sale.date),
-          sale.status === 'completed' ? new Date(sale.date) : undefined,
-          sale.currency,
-          sale.sale_price * sale.quantity,
-          sale.sale_price * sale.quantity + (sale.shipping?.cost || 0),
-          sale.sale_price * sale.quantity,
+          String(sale.id), // id
+          sale.status === 'completed' ? 'paid' : 'payment_in_process', // status
+          sale.status === 'completed' ? 'approved' : 'pending', // status_detail
+          new Date(sale.date), // date_created
+          sale.status === 'completed' ? new Date(sale.date) : undefined, // date_closed
+          new Date(sale.date), // last_updated
+          sale.currency, // currency_id
+          sale.sale_price * sale.quantity, // total_amount
+          sale.sale_price * sale.quantity + (sale.shipping?.cost || 0), // total_amount_with_shipping
+          sale.sale_price * sale.quantity, // paid_amount
           undefined,
           [
             {
