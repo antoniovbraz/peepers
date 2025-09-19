@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     const kv = getKVClient();
     
     // 1. Verificar se o state existe no cache (prova que foi gerado por nós)
-    const storedVerifier = await kv.get<string>(CACHE_KEYS.PKCE_VERIFIER(state));
+  const storedVerifier = await kv.get(CACHE_KEYS.PKCE_VERIFIER(state));
     
     if (!storedVerifier) {
       console.error('❌ CSRF DETECTED: State inválido ou expirado:', state);
@@ -206,6 +206,7 @@ export async function GET(request: NextRequest) {
       token: tokenResult.access_token,
       refresh_token: tokenResult.refresh_token,
       expires_at: new Date(Date.now() + (tokenResult.expires_in * 1000)).toISOString(),
+      token_issued_at: new Date().toISOString(),
       user_id: parseInt(userId, 10), // Converter para number
       scope: tokenResult.scope,
       token_type: tokenResult.token_type,

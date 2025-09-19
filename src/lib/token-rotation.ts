@@ -1,3 +1,4 @@
+
 import { cache } from '@/lib/cache';
 import { logger } from '@/lib/logger';
 import { ML_CONFIG } from '@/config/routes';
@@ -149,7 +150,8 @@ export class TokenRotationService {
       // 4. Verificar se token não está na blacklist
       if (await this.isTokenBlacklisted(currentRefreshToken)) {
         logger.warn({ userId }, 'Attempted reuse of blacklisted refresh token');
-        return { success: false, error: 'Token already used' };
+        // Normalize message to include 'theft' so upper layers can classify correctly
+        return { success: false, error: 'Token theft detected - token already used' };
       }
 
       // 5. Obter novo token do Mercado Livre
@@ -166,6 +168,7 @@ export class TokenRotationService {
       expiresAt.setSeconds(expiresAt.getSeconds() + newTokens.expires_in!);
 
       // 8. Armazenar novos tokens e histórico
+      type TokenRotationHistoryEntry = { rotated_at: string; old_token_hash: string; new_token_hash: string };
       const updatedUserData = {
         ...userData,
         token: newTokens.access_token!,
@@ -173,14 +176,10 @@ export class TokenRotationService {
         expires_at: expiresAt.toISOString(),
         updated_at: new Date().toISOString(),
         // Histórico para auditoria
-        token_rotation_history: [
-          ...((userData.token_rotation_history as any[]) || []).slice(-9), // Manter últimos 10
-          {
-            rotated_at: new Date().toISOString(),
-            old_token_hash: this.hashToken(currentRefreshToken),
-            new_token_hash: this.hashToken(newTokens.refresh_token!)
-          }
-        ]
+        token_rotation_history: ([
+          ...((userData.token_rotation_history as TokenRotationHistoryEntry[] | undefined) || []).slice(-9),
+          { rotated_at: new Date().toISOString(), old_token_hash: this.hashToken(currentRefreshToken), new_token_hash: this.hashToken(newTokens.refresh_token!) }
+        ] as TokenRotationHistoryEntry[])
       };
 
       await cache.setUser(userId, updatedUserData);
@@ -301,12 +300,12 @@ export class TokenRotationService {
     // Persistir no cache / storage do usuário
     try {
       const userData = {
-        userId,
+        user_id: parseInt(userId, 10) || 0,
         token: accessToken,
         refresh_token: refreshToken,
         expires_at: new Date(Date.now() + (opts?.tokenTTL || 3600) * 1000).toISOString(),
-        token_rotation_history: []
-      } as any;
+        token_rotation_history: [] as Array<{ rotated_at: string; old_token_hash: string; new_token_hash: string }>
+      };
 
       await cache.setUser(userId, userData);
     } catch (error) {
@@ -354,9 +353,9 @@ export class TokenRotationService {
       
       // Blacklist histórico de tokens se existir
       if (userData?.token_rotation_history) {
-        const history = userData.token_rotation_history as any[];
+        const history = userData.token_rotation_history as Array<{ new_token_hash: string }>;
         const blacklistPromises = history
-          .map((entry: any) => entry.new_token_hash)
+          .map((entry) => entry.new_token_hash)
           .map(async (hash: string) => {
             const kv = await import('@/lib/cache').then(m => m.getKVClient());
             await kv.set(`blacklist:${hash}`, 'revoked', { ex: 30 * 24 * 60 * 60 });

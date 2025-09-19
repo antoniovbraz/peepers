@@ -8,6 +8,7 @@
 import { ReactNode } from 'react';
 import AuthCheck from '@/components/AuthCheck';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { EntitlementsGuard } from './entitlements-guard';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { Metadata } from 'next';
 
@@ -15,6 +16,9 @@ export const metadata: Metadata = {
   title: 'Admin Panel - Peepers',
   description: 'Painel administrativo completo para vendedores do Mercado Livre',
 };
+
+// Ensure Node.js runtime (avoids Edge bundling for server checks)
+export const runtime = 'nodejs';
 
 interface AdminRootLayoutProps {
   children: ReactNode;
@@ -25,7 +29,9 @@ export default function AdminRootLayout({ children }: AdminRootLayoutProps) {
     <AuthCheck>
       <NotificationProvider>
         <AdminLayout>
-          {children}
+          <EntitlementsGuard>
+            {children}
+          </EntitlementsGuard>
         </AdminLayout>
       </NotificationProvider>
     </AuthCheck>

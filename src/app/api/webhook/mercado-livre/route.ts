@@ -9,6 +9,7 @@ import {
 import { isValidWebhookTopic, WEBHOOK_TIMEOUT_MS, WEBHOOK_SECURITY, validateWebhookSignature } from '@/config/webhook';
 import { rateLimiter } from '@/lib/rate-limiter';
 import { getKVClient } from '@/lib/cache';
+import { enqueueJob, type JobType } from '@/lib/jobs';
 
 // In-memory deduplication store for test/dev when KV is unavailable
 const inMemoryDedupe = new Set<string>();
@@ -327,9 +328,17 @@ async function processWebhook(request: NextRequest, startTime: number): Promise<
     });
   }
 
-  // Processamento
+  // Processamento: enfileirar e responder rápido (<500ms)
   try {
-    await processWebhookByTopic(payload);
+    const type: JobType = payload.topic === 'orders_v2'
+      ? 'ml:webhook:orders'
+      : payload.topic === 'items'
+        ? 'ml:webhook:items'
+        : 'ml:webhook:generic';
+    // Enfileirar job para processamento assíncrono
+  await enqueueJob(type, payload);
+    // Opcional: processamento leve best-effort (não bloqueante)
+    // void processWebhookByTopic(payload);
     const processingTime = Date.now() - startTime;
     
     // 🚨 CRÍTICO: Verificar compliance de tempo
@@ -373,18 +382,7 @@ async function processWebhook(request: NextRequest, startTime: number): Promise<
   }
 }
 
-async function processWebhookByTopic(payload: WebhookPayload): Promise<void> {
-  switch (payload.topic) {
-    case 'orders_v2':
-      logger.info('📦 Processando pedido');
-      break;
-    case 'items':
-      logger.info('🛍️ Processando produto');
-      break;
-    default:
-      logger.info('📋 Topic processado');
-  }
-}
+// Note: heavy processing moved to async jobs; keep helper removed to satisfy lint
 
 export async function GET() {
   return NextResponse.json({

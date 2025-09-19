@@ -109,28 +109,26 @@ export class MercadoLivreAPI {
     }
 
     try {
-      const response = await this.httpClient.fetch(`${this.baseUrl}/oauth/token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Accept: 'application/json'
-        },
-        body: new URLSearchParams({
-          grant_type: 'refresh_token',
-          client_id: this.clientId,
-          client_secret: this.clientSecret,
-          refresh_token: this.refreshToken
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`Token refresh failed: ${error.message || error.error}`);
+      // Usar serviço de rotação com blacklist e single-use
+      const { tokenRotationService } = await import('@/lib/token-rotation');
+      if (!this.userId) {
+        throw new Error('Cannot refresh token without user context');
+      }
+      const rotation = await tokenRotationService.rotateToken(this.userId, this.refreshToken);
+      if (!rotation.success) {
+        throw new Error(rotation.error || 'Token rotation failed');
       }
 
-      const tokenData = await response.json();
-      
-      // Atualizar instância local
+      // Atualizar instância local a partir do resultado da rotação
+      const tokenData = {
+        access_token: rotation.access_token!,
+        refresh_token: rotation.refresh_token!,
+        expires_in: Math.max(0, Math.floor(((new Date(rotation.expires_at!).getTime()) - Date.now()) / 1000)),
+        scope: 'read write',
+        token_type: 'Bearer',
+        user_id: parseInt(this.userId, 10)
+      } as MLTokenRefreshResponse;
+
       this.accessToken = tokenData.access_token;
       this.refreshToken = tokenData.refresh_token;
       this.tokenExpiry = Date.now() + tokenData.expires_in * 1000;
@@ -139,13 +137,11 @@ export class MercadoLivreAPI {
       if (this.userId) {
         try {
           const { cache } = await import('@/lib/cache');
-          const { CACHE_KEYS } = await import('@/config/routes');
-          
           await cache.setUser(this.userId, {
             token: tokenData.access_token,
             refresh_token: tokenData.refresh_token,
             expires_at: new Date(this.tokenExpiry).toISOString(),
-            user_id: parseInt(this.userId, 10), // Converter para number
+            user_id: parseInt(this.userId, 10),
             scope: tokenData.scope || 'read write',
             token_type: tokenData.token_type || 'Bearer'
           });
