@@ -73,7 +73,7 @@ export class OrderRepository implements IOrderRepository {
       // Convert sales to Order entities
       const orders: Order[] = salesData.data.sales.map((sale: any) => {
         return new Order(
-          sale.id,
+          String(sale.id),
           sale.status === 'completed' ? 'paid' : 'payment_in_process',
           sale.status === 'completed' ? 'approved' : 'pending',
           new Date(sale.date),
@@ -87,7 +87,7 @@ export class OrderRepository implements IOrderRepository {
           [
             {
               item: {
-                id: sale.product_id,
+                id: String(sale.product_id),
                 title: sale.product_title,
                 category_id: 'MLB5672', // Default category
                 variation_id: undefined,
