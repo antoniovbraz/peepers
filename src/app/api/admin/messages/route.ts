@@ -117,7 +117,18 @@ export async function GET(request: NextRequest) {
     const clientIP = request.headers.get('x-forwarded-for') ||
                     request.headers.get('x-real-ip') ||
                     'unknown';
-    const userId = 'admin'; // Endpoints admin usam usuário fixo
+    
+    // Obter userId dos cookies para autenticação
+    const sessionToken = request.cookies.get('session_token')?.value;
+    const userId = request.cookies.get('user_id')?.value;
+    
+    if (!sessionToken || !userId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Usuário não autenticado. Faça login no Mercado Livre.',
+        data: { messages: [] }
+      }, { status: 401 });
+    }
 
     // Rate limiting para endpoints administrativos
     const rateLimitResult = await checkAuthAPILimit(userId, clientIP, '/api/admin/messages');
@@ -162,12 +173,29 @@ export async function GET(request: NextRequest) {
     let accessToken: string | null = null;
     
     try {
-      const userTokens = await kv.get(CACHE_KEYS.USER_TOKEN('admin'));
+      // Buscar token no formato USER_TOKEN(userId)
+      const userTokens = await kv.get(CACHE_KEYS.USER_TOKEN(userId));
       if (userTokens && typeof userTokens === 'object' && 'access_token' in userTokens) {
         accessToken = userTokens.access_token as string;
       }
+      
+      // Fallback: buscar no cache do usuário
+      if (!accessToken) {
+        const userData = await kv.get(`user:${userId}`);
+        if (userData && typeof userData === 'object' && 'token' in userData) {
+          accessToken = userData.token as string;
+        }
+      }
     } catch (error) {
       console.warn('Erro ao buscar token do cache:', error);
+    }
+
+    if (!accessToken) {
+      return NextResponse.json({
+        success: false,
+        error: 'Token de acesso não encontrado. Faça login novamente.',
+        data: { messages: [] }
+      }, { status: 401 });
     }
 
     // TENTATIVA 1: Dados reais do Mercado Livre

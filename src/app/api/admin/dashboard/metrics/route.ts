@@ -27,7 +27,9 @@ export async function GET(request: NextRequest) {
     );
 
     // Execute use case to get dashboard metrics
-    const result = await getDashboardMetrics.execute();
+    const result = await getDashboardMetrics.execute({
+      sellerId: parseInt(userId, 10)
+    });
 
     if (!result.success) {
       return NextResponse.json({

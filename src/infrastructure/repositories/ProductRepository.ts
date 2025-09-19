@@ -335,7 +335,7 @@ export class ProductRepository implements IProductRepository {
     }
   }
 
-  async getStatistics(_sellerId?: number): Promise<RepositoryResult<{
+  async getStatistics(sellerId?: number): Promise<RepositoryResult<{
     total: number;
     active: number;
     paused: number;
@@ -346,7 +346,56 @@ export class ProductRepository implements IProductRepository {
     averagePrice: number;
   }>> {
     try {
-      // Get all products to calculate statistics
+      // If in admin context and server-side, try to fetch real ML data first
+      if (this.isAdminContext && typeof window === 'undefined') {
+        try {
+          console.log('🔄 Tentando buscar produtos reais do ML para estatísticas...');
+
+          // Try to fetch real products from ML API
+          const realProductsResponse = await fetch(`${this.apiBaseUrl}/api/products?limit=1000`, {
+            headers: {
+              'Cookie': `user_id=${sellerId}; session_token=dummy_session`,
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include'
+          });
+
+          if (realProductsResponse.ok) {
+            const realProductsData = await realProductsResponse.json();
+            if (realProductsData.success && realProductsData.data?.items) {
+              const products = realProductsData.data.items;
+
+              console.log(`✅ Buscados ${products.length} produtos reais do ML para estatísticas`);
+
+              const stats = {
+                total: products.length,
+                active: products.filter((p: Record<string, unknown>) => p.status === 'active').length,
+                paused: products.filter((p: Record<string, unknown>) => p.status === 'paused').length,
+                closed: products.filter((p: Record<string, unknown>) => p.status === 'closed').length,
+                outOfStock: products.filter((p: Record<string, unknown>) => (p.available_quantity as number || 0) === 0).length,
+                lowStock: products.filter((p: Record<string, unknown>) => ((p.available_quantity as number || 0) < 5) && ((p.available_quantity as number || 0) > 0)).length,
+                totalValue: products.reduce((sum: number, p: Record<string, unknown>) => sum + (((p.price as number) || 0) * ((p.available_quantity as number) || 0)), 0),
+                averagePrice: products.length > 0 ? products.reduce((sum: number, p: Record<string, unknown>) => sum + ((p.price as number) || 0), 0) / products.length : 0
+              };
+
+              // Cache stats for 5 minutes
+              await this.setCachedData('product_statistics_real', stats, 300);
+
+              return {
+                success: true,
+                data: stats,
+                timestamp: new Date()
+              };
+            }
+          }
+
+          console.warn('❌ Falha ao buscar produtos reais do ML, usando dados mockados');
+        } catch (error) {
+          console.warn('❌ Erro ao buscar produtos reais do ML:', error);
+        }
+      }
+
+      // Fallback: Get all products to calculate statistics (using existing mock data)
       const result = await this.findAll(undefined, { page: 1, limit: 1000, offset: 0 });
       
       if (!result.success || !result.data) {

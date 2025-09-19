@@ -4,31 +4,7 @@ import { CACHE_KEYS, API_ENDPOINTS } from '@/config/routes';
 import { checkAuthAPILimit } from '@/lib/rate-limiter';
 import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
 
-interface MLMetrics {
-  visits: {
-    total: number;
-  };
-  sales: {
-    total_amount: number;
-    quantity: number;
-  };
-  reputation: {
-    level_id: string;
-    power_seller_status: string;
-    transactions: {
-      total: number;
-      completed: number;
-      canceled: number;
-    };
-    ratings: {
-      positive: number;
-      negative: number;
-      neutral: number;
-    };
-  };
-}
-
-async function fetchMLMetrics(accessToken: string): Promise<any> {
+async function fetchMLMetrics(accessToken: string): Promise<Record<string, unknown>> {
   // ML não tem um endpoint único de métricas, então vamos simular com múltiplas chamadas
   const urls = [
     'https://api.mercadolibre.com/users/me',
@@ -57,9 +33,13 @@ async function fetchMLMetrics(accessToken: string): Promise<any> {
       })
     );
 
+    // Combinar dados das respostas
+    const userData = data[0];
+    const visitsData = data[1];
+
     return {
-      user: data[0],
-      visits: data[1],
+      user: userData,
+      visits: visitsData,
     };
   } catch (error) {
     console.error('Erro ao buscar métricas do ML:', error);
@@ -67,14 +47,11 @@ async function fetchMLMetrics(accessToken: string): Promise<any> {
   }
 }
 
-function generateMetricsFromProducts(products: any[], period: string) {
-  const now = new Date();
-  const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
-  
+function generateMetricsFromProducts(products: Record<string, unknown>[]) {
   // Simular dados baseados nos produtos reais
   const totalProducts = products.length;
-  const avgPrice = products.reduce((sum, p) => sum + p.price, 0) / totalProducts;
-  
+  const avgPrice = products.reduce((sum, p) => sum + (p.price as number), 0) / totalProducts;
+
   // Gerar métricas realistas
   const monthlyRevenue = Array.from({ length: 12 }, (_, i) => {
     const baseRevenue = avgPrice * totalProducts * (Math.random() * 2 + 0.5);
@@ -82,19 +59,19 @@ function generateMetricsFromProducts(products: any[], period: string) {
   });
 
   const monthlyOrders = monthlyRevenue.map(revenue => Math.round(revenue / avgPrice));
-  
+
   const dailyViews = Array.from({ length: 14 }, () => 
     Math.floor(Math.random() * 500 + 100)
   );
 
   const topProducts = products
     .slice(0, 5)
-    .map((product, index) => ({
+    .map((product) => ({
       id: product.id,
       title: product.title,
       views: Math.floor(Math.random() * 1000 + 500),
       sales: Math.floor(Math.random() * 50 + 10),
-      revenue: Math.round(product.price * Math.random() * 50 + product.price * 10),
+      revenue: Math.round((product.price as number) * Math.random() * 50 + (product.price as number) * 10),
     }));
 
   return {
@@ -140,7 +117,18 @@ export async function GET(request: NextRequest) {
     const clientIP = request.headers.get('x-forwarded-for') ||
                     request.headers.get('x-real-ip') ||
                     'unknown';
-    const userId = 'admin'; // Endpoints admin usam usuário fixo ou obtém do contexto
+    
+    // Obter userId dos cookies para autenticação
+    const sessionToken = request.cookies.get('session_token')?.value;
+    const userId = request.cookies.get('user_id')?.value;
+    
+    if (!sessionToken || !userId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Usuário não autenticado. Faça login no Mercado Livre.',
+        data: { metrics: null }
+      }, { status: 401 });
+    }
 
     // Rate limiting para endpoints administrativos (mais permissivo que APIs públicas)
     const rateLimitResult = await checkAuthAPILimit(userId, clientIP, '/api/admin/metrics');
@@ -185,7 +173,7 @@ export async function GET(request: NextRequest) {
     let accessToken: string | null = null;
     
     try {
-      const userTokens = await kv.get(CACHE_KEYS.USER_TOKEN('admin'));
+      const userTokens = await kv.get(CACHE_KEYS.USER_TOKEN(userId));
       if (userTokens && typeof userTokens === 'object' && 'access_token' in userTokens) {
         accessToken = userTokens.access_token as string;
       }
@@ -196,7 +184,7 @@ export async function GET(request: NextRequest) {
     // TENTATIVA 1: Dados reais do Mercado Livre
     if (accessToken) {
       try {
-        console.log('🔄 Buscando métricas reais do Mercado Livre...');
+        console.log('��� Buscando métricas reais do Mercado Livre...');
         
         const mlResponse = await fetchMLMetrics(accessToken);
         
@@ -211,16 +199,16 @@ export async function GET(request: NextRequest) {
               averageOrderValue: 0,
             },
             products: {
-              totalViews: mlResponse.visits?.total || 0,
+              totalViews: (mlResponse.visits as Record<string, unknown>)?.total as number || 0,
               dailyViews: Array(14).fill(0),
               topProducts: [],
             },
             reputation: {
-              score: mlResponse.user.seller_reputation?.level_id ? 4.2 : 3.8,
-              totalReviews: mlResponse.user.seller_reputation?.transactions?.total || 0,
-              positiveReviews: mlResponse.user.seller_reputation?.transactions?.completed || 0,
+              score: ((mlResponse.user as Record<string, unknown>)?.seller_reputation as Record<string, unknown>)?.level_id ? 4.2 : 3.8,
+              totalReviews: (((mlResponse.user as Record<string, unknown>)?.seller_reputation as Record<string, unknown>)?.transactions as Record<string, unknown>)?.total as number || 0,
+              positiveReviews: (((mlResponse.user as Record<string, unknown>)?.seller_reputation as Record<string, unknown>)?.transactions as Record<string, unknown>)?.completed as number || 0,
               neutralReviews: 0,
-              negativeReviews: mlResponse.user.seller_reputation?.transactions?.canceled || 0,
+              negativeReviews: (((mlResponse.user as Record<string, unknown>)?.seller_reputation as Record<string, unknown>)?.transactions as Record<string, unknown>)?.canceled as number || 0,
               averageResponseTime: 2.5,
             },
             performance: {
@@ -253,7 +241,7 @@ export async function GET(request: NextRequest) {
     }
 
     // TENTATIVA 2: Simulação baseada em produtos reais
-    console.log('🔄 Gerando métricas simuladas baseadas em produtos reais...');
+    console.log('��� Gerando métricas simuladas baseadas em produtos reais...');
     
     const productsResponse = await fetch(`${request.nextUrl.origin}${API_ENDPOINTS.PRODUCTS}?format=summary&limit=50`);
     
@@ -262,7 +250,7 @@ export async function GET(request: NextRequest) {
       const products = productsData.data?.products || [];
       
       if (products.length > 0) {
-        const metrics = generateMetricsFromProducts(products, period);
+        const metrics = generateMetricsFromProducts(products);
         
         console.log('✅ Métricas simuladas baseadas em produtos reais!');
         
