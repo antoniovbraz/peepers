@@ -19,64 +19,28 @@ import {
 import { API_ENDPOINTS } from '@/config/routes';
 import type { MLProduct } from '@/types/ml';
 
-// Mock data para fallback
-const mockProducts = [
-  {
-    id: 'MLB123456789',
-    title: 'iPhone 15 Pro Max 256GB Azul Titânio',
-    price: 7899.99,
-    thumbnail: '/placeholder-image.svg', // ✅ Usando imagem local
-    status: 'active' as ProductStatus,
-    available_quantity: 5,
-    condition: 'new',
-    visits: 1247,
-    questions: 8,
-    sold_quantity: 23,
-  },
-  {
-    id: 'MLB987654321',
-    title: 'Samsung Galaxy S24 Ultra 512GB Preto',
-    price: 6299.99,
-    thumbnail: '/placeholder-image.svg', // ✅ Usando imagem local
-    status: 'paused' as ProductStatus,
-    available_quantity: 0,
-    condition: 'new',
-    visits: 892,
-    questions: 3,
-    sold_quantity: 15,
-  },
-  {
-    id: 'MLB456789123',
-    title: 'MacBook Air M3 13" 8GB 256GB Midnight',
-    price: 9999.99,
-    thumbnail: '/placeholder-image.svg', // ✅ Usando imagem local
-    status: 'active' as ProductStatus,
-    available_quantity: 3,
-    condition: 'new',
-    visits: 567,
-    questions: 2,
-    sold_quantity: 8,
-  },
-  {
-    id: 'MLB789123456',
-    title: 'PlayStation 5 Slim Digital Edition',
-    price: 3499.99,
-    thumbnail: '/placeholder-image.svg', // ✅ Usando imagem local
-    status: 'active' as ProductStatus,
-    available_quantity: 2,
-    condition: 'new',
-    visits: 2134,
-    questions: 15,
-    sold_quantity: 45,
-  },
-];
+// ✅ REMOVIDO: Sem dados mock - apenas dados reais do ML
 
 type ProductStatus = 'active' | 'paused' | 'closed';
 type SortOption = 'title' | 'price' | 'visits' | 'status';
 
+type Product = {
+  id: string;
+  title: string;
+  price: number;
+  thumbnail: string;
+  status: ProductStatus;
+  available_quantity: number;
+  condition: string;
+  visits?: number;
+  questions?: number;
+  sold_quantity?: number;
+};
+
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState(mockProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProductStatus | 'all'>('all');
   const [sortBy, setSortBy] = useState<SortOption>('title');
@@ -119,17 +83,24 @@ export default function AdminProductsPage() {
           }));
           
           setProducts(transformedProducts);
+          setAuthenticated(true);
           console.log('✅ Produtos reais carregados:', transformedProducts.length);
         } else {
           throw new Error('Dados inválidos da API');
         }
+      } else if (response.status === 401) {
+        console.warn('❌ Usuário não autenticado - precisa fazer login no ML');
+        setAuthenticated(false);
+        setProducts([]);
       } else {
-        console.warn(`API retornou ${response.status}, usando dados mock`);
-        setProducts(mockProducts);
+        console.warn(`API retornou ${response.status}, sem dados para carregar`);
+        setAuthenticated(false);
+        setProducts([]);
       }
     } catch (error) {
-      console.warn('Erro ao carregar produtos reais, usando mock:', error);
-      setProducts(mockProducts);
+      console.error('❌ Erro ao carregar produtos reais:', error);
+      setAuthenticated(false);
+      setProducts([]);
     } finally {
       setLoading(false);
       setHasAttemptedLoad(true);
@@ -181,7 +152,7 @@ export default function AdminProductsPage() {
         case 'price':
           return b.price - a.price;
         case 'visits':
-          return b.visits - a.visits;
+          return (b.visits || 0) - (a.visits || 0);
         case 'status':
           return a.status.localeCompare(b.status);
         default:
@@ -206,7 +177,10 @@ export default function AdminProductsPage() {
           </div>
           <p className="text-sm text-gray-500 mt-1">
             Gerencie seus produtos do Mercado Livre
-            {!hasAttemptedLoad && ' • Carregando dados...'}
+            {loading && ' • Carregando...'}
+            {!hasAttemptedLoad && ' • Aguardando...'}
+            {authenticated === false && ' • ⚠️ Autenticação necessária'}
+            {authenticated === true && ` • ✅ ${products.length} produtos`}
           </p>
         </div>
         
@@ -275,7 +249,7 @@ export default function AdminProductsPage() {
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
                   <span className="text-white text-sm font-medium">
-                    {products.reduce((sum, p) => sum + p.sold_quantity, 0)}
+                    {products.reduce((sum, p) => sum + (p.sold_quantity || 0), 0)}
                   </span>
                 </div>
               </div>
@@ -285,7 +259,7 @@ export default function AdminProductsPage() {
                     Total Vendido
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
-                    {products.reduce((sum, p) => sum + p.sold_quantity, 0)} unidades
+                    {products.reduce((sum, p) => sum + (p.sold_quantity || 0), 0)} unidades
                   </dd>
                 </dl>
               </div>
