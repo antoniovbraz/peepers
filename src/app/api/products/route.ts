@@ -52,12 +52,17 @@ async function fetchMLProducts(accessToken: string, params: URLSearchParams, use
   return searchResult;
 }
 
+function ensureHttps(url: string): string {
+  if (!url) return url;
+  return url.replace(/^http:\/\//, 'https://');
+}
+
 function transformMLProduct(mlProduct: MLProduct): Record<string, unknown> {
   return {
     id: mlProduct.id,
     title: mlProduct.title,
     price: mlProduct.price,
-    thumbnail: mlProduct.thumbnail || (mlProduct.pictures?.[0]?.url || 'https://via.placeholder.com/300x300'),
+    thumbnail: ensureHttps(mlProduct.thumbnail || (mlProduct.pictures?.[0]?.url || 'https://via.placeholder.com/300x300')),
     condition: mlProduct.condition,
     status: mlProduct.status,
     available_quantity: mlProduct.available_quantity,
