@@ -30,9 +30,16 @@ export async function GET(request: NextRequest) {
     const timeWindow = parseInt(url.searchParams.get('window') || '3600'); // 1 hora default
 
     // Coletar estatísticas
-    const [securityStats, rateLimitStats] = await Promise.all([
+    const [securityStats, rateLimitStats, ipStats, userStats, endpointStats, loginStats, webhookStats, publicStats, authStats] = await Promise.all([
       getSecurityStats(timeWindow),
-      rateLimiter.getStats()
+      rateLimiter.getStats(),
+      rateLimiter.getStats('rate_limit:ip:*'),
+      rateLimiter.getStats('rate_limit:user:*'),
+      rateLimiter.getStats('rate_limit:endpoint:*'),
+      rateLimiter.getStats('rate_limit:login:*'),
+      rateLimiter.getStats('rate_limit:webhook:*'),
+      rateLimiter.getStats('rate_limit:public:*'),
+      rateLimiter.getStats('rate_limit:auth:*')
     ]);
 
     // Métricas calculadas
@@ -84,11 +91,21 @@ export async function GET(request: NextRequest) {
         api_errors: securityStats.byType?.['system.api.error'] || 0
       },
 
-      // Rate limiting
+      // Rate limiting (computed from available data)
       rate_limiting: {
-        total_keys: rateLimitStats.total_keys,
-        active_limits: rateLimitStats.active_limits,
-        by_type: rateLimitStats.by_type
+        total_keys: rateLimitStats.keys,
+        active_limits: rateLimitStats.keys,
+        errors: rateLimitStats.errors,
+        sample: rateLimitStats.sample,
+        by_type: {
+          ip: ipStats.keys,
+          user: userStats.keys,
+          endpoint: endpointStats.keys,
+          login: loginStats.keys,
+          webhook: webhookStats.keys,
+          public: publicStats.keys,
+          auth: authStats.keys
+        }
       },
 
       // Eventos por tipo (completo)

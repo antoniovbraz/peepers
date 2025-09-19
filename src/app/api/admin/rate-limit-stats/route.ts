@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         auth_api_limits: await rateLimiter.getStats('rate_limit:auth:*')
       },
       health: {
-        status: stats.error ? 'error' : 'healthy',
+        status: stats.errors ? 'error' : 'healthy',
         last_check: new Date().toISOString()
       }
     };
