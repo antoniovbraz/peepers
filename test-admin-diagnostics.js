@@ -11,7 +11,8 @@ const http = require('http');
 
 // Configuration
 const BASE_URL = process.env.VERCEL_URL || 'https://peepers.vercel.app';
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'antoniovbraz+1@gmail.com';
+// Test configuration
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'peepers.shop@gmail.com';
 
 console.log('🔍 Admin Panel Diagnostics Starting...');
 console.log(`📍 Base URL: ${BASE_URL}`);

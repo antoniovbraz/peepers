@@ -7,7 +7,7 @@
 
 export const PLATFORM_CONFIG = {
   // Email do dono da aplicação (você)
-  SUPER_ADMIN_EMAIL: process.env.SUPER_ADMIN_EMAIL || 'antonio@peepers.com',
+  SUPER_ADMIN_EMAIL: process.env.SUPER_ADMIN_EMAIL || 'peepers.shop@gmail.com',
   
   // User IDs que são super admins (para backward compatibility)
   SUPER_ADMIN_USER_IDS: (process.env.SUPER_ADMIN_USER_IDS || '').split(',').filter(Boolean),

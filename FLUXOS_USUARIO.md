@@ -134,7 +134,7 @@ SUPER_ADMIN_FEATURES: [
 
 ```bash
 # 1. Configure seu email no .env
-SUPER_ADMIN_EMAIL=antonio@peepers.com
+SUPER_ADMIN_EMAIL=peepers.shop@gmail.com
 
 # 2. Faça login com esse email
 # 3. Acesse rotas especiais:
@@ -180,7 +180,7 @@ https://seu-app.vercel.app/api/entitlements # Veja entitlements ilimitados
 
 ```bash
 # 1. Configure seu email real
-SUPER_ADMIN_EMAIL=seu-email@dominio.com
+SUPER_ADMIN_EMAIL=peepers.shop@gmail.com
 
 # 2. Connect database real para:
 # - Buscar organizações reais
