@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
 
     // Initialize repositories with admin context (server-side)
     const productRepository = new ProductRepository(undefined, true);
-    const orderRepository = new OrderRepository();
-    const sellerRepository = new SellerRepository();
+    const orderRepository = new OrderRepository(undefined, true);
+    const sellerRepository = new SellerRepository(undefined, true);
     
     const getDashboardMetrics = new GetDashboardMetricsUseCase(
       productRepository,

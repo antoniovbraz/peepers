@@ -14,9 +14,11 @@ import { getKVClient } from '@/lib/cache';
 
 export class SellerRepository implements ISellerRepository {
   private readonly apiBaseUrl: string;
+  private readonly isAdminContext: boolean;
   
-  constructor(apiBaseUrl?: string) {
+  constructor(apiBaseUrl?: string, isAdminContext: boolean = false) {
     this.apiBaseUrl = apiBaseUrl || (typeof window !== 'undefined' ? window.location.origin : 'https://peepers.vercel.app');
+    this.isAdminContext = isAdminContext;
   }
 
   // Helper method to get cached data
