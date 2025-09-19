@@ -257,10 +257,12 @@ export async function GET(request: NextRequest) {
 
     // Cookie de sessão (token aleatório para validar sessão)
     const sessionToken = crypto.randomUUID();
+    console.log('🍪 Definindo cookies de autenticação...');
+    
     response.cookies.set('session_token', sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: true, // Sempre true para HTTPS
+      sameSite: 'lax', // Menos restritivo que 'strict'
       maxAge: 24 * 60 * 60, // 24 horas
       path: '/'
     });
@@ -268,8 +270,8 @@ export async function GET(request: NextRequest) {
     // Cookie com user_id
     response.cookies.set('user_id', userId, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: true, // Sempre true para HTTPS
+      sameSite: 'lax', // Menos restritivo que 'strict'
       maxAge: 24 * 60 * 60, // 24 horas
       path: '/'
     });
@@ -278,12 +280,15 @@ export async function GET(request: NextRequest) {
     if (userData.email) {
       response.cookies.set('user_email', userData.email, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: true, // Sempre true para HTTPS
+        sameSite: 'lax', // Menos restritivo que 'strict'
         maxAge: 24 * 60 * 60, // 24 horas
         path: '/'
       });
+      console.log('✅ Cookie user_email definido:', userData.email);
     }
+
+    console.log('✅ Todos os cookies definidos - redirecionando para admin');
 
     // Armazenar session token no cache para validação
     const existingUserData = await cache.getUser(userId) || { user_id: parseInt(userId, 10) };
@@ -293,9 +298,37 @@ export async function GET(request: NextRequest) {
     });
 
     return response;
-
   } catch (error) {
-    console.error('❌ Erro no callback OAuth:', error);
-    return NextResponse.redirect(`${request.nextUrl.origin}${PAGES.ADMIN}?auth_error=callback_failed`);
+    console.error('❌ Erro durante callback do OAuth:', error);
+    
+    if (error instanceof Error) {
+      console.error('Error details:', error.message, error.stack);
+    }
+
+    let errorMessage = 'Erro durante autenticação';
+    let errorDetails = '';
+
+    if (error instanceof Error) {
+      if (error.message.includes('Invalid authorization code')) {
+        errorMessage = 'Código de autorização inválido';
+        errorDetails = 'O código recebido do Mercado Livre expirou ou já foi usado';
+      } else if (error.message.includes('PKCE verification failed')) {
+        errorMessage = 'Falha na verificação de segurança';
+        errorDetails = 'Erro na validação PKCE - tente novamente';
+      } else if (error.message.includes('Invalid state parameter')) {
+        errorMessage = 'Parâmetro de estado inválido';
+        errorDetails = 'Possível tentativa de CSRF - tente novamente';
+      } else if (error.message.includes('Failed to fetch user data')) {
+        errorMessage = 'Falha ao buscar dados do usuário';
+        errorDetails = 'Não foi possível recuperar informações da sua conta ML';
+      }
+    }
+
+    const errorUrl = new URL('/admin', process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
+    errorUrl.searchParams.set('auth_error', 'true');
+    errorUrl.searchParams.set('error_message', errorMessage);
+    errorUrl.searchParams.set('error_details', errorDetails);
+
+    return NextResponse.redirect(errorUrl);
   }
 }
