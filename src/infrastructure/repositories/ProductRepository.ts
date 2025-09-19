@@ -14,6 +14,20 @@ import {
 import { Product, ProductFilters, PaginationParams } from '@/domain/entities/Product';
 import { getKVClient } from '@/lib/cache';
 
+interface MLProductRaw {
+  id: string;
+  title: string;
+  price: number;
+  status: 'active' | 'paused' | 'closed';
+  available_quantity: number;
+  category_id?: string;
+  condition: 'new' | 'used';
+  permalink: string;
+  thumbnail: string;
+  visits?: number;
+  sold_quantity?: number;
+}
+
 export class ProductRepository implements IProductRepository {
   private readonly apiBaseUrl: string;
   private readonly isAdminContext: boolean;
@@ -335,6 +349,88 @@ export class ProductRepository implements IProductRepository {
     }
   }
 
+  /**
+   * Fetch all products from a seller using ML API with scan method
+   * Supports pagination for sellers with more than 1000 products
+   */
+  private async fetchAllSellerProducts(sellerId: number): Promise<MLProductRaw[]> {
+    try {
+      const allProducts: MLProductRaw[] = [];
+      let scrollId: string | null = null;
+      let hasMore = true;
+
+      while (hasMore) {
+        // Build URL for ML API
+        const baseUrl = `https://api.mercadolibre.com/users/${sellerId}/items/search`;
+        const params = new URLSearchParams({
+          limit: '100', // Maximum allowed by ML API
+          search_type: 'scan'
+        });
+
+        if (scrollId) {
+          params.append('scroll_id', scrollId);
+        }
+
+        const url = `${baseUrl}?${params.toString()}`;
+
+        // Get access token from cache
+        const tokenKey = `user_token_${sellerId}`;
+        const tokenData = await this.getCachedData<{ access_token: string }>(tokenKey);
+
+        if (!tokenData?.access_token) {
+          throw new Error('No access token available for ML API');
+        }
+
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${tokenData.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('Unauthorized - token may be expired');
+          }
+          throw new Error(`ML API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (data.results && Array.isArray(data.results)) {
+          allProducts.push(...data.results);
+          
+          // Check if there's more data to fetch
+          scrollId = data.scroll_id || null;
+          hasMore = Boolean(scrollId) && data.results.length === 100;
+
+          // Safety limit to prevent infinite loops
+          if (allProducts.length > 50000) {
+            console.warn('⚠️ Safety limit reached - stopping product fetch at 50,000 products');
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+
+        // Small delay to respect rate limits
+        if (hasMore) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      console.log(`📊 Fetched ${allProducts.length} products from ML API for seller ${sellerId}`);
+      return allProducts;
+
+    } catch (error) {
+      console.error('❌ Error fetching all seller products:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get product statistics for dashboard
+   */
   async getStatistics(sellerId?: number): Promise<RepositoryResult<{
     total: number;
     active: number;
@@ -347,57 +443,44 @@ export class ProductRepository implements IProductRepository {
   }>> {
     try {
       // If in admin context and server-side, try to fetch real ML data first
-      if (this.isAdminContext && typeof window === 'undefined') {
+      if (this.isAdminContext && typeof window === 'undefined' && sellerId) {
         try {
           console.log('🔄 Tentando buscar produtos reais do ML para estatísticas...');
 
-          // Try to fetch real products from ML API
-          const realProductsResponse = await fetch(`${this.apiBaseUrl}/api/products?limit=1000`, {
-            headers: {
-              'Cookie': `user_id=${sellerId}; session_token=dummy_session`,
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include'
-          });
+          // Fetch all products from ML API using scan method
+          const allProducts = await this.fetchAllSellerProducts(sellerId);
 
-          if (realProductsResponse.ok) {
-            const realProductsData = await realProductsResponse.json();
-            if (realProductsData.success && realProductsData.data?.items) {
-              const products = realProductsData.data.items;
+          if (allProducts.length > 0) {
+            console.log(`✅ Buscados ${allProducts.length} produtos reais do ML para estatísticas`);
 
-              console.log(`✅ Buscados ${products.length} produtos reais do ML para estatísticas`);
+            const stats = {
+              total: allProducts.length,
+              active: allProducts.filter((p: MLProductRaw) => p.status === 'active').length,
+              paused: allProducts.filter((p: MLProductRaw) => p.status === 'paused').length,
+              closed: allProducts.filter((p: MLProductRaw) => p.status === 'closed').length,
+              outOfStock: allProducts.filter((p: MLProductRaw) => (p.available_quantity || 0) === 0).length,
+              lowStock: allProducts.filter((p: MLProductRaw) => (p.available_quantity || 0) < 5 && (p.available_quantity || 0) > 0).length,
+              totalValue: allProducts.reduce((sum: number, p: MLProductRaw) => sum + ((p.price || 0) * (p.available_quantity || 0)), 0),
+              averagePrice: allProducts.length > 0 ? allProducts.reduce((sum: number, p: MLProductRaw) => sum + (p.price || 0), 0) / allProducts.length : 0
+            };
 
-              const stats = {
-                total: products.length,
-                active: products.filter((p: Record<string, unknown>) => p.status === 'active').length,
-                paused: products.filter((p: Record<string, unknown>) => p.status === 'paused').length,
-                closed: products.filter((p: Record<string, unknown>) => p.status === 'closed').length,
-                outOfStock: products.filter((p: Record<string, unknown>) => (p.available_quantity as number || 0) === 0).length,
-                lowStock: products.filter((p: Record<string, unknown>) => ((p.available_quantity as number || 0) < 5) && ((p.available_quantity as number || 0) > 0)).length,
-                totalValue: products.reduce((sum: number, p: Record<string, unknown>) => sum + (((p.price as number) || 0) * ((p.available_quantity as number) || 0)), 0),
-                averagePrice: products.length > 0 ? products.reduce((sum: number, p: Record<string, unknown>) => sum + ((p.price as number) || 0), 0) / products.length : 0
-              };
+            // Cache stats for 5 minutes
+            await this.setCachedData('product_statistics_real', stats, 300);
 
-              // Cache stats for 5 minutes
-              await this.setCachedData('product_statistics_real', stats, 300);
-
-              return {
-                success: true,
-                data: stats,
-                timestamp: new Date()
-              };
-            }
+            return {
+              success: true,
+              data: stats,
+              timestamp: new Date()
+            };
           }
-
-          console.warn('❌ Falha ao buscar produtos reais do ML, usando dados mockados');
         } catch (error) {
-          console.warn('❌ Erro ao buscar produtos reais do ML:', error);
+          console.warn('❌ Falha ao buscar produtos reais do ML:', error);
         }
       }
 
       // Fallback: Get all products to calculate statistics (using existing mock data)
       const result = await this.findAll(undefined, { page: 1, limit: 1000, offset: 0 });
-      
+
       if (!result.success || !result.data) {
         const errorMessage = result.error || 'Failed to fetch products for statistics';
         console.error('❌ Product stats error:', errorMessage);
@@ -405,7 +488,7 @@ export class ProductRepository implements IProductRepository {
       }
 
       const products = result.data.items;
-      
+
       const stats = {
         total: products.length,
         active: products.filter(p => p.status === 'active').length,
