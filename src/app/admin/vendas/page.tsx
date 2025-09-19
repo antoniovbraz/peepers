@@ -64,8 +64,16 @@ export default function SalesPage() {
   const { notifyError } = useNotificationActions();
 
   const loadOrders = useCallback(async () => {
+    // Prevenir múltiplas requisições simultâneas
+    if (loading) return;
+    
     setLoading(true);
+    const abortController = new AbortController();
+    
     try {
+      // Timeout de 30 segundos para evitar requisições penduradas
+      const timeoutId = setTimeout(() => abortController.abort(), 30000);
+
       // Buscar dados reais da API do Mercado Livre
       const response = await fetch(`/api/admin/sales?limit=20&search=${encodeURIComponent(searchTerm)}`, {
         method: 'GET',
@@ -73,7 +81,10 @@ export default function SalesPage() {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Importante para enviar cookies de autenticação
+        signal: abortController.signal, // Permite cancelar a requisição
       });
+
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data: SalesApiResponse = await response.json();
@@ -90,6 +101,12 @@ export default function SalesPage() {
         throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
+      // Ignorar erros de cancelamento de requisição (AbortError)
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Requisição cancelada - ignorando erro');
+        return;
+      }
+      
       console.error('Erro ao carregar vendas:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       notifyError(`Erro ao carregar vendas: ${errorMessage}`);
@@ -105,11 +122,33 @@ export default function SalesPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, notifyError]);
+  }, [searchTerm, notifyError, loading]);
 
   useEffect(() => {
-    loadOrders();
+    let isMounted = true;
+    
+    const loadData = async () => {
+      if (isMounted) {
+        await loadOrders();
+      }
+    };
+    
+    loadData();
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
   }, [loadOrders]);
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      loadOrders();
+    }, 500); // 500ms delay for search
+    
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, loadOrders]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
