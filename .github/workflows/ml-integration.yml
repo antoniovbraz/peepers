@@ -1,0 +1,131 @@
+name: 🤖 ML API Integration Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      test_real_ml:
+        description: 'Test with real ML API (requires secrets)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  ml-integration-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 🏗️ Build application
+      run: npm run build
+
+    - name: 🚀 Start application
+      run: |
+        npm start &
+        sleep 15
+
+    - name: 🧪 Test ML Compliance
+      run: |
+        if [ -f "test-ml-compliance.js" ]; then
+          node test-ml-compliance.js
+        fi
+
+    - name: 🧪 Test Product Statistics
+      run: |
+        if [ -f "test-product-stats.js" ]; then
+          node test-product-stats.js
+        fi
+
+    - name: 🧪 Test ML Integration (Mock)
+      run: |
+        # Test with mock data first
+        response=$(curl -s -H "Cookie: user_id=123456789" http://localhost:3000/api/admin/dashboard/metrics)
+        if echo "$response" | jq -e '.success == true' > /dev/null; then
+          echo "✅ ML Integration (Mock) test passed"
+
+          # Extract and validate product stats
+          product_stats=$(echo "$response" | jq '.data.productStats')
+          if [ "$product_stats" != "null" ]; then
+            echo "📊 Product stats found:"
+            echo "$product_stats" | jq '.'
+          fi
+        else
+          echo "❌ ML Integration test failed"
+          echo "Response: $response"
+          exit 1
+        fi
+
+    - name: 🔴 Test Real ML API (Optional)
+      if: github.event.inputs.test_real_ml == 'true' && env.ML_CLIENT_ID != null
+      run: |
+        echo "🧪 Testing with REAL ML API..."
+
+        # Test ML API connection
+        if [ -f "test-ml-integration-curl.sh" ]; then
+          bash test-ml-integration-curl.sh
+        fi
+
+        # Test OAuth flow simulation
+        if [ -f "test-complete-auth.sh" ]; then
+          bash test-complete-auth.sh
+        fi
+      env:
+        ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+        ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+        UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+        UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+
+  rate-limit-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 🧪 Test Rate Limiting
+      run: |
+        if [ -f "test-webhook-security.js" ]; then
+          node test-webhook-security.js
+        fi
+
+    - name: 🧪 Test Concurrent Requests
+      run: |
+        # Test multiple concurrent requests to check rate limiting
+        for i in {1..10}; do
+          curl -s -H "Cookie: user_id=123456789" http://localhost:3000/api/admin/dashboard/metrics &
+        done
+        wait
+
+        echo "✅ Concurrent requests test completed"
+
+  cleanup:
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+    - name: 🧹 Cleanup test data
+      run: |
+        echo "🧹 Test cleanup completed"

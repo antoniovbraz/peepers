@@ -1,0 +1,112 @@
+name: 🧪 API Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 🏗️ Build application
+      run: npm run build
+
+    - name: 🚀 Start application
+      run: |
+        npm start &
+        sleep 10
+
+    - name: 🧪 Test Health Endpoint
+      run: |
+        curl -f http://localhost:3000/api/health || exit 1
+        echo "✅ Health check passed"
+
+    - name: 🧪 Test Products Public API
+      run: |
+        response=$(curl -s http://localhost:3000/api/products-public?limit=5)
+        if echo "$response" | jq -e '.success == true' > /dev/null; then
+          echo "✅ Products API test passed"
+        else
+          echo "❌ Products API test failed"
+          echo "Response: $response"
+          exit 1
+        fi
+
+    - name: 🧪 Test Admin Dashboard Metrics
+      run: |
+        response=$(curl -s -H "Cookie: user_id=123456789" http://localhost:3000/api/admin/dashboard/metrics)
+        if echo "$response" | jq -e '.success == true' > /dev/null; then
+          echo "✅ Dashboard metrics test passed"
+        else
+          echo "❌ Dashboard metrics test failed"
+          echo "Response: $response"
+          exit 1
+        fi
+
+    - name: 🧪 Test Cache Debug
+      run: |
+        response=$(curl -s http://localhost:3000/api/cache-debug)
+        if echo "$response" | jq -e '.success == true' > /dev/null; then
+          echo "✅ Cache debug test passed"
+        else
+          echo "❌ Cache debug test failed"
+          echo "Response: $response"
+          exit 1
+        fi
+
+  security-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 🔒 Security Audit
+      run: npm audit --audit-level moderate
+
+    - name: 🧪 Run Security Tests
+      run: |
+        if [ -f "test-webhook-security.js" ]; then
+          node test-webhook-security.js
+        fi
+
+    - name: 🔍 Check for Security Issues
+      run: |
+        # Check for hardcoded secrets
+        if grep -r "password\|secret\|token" --include="*.js" --include="*.ts" --include="*.json" src/ | grep -v "test\|mock\|example"; then
+          echo "⚠️  Potential hardcoded secrets found"
+          exit 1
+        fi
+
+        # Check for console.log in production code
+        if grep -r "console\." --include="*.js" --include="*.ts" src/ | grep -v "test\|debug"; then
+          echo "⚠️  Console statements found in production code"
+          # Don't fail for now, just warn
+        fi

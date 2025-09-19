@@ -1,0 +1,102 @@
+name: 🎨 Code Quality
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 🎨 Run ESLint
+      run: npm run lint
+
+    - name: 🔍 Check TypeScript types
+      run: npx tsc --noEmit
+
+    - name: 📏 Check code formatting
+      run: |
+        if command -v prettier &> /dev/null; then
+          npx prettier --check "src/**/*.{js,jsx,ts,tsx,json,css,md}"
+        else
+          echo "Prettier not configured, skipping format check"
+        fi
+
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🔒 Run security audit
+      run: npm audit --audit-level high
+
+    - name: 🛡️ Check for vulnerabilities
+      run: |
+        if [ -f ".env.example" ]; then
+          echo "✅ Environment template found"
+        else
+          echo "⚠️  .env.example not found"
+        fi
+
+        # Check for sensitive files
+        if [ -f ".env" ] || [ -f ".env.local" ] || [ -f ".env.production" ]; then
+          echo "⚠️  Sensitive environment files found in repository"
+          echo "   Make sure these are in .gitignore"
+        fi
+
+  bundle-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+      with:
+        fetch-depth: 0
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 📊 Analyze bundle size
+      run: |
+        npm run build
+
+        # Check bundle size
+        if [ -d ".next/static" ]; then
+          bundle_size=$(du -sh .next/static | cut -f1)
+          echo "📦 Bundle size: $bundle_size"
+
+          # Warn if bundle is too large
+          if [[ "$bundle_size" =~ "50M" ]] || [[ "$bundle_size" =~ "100M" ]] || [[ "$bundle_size" =~ "200M" ]]; then
+            echo "⚠️  Bundle size is large: $bundle_size"
+          fi
+        fi
+
+    - name: 📈 Compare bundle size
+      if: github.event_name == 'pull_request'
+      run: |
+        echo "📊 Bundle size comparison for PR"
+        # This would compare with base branch if we had historical data
