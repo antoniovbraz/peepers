@@ -55,7 +55,7 @@ export default function AdminProductsPage() {
     try {
       const params = new URLSearchParams({
         format: 'summary',
-        limit: '50',
+        limit: '20', // ✅ CORREÇÃO: Usar limite compatível com ML API
       });
 
       const response = await fetch(`${API_ENDPOINTS.PRODUCTS}?${params.toString()}`, {

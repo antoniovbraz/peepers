@@ -225,7 +225,8 @@ export async function GET(request: NextRequest) {
       
       if (mlResponse.results && Array.isArray(mlResponse.results) && mlResponse.results.length > 0) {
         // mlResponse.results contém IDs dos produtos, não produtos completos
-        const productIds = mlResponse.results.slice(0, limit); // Limitar quantos buscar
+        // ✅ CORREÇÃO: ML API não aceita mais que 20 IDs por vez na busca de detalhes
+        const productIds = mlResponse.results.slice(0, Math.min(limit, 20)); // Limitar conforme ML API
         
         console.log(`🔍 Buscando detalhes de ${productIds.length} produtos...`);
         
