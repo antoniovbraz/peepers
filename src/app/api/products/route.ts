@@ -57,7 +57,7 @@ async function fetchMLProducts(accessToken: string, params: URLSearchParams): Pr
   return searchResult;
 }
 
-function transformMLProduct(mlProduct: MLProduct): any {
+function transformMLProduct(mlProduct: MLProduct): Record<string, unknown> {
   return {
     id: mlProduct.id,
     title: mlProduct.title,
@@ -231,7 +231,7 @@ export async function GET(request: NextRequest) {
       
       if (mlResponse.results && Array.isArray(mlResponse.results)) {
         const transformedProducts = mlResponse.results
-          .filter((product: any) => product && product.id) // Filtrar produtos válidos
+          .filter((product: MLProduct) => product && product.id) // Filtrar produtos válidos
           .map(transformMLProduct);
         
         console.log(`✅ ${transformedProducts.length} produtos reais carregados do ML!`);
