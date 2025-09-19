@@ -33,8 +33,17 @@ export const ML_RATE_LIMITS = {
   }
 } as const;
 
+type KVLike = {
+  get: (key: string) => Promise<string | number | null>;
+  set: (key: string, value: string) => Promise<unknown>;
+  // Optional capabilities depending on provider
+  scan?: (cursor: number, opts: { match?: string; count?: number }) => Promise<{ cursor?: number; keys?: string[] }>;
+  keys?: (pattern: string) => Promise<string[]>;
+  del?: (...keys: string[]) => Promise<unknown>;
+};
+
 export class AdvancedRateLimiter {
-  private readonly kv = getKVClient();
+  private readonly kv: KVLike = getKVClient() as unknown as KVLike;
 
   // Generic IP limiter
   async limitByIP(clientIP: string, config: { maxRequests: number; windowMs: number; keyGenerator?: (ip: string) => string }): Promise<RateLimitResult> {
@@ -154,6 +163,79 @@ export class AdvancedRateLimiter {
         resetTime: now + config.windowMs,
         totalHits: 0
       };
+    }
+  }
+
+  // Summarize counters for a given pattern or globally
+  async getStats(pattern?: string): Promise<{ keys: number; errors?: string; sample?: Array<{ key: string; count: number; reset?: number }>; }> {
+    try {
+      // If KV provides scan/keys, attempt to list keys; otherwise return minimal info
+      const hasScan = typeof this.kv.scan === 'function';
+      const hasKeys = typeof this.kv.keys === 'function';
+      if (!hasScan && !hasKeys) {
+        return { keys: 0 };
+      }
+
+      const match = pattern ? `${pattern}` : `rate_limit:*`;
+      let keys: string[] = [];
+
+      if (hasScan && this.kv.scan) {
+        // Upstash pattern scan
+        const result = await this.kv.scan(0, { match, count: 100 });
+        const scanned = Array.isArray(result?.keys) ? result.keys as string[] : [];
+        keys = scanned.filter(k => k.endsWith(':count'));
+      } else if (hasKeys && this.kv.keys) {
+        // node-redis KEYS (avoid in prod, but acceptable for small sets)
+        const all = await this.kv.keys(match);
+        keys = (all as string[]).filter(k => k.endsWith(':count'));
+      }
+
+      const sampleKeys = keys.slice(0, 25);
+      const counts = await Promise.all(sampleKeys.map(k => this.kv.get(k)));
+      const resetKeys = sampleKeys.map(k => k.replace(/:count$/, ':reset'));
+      const resets = await Promise.all(resetKeys.map(k => this.kv.get(k)));
+
+      const sample = sampleKeys.map((k, i) => ({
+        key: k,
+        count: parseInt((counts[i] ?? '0') as string),
+        reset: parseInt((resets[i] ?? '0') as string)
+      }));
+
+      return { keys: keys.length, sample };
+    } catch (e) {
+      logger.error(e, 'Failed to collect rate limit stats');
+      return { keys: 0, errors: 'collection_failed' };
+    }
+  }
+
+  // Reset a specific limiter key prefix (dangerous; admin-only)
+  async resetLimit(keyPrefix: string): Promise<void> {
+    try {
+      const hasScan = typeof this.kv.scan === 'function';
+      const hasKeys = typeof this.kv.keys === 'function';
+      if (!hasScan && !hasKeys) return;
+      const match = keyPrefix.endsWith('*') ? keyPrefix : `${keyPrefix}*`;
+      let keys: string[] = [];
+      if (hasScan && this.kv.scan) {
+        const result = await this.kv.scan(0, { match, count: 100 });
+        keys = Array.isArray(result?.keys) ? result.keys as string[] : [];
+      } else if (hasKeys && this.kv.keys) {
+        keys = await this.kv.keys(match);
+      }
+      const delKeys: string[] = [];
+      for (const k of keys) {
+        delKeys.push(k);
+        const resetKey = k.endsWith(':count') ? k.replace(/:count$/, ':reset') : `${k}:reset`;
+        delKeys.push(resetKey);
+      }
+      if (delKeys.length > 0 && typeof this.kv.del === 'function' && this.kv.del) {
+        await this.kv.del(...delKeys);
+      } else {
+        // fallback: set zero
+        await Promise.all(delKeys.map(k => this.kv.set(k, '0')));
+      }
+    } catch (e) {
+      logger.error(e, 'Failed to reset rate limit keys');
     }
   }
 }

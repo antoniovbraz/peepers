@@ -272,6 +272,31 @@ async function processWebhook(request: NextRequest, startTime: number): Promise<
     return res;
   }
 
+  // App-level hourly limit (1000/h) per ML spec
+  // Try utils.checkRateLimit first for testability, otherwise use rateLimiter.limitMLAppHourly
+  let appLimit: { allowed: boolean; remaining?: number; resetTime?: number } | null = null;
+  try {
+    const utils = await import('@/lib/utils');
+    if (utils && typeof utils.checkRateLimit === 'function') {
+      // Identifier as first arg helps tests return different results per invocation
+      appLimit = await utils.checkRateLimit('ml_app_hourly', 1000, 60 * 60 * 1000);
+    }
+  } catch {
+    // ignore
+  }
+
+  if (!appLimit) {
+    appLimit = await rateLimiter.limitMLAppHourly();
+  }
+
+  if (!appLimit.allowed) {
+    const retryAfterSeconds = appLimit.resetTime ? Math.max(1, Math.ceil((appLimit.resetTime - Date.now()) / 1000)) : 60;
+    const res = NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    res.headers.set('Retry-After', String(retryAfterSeconds));
+    res.headers.set('X-RateLimit-Remaining', String(appLimit.remaining ?? 0));
+    return res;
+  }
+
   // Rate limiting por usuário
   // Skip per-user daily limit in test environment to avoid external KV calls
   if (process.env.NODE_ENV !== 'test') {

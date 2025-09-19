@@ -146,6 +146,47 @@ describe('Webhook Mercado Livre', () => {
       expect(response.headers.get('Retry-After')).toBeDefined();
     });
 
+    it('should enforce app-level hourly ML limit (1000/h)', async () => {
+      const { checkRateLimit } = await import('@/lib/utils');
+      // First global/IP limit allowed, then app-level denied
+      vi.mocked(checkRateLimit)
+        .mockResolvedValueOnce({
+          allowed: true,
+          remaining: 999,
+          resetTime: Date.now() + 900000,
+        })
+        .mockResolvedValueOnce({
+          allowed: false,
+          remaining: 0,
+          resetTime: Date.now() + 3600000,
+        });
+
+      const request = new NextRequest('http://localhost:3000/api/webhook/mercado-livre', {
+        method: 'POST',
+        headers: {
+          'x-ml-webhook-secret': process.env.ML_WEBHOOK_SECRET || 'valid-secret',
+        },
+        body: JSON.stringify({
+          user_id: 456,
+          topic: 'items',
+          resource: '/items/456',
+          application_id: 'app123',
+          attempts: 1,
+          sent: new Date().toISOString(),
+          received: new Date().toISOString(),
+        }),
+      });
+
+      const response = await POST(request);
+      const result = await response.json();
+
+      expect(response.status).toBe(429);
+      expect(result.error).toBe('Too many requests');
+      expect(response.headers.get('Retry-After')).toBeDefined();
+      // X-RateLimit-Remaining header should exist even if 0
+      expect(response.headers.get('X-RateLimit-Remaining')).toBeDefined();
+    });
+
     it('should handle malformed JSON', async () => {
       // Set environment variable for test
       process.env.ML_WEBHOOK_SECRET = 'valid-secret';
