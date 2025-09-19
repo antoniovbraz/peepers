@@ -162,7 +162,7 @@ export class TenantMiddleware {
     try {
       const kv = getKVClient();
       const cacheKey = `tenant:${tenantId}`;
-      const cached = await kv.get<PeepersTenant>(cacheKey);
+  const cached = (await kv.get(cacheKey)) as PeepersTenant | null;
 
       if (cached) {
         return cached;
@@ -225,7 +225,7 @@ export class TenantMiddleware {
     try {
       const kv = getKVClient();
       const cacheKey = `user:${userId}`;
-      const cached = await kv.get<PeepersUser>(cacheKey);
+  const cached = (await kv.get(cacheKey)) as PeepersUser | null;
 
       if (cached) {
         return cached;
@@ -275,7 +275,7 @@ export class TenantMiddleware {
     try {
       const kv = getKVClient();
       const cacheKey = `ratelimit:${tenantId}:${operation}`;
-      const current = await kv.get<number>(cacheKey) || 0;
+  const current = (await kv.get(cacheKey)) as number | 0;
 
       // Limites por operação (exemplo)
       const limits = {

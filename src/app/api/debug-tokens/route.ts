@@ -9,10 +9,10 @@ export async function GET() {
     const userId = '669073070';
     
     // Estratégia antiga (access_token:userId)
-    const oldKeyToken = await kv.get<any>(`access_token:${userId}`);
+  const oldKeyToken = (await kv.get(`access_token:${userId}`)) as unknown as { token?: string; refresh_token?: string; expires_at?: number; user_id?: number } | null;
     
     // Estratégia nova (user:userId)  
-    const newKeyToken = await kv.get<any>(`user:${userId}`);
+  const newKeyToken = (await kv.get(`user:${userId}`)) as unknown as { token?: string; refresh_token?: string; expires_at?: number; user_id?: number } | null;
     
     // Listar algumas chaves para debug
     const debug = {

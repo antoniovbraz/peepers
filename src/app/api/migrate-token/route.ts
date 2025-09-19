@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     
     // Buscar token com chave antiga
     const userId = '669073070';
-    const oldToken = await kv.get<any>(`access_token:${userId}`);
+  const oldToken = (await kv.get(`access_token:${userId}`)) as any;
     
     if (!oldToken) {
       return NextResponse.json({

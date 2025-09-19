@@ -22,8 +22,8 @@ export class SellerRepository implements ISellerRepository {
   // Helper method to get cached data
   private async getCachedData<T>(key: string): Promise<T | null> {
     try {
-      const kv = getKVClient();
-      return await kv.get<T>(key);
+  const kv = getKVClient();
+  return (await kv.get(key)) as T | null;
     } catch (error) {
       console.warn(`Cache get error for key ${key}:`, error);
       return null;

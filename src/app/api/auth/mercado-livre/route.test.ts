@@ -37,12 +37,11 @@ describe('OAuth Init (PKCE)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Ensure crypto.subtle.digest is available in test env
-    // @ts-expect-error jsdom environment polyfill
-    if (!global.crypto?.subtle) {
+  const g = globalThis as unknown as { crypto?: Crypto & { subtle?: SubtleCrypto } };
+  if (!g.crypto || !g.crypto.subtle) {
       // Minimal subtle.digest polyfill for test
       // Not cryptographically secure, good enough to exercise code paths
-      // @ts-expect-error polyfill
-      global.crypto = {
+      g.crypto = {
         getRandomValues: (arr: Uint8Array) => {
           for (let i = 0; i < arr.length; i++) arr[i] = (Math.random() * 256) | 0;
           return arr;
