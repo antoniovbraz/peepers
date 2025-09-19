@@ -225,6 +225,28 @@ export async function GET(request: NextRequest) {
       last_sync: new Date().toISOString()
     });
 
+    // Compatibilidade: alguns endpoints (ex: /api/products) esperam um cache em
+    // CACHE_KEYS.USER_TOKEN(userId) com a forma { access_token, refresh_token, ... }
+    // Vamos persistir também nesse formato para evitar 401 após login.
+    try {
+      const kv = getKVClient();
+      await kv.set(
+        CACHE_KEYS.USER_TOKEN(userId),
+        {
+          access_token: tokenResult.access_token,
+          refresh_token: tokenResult.refresh_token,
+          token_type: tokenResult.token_type,
+          scope: tokenResult.scope,
+          expires_at: new Date(Date.now() + (tokenResult.expires_in * 1000)).toISOString(),
+          token_issued_at: new Date().toISOString(),
+        },
+        { ex: Math.max(60, Number(tokenResult.expires_in || 21600)) } // TTL mínimo 60s; padrão ~6h
+      );
+      console.log('🗝️  Tokens persistidos em USER_TOKEN para compatibilidade');
+    } catch (err) {
+      console.warn('Não foi possível persistir USER_TOKEN compatível:', err);
+    }
+
     // Limpar code verifier usado
     await kv.del(CACHE_KEYS.PKCE_VERIFIER(state));
 

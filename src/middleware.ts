@@ -7,6 +7,8 @@ export async function middleware(request: NextRequest) {
   
   // Add pathname header for EntitlementsGuard
   response.headers.set('x-pathname', request.nextUrl.pathname);
+  // Add full URL so EntitlementsGuard can detect OAuth query params reliably
+  response.headers.set('x-url', request.nextUrl.toString());
   
   return response;
 }

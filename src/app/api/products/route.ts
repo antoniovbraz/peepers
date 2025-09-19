@@ -153,30 +153,41 @@ export async function GET(request: NextRequest) {
     const superAdminEmail = process.env.SUPER_ADMIN_EMAIL?.toLowerCase();
     const isSuperAdmin = superAdminEmail && userEmail && userEmail === superAdminEmail;
 
-    let accessToken: string | null = null;
+  let accessToken: string | null = null;
     
     try {
-      // Get token for the authenticated user
+      // 1) Tentar recuperar token do formato USER_TOKEN(userId)
       const userTokens = await kv.get(CACHE_KEYS.USER_TOKEN(userId));
+      // 2) Carregar dados do usuário para validar a sessão e, se necessário, extrair token salvo
+      const userData = await kv.get(`user:${userId}`);
+
+      // Validar sessão primeiro
+      const validSession = !!(userData && typeof userData === 'object' && 'session_token' in userData && (userData.session_token === sessionToken || isSuperAdmin));
+
+      if (!validSession) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Sessão inválida. Faça login novamente.',
+            redirect: '/api/auth/mercado-livre',
+            data: { items: [], total: 0, page: 1, per_page: limit }
+          },
+          { status: 401 }
+        );
+      }
+
+      // Fonte A: USER_TOKEN cache
       if (userTokens && typeof userTokens === 'object' && 'access_token' in userTokens) {
-        // Validate session token
-        const userData = await kv.get(`user:${userId}`);
-        if (userData && typeof userData === 'object' && 'session_token' in userData) {
-          if (userData.session_token === sessionToken || isSuperAdmin) {
-            accessToken = userTokens.access_token as string;
-            console.log(`🔑 Token validado para usuário: ${userId}`);
-          } else {
-            return NextResponse.json(
-              {
-                success: false,
-                error: 'Sessão inválida. Faça login novamente.',
-                redirect: '/api/auth/mercado-livre',
-                data: { items: [], total: 0, page: 1, per_page: limit }
-              },
-              { status: 401 }
-            );
-          }
-        }
+        accessToken = userTokens.access_token as string;
+      }
+
+      // Fonte B: user cache salvo por cache.setUser (campo token)
+      if (!accessToken && userData && typeof userData === 'object' && 'token' in userData) {
+        accessToken = userData.token as string;
+      }
+
+      if (accessToken) {
+        console.log(`🔑 Token validado para usuário: ${userId}`);
       }
     } catch (error) {
       console.warn('Erro ao buscar token do cache:', error);
