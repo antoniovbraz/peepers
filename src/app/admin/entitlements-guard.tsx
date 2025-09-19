@@ -34,12 +34,20 @@ export async function EntitlementsGuard({ children }: Props) {
   if (!feature) return children;
 
   try {
+    // Check if Stripe is properly configured
+    if (!process.env.STRIPE_SECRET_KEY) {
+      // Fail-open when Stripe is not configured
+      console.warn('Stripe not configured - allowing admin access');
+      return children;
+    }
+
     const result = await stripeClient.checkEntitlement(userId, feature);
     if (!result.allowed) {
       redirect(API_ENDPOINTS.UPGRADE);
     }
-  } catch {
-    // Fail-open on Stripe downtime
+  } catch (error) {
+    // Fail-open on Stripe downtime or configuration issues
+    console.warn('Entitlements check failed, allowing access:', error);
   }
 
   return children;

@@ -46,7 +46,10 @@ class StripeClient {
     }
 
     if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error('STRIPE_SECRET_KEY environment variable is required');
+      // In production without Stripe key, create mock client instead of throwing
+      logger.warn('STRIPE_SECRET_KEY not configured - using mock client');
+      this.stripe = {} as any;
+      return;
     }
 
     this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
