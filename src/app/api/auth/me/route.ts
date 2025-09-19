@@ -15,23 +15,34 @@ export async function GET(request: NextRequest) {
       }, { status: 401 });
     }
 
-    const allowedUserIds = process.env.ALLOWED_USER_IDS?.split(',') || [];
-    if (allowedUserIds.length > 0 && !allowedUserIds.includes(userId)) {
-      return NextResponse.json({
-        authenticated: false,
-        authorized: false,
-        message: 'User not authorized',
-        redirect: '/acesso-negado'
-      }, { status: 403 });
-    }
+    // 🚀 MULTI-TENANT: Auto-allow any authenticated ML user
+    // Super admin bypass (platform owner)
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL?.toLowerCase();
+    const userEmail = request.cookies.get('user_email')?.value?.toLowerCase();
+    const isSuperAdmin = superAdminEmail && userEmail && userEmail === superAdminEmail;
 
     const userData = await cache.getUser(userId);
     
     if (!userData || !userData.token) {
+      // 🔄 AUTO-REGISTER: If user authenticated with ML but not in our cache,
+      // this is likely a new user that completed OAuth but data wasn't stored
+      // We should redirect them to complete registration
+      if (isSuperAdmin) {
+        // Super admin always gets access even without cache data
+        return NextResponse.json({
+          authenticated: true,
+          authorized: true,
+          userId,
+          email: userEmail,
+          role: 'super_admin',
+          message: 'Super admin access granted'
+        });
+      }
+      
       return NextResponse.json({
         authenticated: false,
-        message: 'No token found in cache',
-        redirect: '/login'
+        message: 'Registration incomplete - please login again',
+        redirect: '/api/auth/mercado-livre'
       }, { status: 401 });
     }
 
@@ -75,7 +86,8 @@ export async function GET(request: NextRequest) {
       session: {
         session_token: sessionToken ? 'present' : 'missing',
         user_id: userId
-      }
+      },
+      role: isSuperAdmin ? 'super_admin' : 'seller'
     });
 
   } catch (error) {

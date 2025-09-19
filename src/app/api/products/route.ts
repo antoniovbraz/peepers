@@ -127,18 +127,55 @@ export async function GET(request: NextRequest) {
     
     // Buscar token de acesso no cache
     const kv = getKVClient();
+    // 🚀 MULTI-TENANT: Dynamic authentication based on session cookies
+    const sessionToken = request.cookies.get('session_token')?.value;
+    const userId = request.cookies.get('user_id')?.value;
+    const userEmail = request.cookies.get('user_email')?.value?.toLowerCase();
+
+    if (!sessionToken || !userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Usuário não autenticado. Faça login no Mercado Livre para ver seus produtos.',
+          redirect: '/api/auth/mercado-livre',
+          data: {
+            items: [],
+            total: 0,
+            page: 1,
+            per_page: limit
+          }
+        },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is super admin (platform owner)
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL?.toLowerCase();
+    const isSuperAdmin = superAdminEmail && userEmail && userEmail === superAdminEmail;
+
     let accessToken: string | null = null;
     
     try {
-      // Tentar diferentes chaves de usuário no cache
-      const userIds = ['admin', '669073070']; // Incluir seu user_id
-      
-      for (const userId of userIds) {
-        const userTokens = await kv.get(CACHE_KEYS.USER_TOKEN(userId));
-        if (userTokens && typeof userTokens === 'object' && 'access_token' in userTokens) {
-          accessToken = userTokens.access_token as string;
-          console.log(`🔑 Token encontrado para usuário: ${userId}`);
-          break;
+      // Get token for the authenticated user
+      const userTokens = await kv.get(CACHE_KEYS.USER_TOKEN(userId));
+      if (userTokens && typeof userTokens === 'object' && 'access_token' in userTokens) {
+        // Validate session token
+        const userData = await kv.get(`user:${userId}`);
+        if (userData && typeof userData === 'object' && 'session_token' in userData) {
+          if (userData.session_token === sessionToken || isSuperAdmin) {
+            accessToken = userTokens.access_token as string;
+            console.log(`🔑 Token validado para usuário: ${userId}`);
+          } else {
+            return NextResponse.json(
+              {
+                success: false,
+                error: 'Sessão inválida. Faça login novamente.',
+                redirect: '/api/auth/mercado-livre',
+                data: { items: [], total: 0, page: 1, per_page: limit }
+              },
+              { status: 401 }
+            );
+          }
         }
       }
     } catch (error) {
