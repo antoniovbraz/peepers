@@ -18,9 +18,9 @@ interface MLProduct {
   pictures?: Array<{url: string}>;
 }
 
-async function fetchMLProducts(accessToken: string, params: URLSearchParams): Promise<any> {
-  // Buscar produtos do vendedor autenticado
-  const mlApiUrl = `https://api.mercadolibre.com/users/me/items/search?${params.toString()}`;
+async function fetchMLProducts(accessToken: string, params: URLSearchParams, userId: string): Promise<{results: string[], paging: {total: number}}> {
+  // Buscar produtos do vendedor autenticado usando o USER_ID correto
+  const mlApiUrl = `https://api.mercadolibre.com/users/${userId}/items/search?${params.toString()}`;
   
   const response = await fetch(mlApiUrl, {
     headers: {
@@ -227,7 +227,7 @@ export async function GET(request: NextRequest) {
         mlParams.append('q', search);
       }
 
-      const mlResponse = await fetchMLProducts(accessToken, mlParams);
+      const mlResponse = await fetchMLProducts(accessToken, mlParams, userId);
       
       if (mlResponse.results && Array.isArray(mlResponse.results)) {
         const transformedProducts = mlResponse.results

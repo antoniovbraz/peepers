@@ -42,8 +42,8 @@ export async function GET(_request: NextRequest) {
       });
     }
 
-    // Test 2: Verificar busca de items
-    const itemsUrl = 'https://api.mercadolibre.com/users/me/items/search?limit=5';
+    // Test 2: Verificar busca de items com USER_ID correto
+    const itemsUrl = `https://api.mercadolibre.com/users/${testResult.id}/items/search?limit=5`;
     const itemsResponse = await fetch(itemsUrl, {
       headers: {
         'Authorization': `Bearer ${userToken.access_token}`,
