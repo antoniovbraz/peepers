@@ -6,7 +6,7 @@ import {
   createWebhookErrorResponse,
   createWebhookSuccessResponse
 } from '@/middleware/webhook-validation';
-import { isValidWebhookTopic, WEBHOOK_TIMEOUT_MS, WEBHOOK_SECURITY } from '@/config/webhook';
+import { isValidWebhookTopic, WEBHOOK_TIMEOUT_MS, WEBHOOK_SECURITY, validateWebhookSignature } from '@/config/webhook';
 import { rateLimiter } from '@/lib/rate-limiter';
 import { getKVClient } from '@/lib/cache';
 
@@ -160,17 +160,26 @@ async function processWebhook(request: NextRequest, startTime: number): Promise<
   try {
     const body = await request.text();
 
-    // If a webhook secret is configured, require the header
+    // If a webhook secret is configured, validate either header secret OR HMAC signature
     const configuredSecret = process.env.ML_WEBHOOK_SECRET;
-    const headerSecret = request.headers.get('x-ml-webhook-secret');
     if (configuredSecret) {
-      if (!headerSecret) {
+      const headerSecret = request.headers.get('x-ml-webhook-secret');
+      const signatureHeader = request.headers.get('x-ml-webhook-signature') || request.headers.get('x-ml-signature');
+
+      if (!headerSecret && !signatureHeader) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
 
-      // Simple equality check to satisfy tests that mock a header secret.
-      if (headerSecret !== configuredSecret) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      if (headerSecret) {
+        // Back-compat equality check used by tests and simple setups
+        if (headerSecret !== configuredSecret) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+      } else if (signatureHeader) {
+        const ok = await validateWebhookSignature(body, signatureHeader, configuredSecret);
+        if (!ok) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
       }
     }
 

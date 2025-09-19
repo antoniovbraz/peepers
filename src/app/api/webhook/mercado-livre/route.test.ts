@@ -80,6 +80,91 @@ describe('Webhook Mercado Livre', () => {
       expect(result.error).toBe('Invalid payload schema');
     });
 
+    it('should reject when signature is invalid', async () => {
+      process.env.ML_WEBHOOK_SECRET = 'valid-secret';
+
+      const { checkRateLimit } = await import('@/lib/utils');
+      vi.mocked(checkRateLimit).mockResolvedValue({
+        allowed: true,
+        remaining: 999,
+        resetTime: Date.now() + 900000,
+      });
+
+      const payload = {
+        user_id: 123,
+        topic: 'items',
+        resource: '/items/123',
+        application_id: 'app123',
+        attempts: 1,
+        sent: new Date().toISOString(),
+        received: new Date().toISOString(),
+      };
+
+      const request = new NextRequest('http://localhost:3000/api/webhook/mercado-livre', {
+        method: 'POST',
+        headers: {
+          // No header secret, invalid signature path
+          'x-ml-webhook-signature': 'invalid-signature',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const response = await POST(request);
+      const result = await response.json();
+      expect(response.status).toBe(401);
+      expect(result.error).toBe('Unauthorized');
+    });
+
+    it('should accept valid HMAC signature', async () => {
+      process.env.ML_WEBHOOK_SECRET = 'valid-secret';
+
+      const { checkRateLimit } = await import('@/lib/utils');
+      vi.mocked(checkRateLimit).mockResolvedValue({
+        allowed: true,
+        remaining: 999,
+        resetTime: Date.now() + 900000,
+      });
+
+      const payload = {
+        user_id: 123,
+        topic: 'items',
+        resource: '/items/123',
+        application_id: 'app123',
+        attempts: 1,
+        sent: new Date().toISOString(),
+        received: new Date().toISOString(),
+      };
+
+      const body = JSON.stringify(payload);
+
+      // Compute expected signature in test using same method
+      const encoder = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode('valid-secret'),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      const signatureBytes = await crypto.subtle.sign('HMAC', key, encoder.encode(body));
+      const expectedSignature = btoa(String.fromCharCode(...new Uint8Array(signatureBytes)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+      const request = new NextRequest('http://localhost:3000/api/webhook/mercado-livre', {
+        method: 'POST',
+        headers: {
+          'x-ml-webhook-signature': expectedSignature,
+        },
+        body,
+      });
+
+      const response = await POST(request);
+      const result = await response.json();
+      expect(response.status).toBe(200);
+      expect(result.success).toBe(true);
+      expect(result.topic).toBe('items');
+    });
+
     it('should accept valid webhook payload', async () => {
       const { checkRateLimit } = await import('@/lib/utils');
       vi.mocked(checkRateLimit).mockResolvedValue({
