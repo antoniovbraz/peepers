@@ -44,10 +44,28 @@ interface SalesMetrics {
 }
 
 async function fetchMLOrders(accessToken: string, params: URLSearchParams, sellerId: string): Promise<MLOrderSearchResponse> {
-  const mlApiUrl = `https://api.mercadolibre.com/orders/search?seller=${sellerId}&${params.toString()}`;
-  const res = await fetch(mlApiUrl, { headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' } });
-  if (!res.ok) throw new Error(`ML Orders API Error: ${res.status} ${res.statusText}`);
-  return res.json();
+  // Usar abordagem mais simples - buscar apenas pedidos recentes sem filtros complexos
+  const mlApiUrl = `https://api.mercadolibre.com/orders/search?seller=${sellerId}&limit=20&offset=0`;
+
+  console.log('🔄 Buscando pedidos do ML:', mlApiUrl);
+
+  const res = await fetch(mlApiUrl, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json'
+    }
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('❌ Erro na API do ML:', res.status, errorText);
+    throw new Error(`ML Orders API Error: ${res.status} ${res.statusText} - ${errorText}`);
+  }
+
+  const data = await res.json();
+  console.log('✅ Dados recebidos do ML:', data);
+
+  return data;
 }
 
 function transformMLOrderToOrder(mlOrder: MLOrder): TransformedOrder {
@@ -86,7 +104,6 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
     const search = searchParams.get('search') || '';
-    const status = searchParams.get('status') || '';
 
     const clientIP = (request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown') as string;
     const rate = await checkAuthAPILimit('admin', clientIP, '/api/admin/sales');
@@ -105,10 +122,10 @@ export async function GET(request: NextRequest) {
 
     let accessToken: string | null = null;
     try {
-      const tokens: any = await kv.get(CACHE_KEYS.USER_TOKEN(userId));
-      if (tokens?.access_token) accessToken = tokens.access_token;
-      const userData: any = await kv.get(`user:${userId}`);
-      if (!accessToken && userData?.token) accessToken = userData.token;
+      const tokens = await kv.get(CACHE_KEYS.USER_TOKEN(userId)) as Record<string, unknown> | null;
+      if (tokens?.access_token) accessToken = tokens.access_token as string;
+      const userData = await kv.get(`user:${userId}`) as Record<string, unknown> | null;
+      if (!accessToken && userData?.token) accessToken = userData.token as string;
     } catch (err) {
       console.warn('KV read error', err);
     }
@@ -117,9 +134,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Token de acesso não encontrado', data: { orders: [], metrics: null } }, { status: 401 });
     }
 
-    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    if (status) params.append('order.status', status);
-    if (!status) params.append('order.status', 'paid,confirmed,shipped,delivered');
+    // Simplificar parâmetros - usar apenas limit e offset por enquanto
+    const params = new URLSearchParams({
+      limit: String(Math.min(limit, 20)), // Limitar a 20 para evitar rate limits
+      offset: String(offset)
+    });
+
+    // Não usar filtros complexos por enquanto para evitar erros da API
+    // if (status) params.append('order.status', status);
 
     const mlResp = await fetchMLOrders(accessToken, params, userId);
     const transformed = (mlResp.results || []).map(transformMLOrderToOrder);
