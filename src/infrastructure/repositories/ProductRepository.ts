@@ -16,9 +16,11 @@ import { getKVClient } from '@/lib/cache';
 
 export class ProductRepository implements IProductRepository {
   private readonly apiBaseUrl: string;
+  private readonly isAdminContext: boolean;
   
-  constructor(apiBaseUrl?: string) {
+  constructor(apiBaseUrl?: string, isAdminContext: boolean = false) {
     this.apiBaseUrl = apiBaseUrl || (typeof window !== 'undefined' ? window.location.origin : 'https://peepers.vercel.app');
+    this.isAdminContext = isAdminContext;
   }
 
   // Helper method to get cached data
@@ -68,10 +70,12 @@ export class ProductRepository implements IProductRepository {
 
       params.append('format', 'full');
       
-      const url = `${this.apiBaseUrl}${API_ENDPOINTS.PRODUCTS}?${params.toString()}`;
+      // Use admin endpoint if in admin context
+      const endpoint = this.isAdminContext ? API_ENDPOINTS.ADMIN_PRODUCTS : API_ENDPOINTS.PRODUCTS;
+      const url = `${this.apiBaseUrl}${endpoint}?${params.toString()}`;
       
       // Try cache first
-      const cacheKey = `products_${params.toString()}`;
+      const cacheKey = `products_${this.isAdminContext ? 'admin_' : ''}${params.toString()}`;
       const cached = await this.getCachedData<PaginatedResult<Product>>(cacheKey);
       
       if (cached) {

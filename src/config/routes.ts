@@ -50,6 +50,7 @@ export const API_ENDPOINTS = {
   TEST_WEBHOOK_SECURITY: '/api/test-webhook-security',
   
   // Admin APIs (protegido)
+  ADMIN_PRODUCTS: '/api/admin/products',
   ADMIN_SALES: '/api/admin/sales',
   ADMIN_MESSAGES: '/api/admin/messages',
   ADMIN_METRICS: '/api/admin/metrics',

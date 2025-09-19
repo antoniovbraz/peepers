@@ -24,8 +24,8 @@ import AnalyticsOverview from '@/components/admin/dashboard/AnalyticsOverview';
 import ActivityFeed from '@/components/admin/dashboard/ActivityFeed';
 import QuickActions from '@/components/admin/dashboard/QuickActions';
 
-// Initialize repositories and use case
-const productRepository = new ProductRepository();
+// Initialize repositories and use case with admin context
+const productRepository = new ProductRepository(undefined, true); // Admin context
 const orderRepository = new OrderRepository();
 const sellerRepository = new SellerRepository();
 const getDashboardMetrics = new GetDashboardMetricsUseCase(
