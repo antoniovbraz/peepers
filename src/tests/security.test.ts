@@ -517,7 +517,7 @@ export const securityTestUtils = {
   generateTestIP: (suffix: number) => `192.168.1.${suffix}`,
   generateTestUserId: (suffix: number) => `test-user-${suffix}`,
   
-  async testRateLimitExhaustion(checkFunction: Function, config: any) {
+  async testRateLimitExhaustion(checkFunction: (config: Record<string, unknown>) => Promise<{ allowed: boolean }>, config: Record<string, unknown>) {
     let attempts = 0;
     let result;
     
