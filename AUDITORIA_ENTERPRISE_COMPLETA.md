@@ -56,7 +56,7 @@ Peepers é uma aplicação Next.js 15 bem estruturada com integração funcional
 - **TypeScript**: Strict mode com coverage >90%
 - **Cache**: Upstash Redis com estratégias L1/L2/L3
 - **Clean Architecture**: Domain/Application/Infrastructure bem separados
-- **API Design**: RESTful com versionamento (/api/v1/products)
+- **API Design**: RESTful seguindo Clean Architecture (/api/products-public)
 
 #### **⚠️ Áreas de Melhoria**
 - **Testing**: Coverage apenas 4% (devido a dependências externas)

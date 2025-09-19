@@ -7,17 +7,17 @@ export async function GET(_request: NextRequest) {
     endpoints: {
       // ✅ PRIMARY ENDPOINTS (Active)
       primary: {
-        "/api/v1/products": {
+        "/api/products-public": {
           status: "active",
-          description: "Unified products API with advanced filtering and pagination",
+          description: "Public products API with caching and rate limiting",
           type: "primary",
-          features: ["filtering", "pagination", "multiple_formats", "rate_limiting"],
-          usage: "Recommended for all new integrations"
+          features: ["caching", "rate_limiting", "public_access"],
+          usage: "Recommended for public product listings"
         },
         "/api/products": {
           status: "active",
           description: "Authenticated products endpoint for admin use",
-          type: "legacy_maintained",
+          type: "enterprise",
           authentication: "required",
           usage: "For authenticated admin operations"
         },
@@ -36,7 +36,7 @@ export async function GET(_request: NextRequest) {
           description: "Public products endpoint",
           type: "legacy_deprecated",
           sunset_date: "2025-12-31",
-          replacement: "/api/v1/products?format=minimal",
+          replacement: "/api/products-public?format=minimal",
           reason: "Replaced by unified v1 API"
         },
         "/api/products-minimal": {
@@ -44,7 +44,7 @@ export async function GET(_request: NextRequest) {
           description: "Minimal products endpoint",
           type: "legacy_deprecated", 
           sunset_date: "2025-12-31",
-          replacement: "/api/v1/products?format=minimal&limit=3",
+          replacement: "/api/products-public?limit=3",
           reason: "Replaced by unified v1 API"
         },
         "/api/products-simple": {
@@ -52,15 +52,15 @@ export async function GET(_request: NextRequest) {
           description: "Simple products endpoint",
           type: "legacy_deprecated",
           sunset_date: "2025-12-31", 
-          replacement: "/api/v1/products?format=minimal&limit=10",
-          reason: "Replaced by unified v1 API"
+          replacement: "/api/products-public?limit=10",
+          reason: "Replaced by unified enterprise API"
         },
         "/api/test-products-path": {
           status: "deprecated",
           description: "Debug endpoint for products logic testing",
           type: "debug_deprecated",
           sunset_date: "2025-11-30",
-          replacement: "/api/v1/products",
+          replacement: "/api/products-public",
           reason: "Debug endpoint no longer needed"
         }
       },
@@ -83,20 +83,22 @@ export async function GET(_request: NextRequest) {
     },
 
     migration_guide: {
-      summary: "Phase 3 cleanup removes duplicate endpoints in favor of unified v1 API",
+      summary: "Enterprise Clean Architecture implementation with legacy code elimination",
       steps: [
-        "Update clients to use /api/v1/products with appropriate query parameters",
-        "Test with format=minimal for public data, format=summary for detailed data",
-        "Use pagination parameters: page, limit for better performance",
+        "Update clients to use /api/products-public for public product listings",
+        "Use /api/products for authenticated admin operations",
+        "Implement proper error handling for enterprise-grade reliability",
+        "Apply pagination parameters: page, limit for better performance",
         "Apply filters: category, price_min, price_max, condition, status, free_shipping, search",
         "Remove references to deprecated endpoints before sunset dates"
       ],
       benefits: [
-        "Single endpoint to maintain",
-        "Advanced filtering and pagination",
+        "Clean Architecture implementation",
+        "Enterprise-grade error handling",
         "Better performance with caching",
         "Consistent response format",
-        "Rate limiting and error handling"
+        "Rate limiting and security controls",
+        "Domain-driven design principles"
       ]
     },
 

@@ -7,26 +7,33 @@
  */
 
 import { logger } from '@/lib/logger';
+import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
 
 // ==================== IPs OFICIAIS MERCADO LIVRE ====================
 /**
- * IPs oficiais do Mercado Livre para validação de webhooks
- * CRÍTICO: Conforme documentação oficial - deve ser validado obrigatoriamente
- *
+ * 🚨 CRÍTICO: IPs oficiais do Mercado Livre - OBRIGATÓRIO validar
+ * 
+ * Conforme especificação oficial ML v2.0:
+ * - DEVE rejeitar requests de IPs não listados em produção
+ * - Apenas para teste local: aceitar 127.0.0.1, ::1
+ * 
  * Referência: https://developers.mercadolivre.com.br/pt_br/produto-receba-notificacoes
  */
 export const ML_WEBHOOK_IPS = [
   '54.88.218.97',
-  '18.215.140.160',
+  '18.215.140.160', 
   '18.213.114.129',
   '18.206.34.84'
 ] as const;
 
+// IPs para desenvolvimento local
+export const DEV_ALLOWED_IPS = [
+  '127.0.0.1',
+  '::1',
+  'localhost'
+] as const;
+
 // ==================== TIMEOUT CONFIGURAÇÃO ====================
-/**
- * Timeout máximo para resposta de webhook
- * CRÍTICO: ML desabilita webhooks se > 500ms consistentemente
- */
 export const WEBHOOK_TIMEOUT_MS = 500;
 
 // ==================== RATE LIMITING ====================
@@ -54,12 +61,37 @@ export const SUPPORTED_WEBHOOK_TOPICS = [
   'payments'
 ] as const;
 
-// ==================== VALIDAÇÃO ====================
+// ==================== VALIDAÇÃO DE IP ====================
 /**
- * Valida se um IP está na whitelist oficial do ML
+ * 🚨 CRÍTICO: Valida se um IP está na whitelist oficial do ML
+ * DEVE ser usado obrigatoriamente em produção
  */
 export function isValidMLWebhookIP(ip: string): boolean {
-  return ML_WEBHOOK_IPS.includes(ip as any);
+  // Produção: apenas IPs oficiais ML
+  if (process.env.NODE_ENV === 'production') {
+    const isValid = ML_WEBHOOK_IPS.includes(ip as any);
+    
+    if (!isValid) {
+      // Log crítico de segurança para IP inválido
+      logSecurityEvent({
+        type: SecurityEventType.SUSPICIOUS_ACTIVITY,
+        severity: 'CRITICAL',
+        clientIP: ip,
+        details: {
+          violation: 'INVALID_WEBHOOK_IP',
+          allowedIPs: ML_WEBHOOK_IPS,
+          attemptedIP: ip,
+          environment: 'production'
+        },
+        path: '/api/webhook/mercado-livre'
+      });
+    }
+    
+    return isValid;
+  }
+  
+  // Desenvolvimento: ML IPs + localhost
+  return ML_WEBHOOK_IPS.includes(ip as any) || DEV_ALLOWED_IPS.includes(ip as any);
 }
 
 /**

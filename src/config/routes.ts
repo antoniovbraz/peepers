@@ -1,5 +1,8 @@
 /**
- * CONFIGURAÇÃO CE  /  /  // Produtos - SIMPLIFICADO
+ * CONFIGURAÇÃO CE  /  /  /  // Produtos - ENTERPRISE ARCHITECTURE
+  PRODUCTS: '/api/products',                    // 🔒 Main endpoint (auth required)
+  PRODUCTS_PUBLIC: '/api/products-public',     // ✅ Public products API (cached)
+  PRODUCT_BY_ID: (id: string) => `/api/products/${id}`,dutos - SIMPLIFICADO
   PRODUCTS: '/api/products',                    // ✅ PÚBLICO: Para home e /produtos
   ADMIN_PRODUCTS: '/api/admin/products',       // ✅ PROTEGIDO: Para administração
   PRODUCT_BY_ID: (id: string) => `/api/products/${id}`,dutos - SIMPLIFICADO

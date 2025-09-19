@@ -12,7 +12,7 @@ async function getProductDetails(productId) {
   return new Promise((resolve, reject) => {
     const options = {
       hostname: 'peepers.vercel.app',
-      path: `/api/v1/products?id=${productId}&format=full`,
+      path: `/api/products/${productId}`,
       method: 'GET'
     };
 

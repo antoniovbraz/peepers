@@ -37,13 +37,13 @@ A aplicação Peepers demonstra excelência técnica e conformidade regulatória
 - **Clean Architecture**: Separação clara entre Domain (`src/domain/`), Application (`src/application/`), Infrastructure (`src/infrastructure/`)
 - **DDD (Domain-Driven Design)**: Entidades bem definidas em `src/types/ml.ts`
 - **Configuração Centralizada**: Todas rotas em `src/config/routes.ts` - **EXCELENTE PRÁTICA**
-- **API Unificada**: Endpoint `/api/v1/products` consolida funcionalidades legacy
+- **Enterprise API**: Endpoint `/api/products-public` consolida funcionalidades legacy seguindo Clean Architecture
 
 **Análise Técnica:**
 ```typescript
 // Excelente: Configuração centralizada evita hardcoding
 export const API_ENDPOINTS = {
-  PRODUCTS_V1: '/api/v1/products', // ✅ Unificado
+  PRODUCTS_PUBLIC: '/api/products-public', // ✅ Enterprise API
   AUTH_ML: '/api/auth/mercado-livre', // ✅ Consistente
 }
 ```

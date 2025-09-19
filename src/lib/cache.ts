@@ -1,4 +1,9 @@
-import { createClient } from '@vercel/kv';
+// NOTE: we import createClient lazily inside getKVClient so test harnesses
+// can mock '@vercel/kv' using vi.mock without the module being evaluated
+// at top-level. This avoids the "No createClient export is defined" error
+// that happens when tests partially mock the module.
+/* eslint-disable @typescript-eslint/no-var-requires, global-require */
+let _createClient: any | null = null;
 import {
   MLProduct,
   MLQuestion,
@@ -10,7 +15,7 @@ import {
 import { logger } from './logger';
 import { CACHE_KEYS as GLOBAL_CACHE_KEYS } from '@/config/routes';
 
-let kvClient: ReturnType<typeof createClient> | null = null;
+let kvClient: any = null;
 
 /**
  * Inicializa e retorna cliente Redis/KV (Upstash)
@@ -29,6 +34,19 @@ let kvClient: ReturnType<typeof createClient> | null = null;
 export function getKVClient() {
   if (kvClient) return kvClient;
 
+  // Lazy-load createClient to allow tests to mock the module
+  if (!_createClient) {
+    try {
+      const mod = require('@vercel/kv');
+      _createClient = mod.createClient;
+    } catch {
+      // In test environments the module may be mocked; keep _createClient null
+      // so we can throw a clear error later when environment variables are
+      // validated.
+      _createClient = null;
+    }
+  }
+
   const url = process.env.UPSTASH_REDIS_REST_URL;
   if (!url) {
     throw new Error('Missing environment variable: UPSTASH_REDIS_REST_URL');
@@ -39,7 +57,15 @@ export function getKVClient() {
     throw new Error('Missing environment variable: UPSTASH_REDIS_REST_TOKEN');
   }
 
-  kvClient = createClient({ url, token });
+  if (!_createClient) {
+    // If the kv module wasn't available (e.g. during a partial mock in tests)
+    // throw a descriptive error to guide the test author to properly mock
+    // createClient. Tests can set __resetKVClient() or mock require to return
+    // an object exposing createClient.
+    throw new Error('KV client module not available. Make sure @vercel/kv is installed or mocked in tests.');
+  }
+
+  kvClient = _createClient({ url, token });
   return kvClient;
 }
 
@@ -95,7 +121,7 @@ class CacheManager {
   async getAllProducts(): Promise<MLProduct[] | null> {
     const kv = getKVClient();
     try {
-      const cached = await kv.get<CachedProduct[]>(CACHE_KEYS.PRODUCTS_ALL);
+  const cached = await kv.get(CACHE_KEYS.PRODUCTS_ALL) as CachedProduct[] | null;
       
       if (!cached) {
         logger.info('Cache miss: no products cached');
@@ -104,7 +130,7 @@ class CacheManager {
       
       // Check if cache is expired
       const now = new Date().toISOString();
-      const isExpired = cached.some(product => 
+      const isExpired = cached.some((product: CachedProduct) => 
         new Date(product.cached_at).getTime() + (product.cache_ttl * 1000) < new Date(now).getTime()
       );
       
@@ -117,7 +143,7 @@ class CacheManager {
       logger.info({ count: cached.length }, 'Cache hit: returning products from cache');
       
       // Extract products from nested structure if needed
-      return cached.map(product => this.toMLProduct(product));
+  return cached.map((product: CachedProduct) => this.toMLProduct(product));
     } catch (error) {
       logger.error({ err: error }, 'Cache get error - falling back to null');
       return null;
@@ -169,13 +195,13 @@ class CacheManager {
   async getActiveProducts(): Promise<MLProduct[] | null> {
     const kv = getKVClient();
     try {
-      const cached = await kv.get<CachedProduct[]>(CACHE_KEYS.PRODUCTS_ACTIVE);
+  const cached = await kv.get(CACHE_KEYS.PRODUCTS_ACTIVE) as CachedProduct[] | null;
       
       if (!cached) return null;
       
       // Check if cache is expired
       const now = new Date().toISOString();
-      const isExpired = cached.some(product => 
+      const isExpired = cached.some((product: CachedProduct) => 
         new Date(product.cached_at).getTime() + (product.cache_ttl * 1000) < new Date(now).getTime()
       );
       
@@ -185,7 +211,7 @@ class CacheManager {
       }
 
       // Extract products from nested structure if needed
-      return cached.map(product => this.toMLProduct(product));
+  return cached.map((product: CachedProduct) => this.toMLProduct(product));
     } catch (error) {
       logger.error({ err: error }, 'Cache get error');
       return null;
@@ -195,7 +221,7 @@ class CacheManager {
   async getProduct(productId: string): Promise<MLProduct | null> {
     const kv = getKVClient();
     try {
-      const cached = await kv.get<CachedProduct>(`${CACHE_KEYS.PRODUCT}${productId}`);
+  const cached = await kv.get(`${CACHE_KEYS.PRODUCT}${productId}`) as CachedProduct | null;
       
       if (!cached) return null;
       
@@ -264,7 +290,7 @@ class CacheManager {
   async getProductQuestions(productId: string): Promise<MLQuestion[] | null> {
     const kv = getKVClient();
     try {
-      const cached = await kv.get<CachedQuestions>(`${CACHE_KEYS.QUESTIONS}${productId}`);
+  const cached = await kv.get(`${CACHE_KEYS.QUESTIONS}${productId}`) as CachedQuestions | null;
       
       if (!cached) return null;
       
@@ -315,7 +341,7 @@ class CacheManager {
   async getUser(userId: string): Promise<CachedUser | null> {
     const kv = getKVClient();
     try {
-      return await kv.get<CachedUser>(`${CACHE_KEYS.USER}${userId}`);
+    return await kv.get(`${CACHE_KEYS.USER}${userId}`) as CachedUser | null;
     } catch (error) {
       logger.error({ err: error }, 'Cache get error');
       return null;
@@ -336,7 +362,7 @@ class CacheManager {
   async getCategories(): Promise<CachedCategory[] | null> {
     const kv = getKVClient();
     try {
-      return await kv.get<CachedCategory[]>(CACHE_KEYS.CATEGORIES);
+  return await kv.get(CACHE_KEYS.CATEGORIES) as CachedCategory[] | null;
     } catch (error) {
       logger.error({ err: error }, 'Cache get error');
       return null;
@@ -381,7 +407,7 @@ class CacheManager {
   async getLastSyncTime(): Promise<string | null> {
     const kv = getKVClient();
     try {
-      return await kv.get<string>(CACHE_KEYS.LAST_SYNC);
+  return await kv.get(CACHE_KEYS.LAST_SYNC) as string | null;
     } catch (error) {
       logger.error({ err: error }, 'Cache get error');
       return null;

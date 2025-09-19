@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
+import { SecurityEventType } from '@/lib/security-events';
 
 /**
  * Configuração CORS Segura para APIs
@@ -57,7 +58,7 @@ export class CORSHandler {
   /**
    * Verifica se a origem é permitida
    */
-  private isOriginAllowed(origin: string | null): boolean {
+  public isOriginAllowed(origin: string | null): boolean {
     if (!origin) return false;
     
     const allowedOrigins = this.getAllowedOrigins();
@@ -167,6 +168,23 @@ export class CORSHandler {
 
     // Continue processamento normal para requests válidos
     return null;
+  }
+
+  /**
+   * Test helper: explicitly handle/report a preflight violation
+   */
+  public handlePreflightViolation(origin: string, path: string) {
+    logger.warn({ origin, path }, 'Preflight CORS violation detected');
+    // Fire security event for tests or integrations
+    // Use SecurityEventType enum for typed event
+    import('@/lib/security-events').then(m => m.logSecurityEvent({
+      type: SecurityEventType.CORS_VIOLATION,
+      severity: 'MEDIUM',
+      clientIP: 'unknown',
+      origin,
+      path,
+      details: { reason: 'preflight_violation' }
+    })).catch(() => {});
   }
 }
 

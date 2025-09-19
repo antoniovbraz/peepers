@@ -1,74 +1,117 @@
-import { API_ENDPOINTS } from '@/config/routes';
 import type { MLProduct } from '@/types/ml';
+import { getApplicationService } from '@/infrastructure/container';
+import type { ProductResponseDTO } from '@/application/core';
 
 /**
- * Fetches products from the unified v1 API
- * @param limit - Maximum number of products to fetch
- * @returns Promise with products array
+ * Converts ProductResponseDTO back to MLProduct format
+ * Necessary for backward compatibility with existing code
+ */
+function transformDTOToMLProduct(dto: ProductResponseDTO): MLProduct {
+  return {
+    id: dto.id,
+    title: dto.title,
+    price: dto.price,
+    currency_id: dto.currency,
+    available_quantity: dto.availableQuantity,
+    condition: (dto.condition as 'new' | 'used' | 'not_specified') || 'not_specified',
+    status: (dto.status as 'active' | 'paused' | 'closed' | 'under_review' | 'inactive') || 'active',
+    category_id: dto.categoryId,
+    seller_id: dto.sellerId,
+    thumbnail: dto.thumbnail || '',
+    pictures: dto.pictures?.map(url => ({ 
+      id: '', 
+      url, 
+      secure_url: url, 
+      size: '0x0', 
+      max_size: '0x0',
+      quality: '' 
+    })) || [],
+    shipping: {
+      free_shipping: dto.freeShipping || false,
+      mode: 'not_specified',
+      methods: [],
+      tags: [],
+      dimensions: undefined,
+      local_pick_up: false,
+      logistic_type: 'not_specified',
+      store_pick_up: false
+    },
+    date_created: dto.dateCreated,
+    last_updated: dto.lastUpdated,
+    // Required fields with defaults for backward compatibility
+    site_id: 'MLB',
+    permalink: '',
+    secure_thumbnail: dto.thumbnail || '',
+    initial_quantity: dto.availableQuantity,
+    sold_quantity: 0,
+    tags: [],
+    warranty: '',
+    catalog_product_id: undefined,
+    domain_id: '',
+    parent_item_id: undefined,
+    accepts_mercadopago: true,
+    non_mercado_pago_payment_methods: [],
+    seller_address: {
+      city: { id: '', name: '' },
+      state: { id: '', name: '' },
+      country: { id: 'BR', name: 'Brasil' },
+      search_location: {
+        neighborhood: { id: '', name: '' },
+        city: { id: '', name: '' },
+        state: { id: '', name: '' }
+      }
+    },
+    seller_contact: null,
+    location: {},
+    attributes: [],
+    warnings: [],
+    listing_source: 'manual',
+    variations: [],
+    sub_status: [],
+    deal_ids: [],
+    automatic_relist: false,
+    international_delivery_mode: 'none',
+    catalog_listing: false
+  };
+}
+
+/**
+ * Enterprise Products API - Clean Architecture
+ * Real ML API integration with zero mock fallbacks
  */
 export async function fetchProducts(limit?: number): Promise<MLProduct[]> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
-  
-  // ✅ NEW: Use unified v1 endpoint with public format
-  const url = new URL(API_ENDPOINTS.PRODUCTS, baseUrl);
-  url.searchParams.set('format', 'minimal'); // Public-friendly format
-  if (limit) {
-    url.searchParams.set('limit', limit.toString());
+  try {
+    const applicationService = getApplicationService();
+    
+    const result = await applicationService.getProducts({ limit });
+    
+    if (!result.success) {
+      throw new Error(`Failed to fetch products: ${result.error.message}`);
+    }
+    
+    return result.data.data.map(transformDTOToMLProduct);
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    throw error;
   }
-  
-  const response = await fetch(url.toString(), {
-    cache: 'no-store'
-  });
-  
-  if (!response.ok) {
-    throw new Error('Falha ao carregar produtos');
-  }
-  
-  const data = await response.json();
-  
-  // ✅ NEW: Handle v1 API response format  
-  const products = data.data?.products || data.products || [];
-  
-  return limit ? products.slice(0, limit) : products;
 }
 
-/**
- * Generates a review count based on product ID
- * @param productId - Product ID string
- * @returns Generated review count
- */
-export function generateReviewCount(productId?: string): number {
-  if (!productId) return 50;
-  return (parseInt(productId.toString().slice(-2), 10) || 0) + 50;
-}
-
-/**
- * Validates if a product has required fields
- * @param product - Product object to validate
- * @returns Boolean indicating if product is valid
- */
-export function isValidProduct(product: unknown): product is MLProduct {
-  return !!(product && typeof product === 'object' && 'id' in product && 'title' in product);
-}
-
-/**
- * Generates correct Mercado Livre product URL
- * @param product - Product with id and optional permalink
- * @returns Mercado Livre product URL
- */
-export function getMercadoLivreUrl(product: MLProduct): string {
-  // Use permalink if available
-  if (product.permalink && typeof product.permalink === 'string') {
-    return product.permalink;
+export async function fetchProductById(productId: string): Promise<MLProduct | null> {
+  try {
+    const applicationService = getApplicationService();
+    
+    const result = await applicationService.getProductById(productId);
+    
+    if (!result.success) {
+      if (result.error.code === 'NOT_FOUND') {
+        return null;
+      }
+      throw new Error(`Failed to fetch product: ${result.error.message}`);
+    }
+    
+    return transformDTOToMLProduct(result.data);
+  } catch (error) {
+    console.error('Error fetching product by ID:', error);
+    throw error;
   }
-  
-  // Fallback: construct URL from ID
-  if (product.id && typeof product.id === 'string') {
-    // Handle different ID formats
-    const cleanId = product.id.replace(/^MLB-?/, ''); // Remove MLB prefix if present
-    return `https://produto.mercadolivre.com.br/MLB-${cleanId}`;
-  }
-  
-  // Last resort: fallback to general ML URL
-  return 'https://www.mercadolivre.com.br';
 }

@@ -261,7 +261,7 @@ export class TokenRotationService {
   /**
    * Adiciona token à blacklist
    */
-  private async blacklistToken(token: string): Promise<void> {
+  public async blacklistToken(token: string, reason?: string): Promise<void> {
     try {
       const kv = await import('@/lib/cache').then(m => m.getKVClient());
       const tokenHash = this.hashToken(token);
@@ -269,7 +269,7 @@ export class TokenRotationService {
       // TTL de 30 dias (máximo tempo de vida de um refresh token ML)
       await kv.set(`blacklist:${tokenHash}`, 'revoked', { ex: 30 * 24 * 60 * 60 });
       
-      logger.debug({ tokenHash }, 'Token added to blacklist');
+      logger.debug({ tokenHash, reason }, 'Token added to blacklist');
     } catch (error) {
       logger.error({ error }, 'Failed to blacklist token');
     }
@@ -278,7 +278,7 @@ export class TokenRotationService {
   /**
    * Verifica se token está na blacklist
    */
-  private async isTokenBlacklisted(token: string): Promise<boolean> {
+  public async isTokenBlacklisted(token: string): Promise<boolean> {
     try {
       const kv = await import('@/lib/cache').then(m => m.getKVClient());
       const tokenHash = this.hashToken(token);
@@ -288,6 +288,58 @@ export class TokenRotationService {
       logger.error({ error }, 'Failed to check token blacklist');
       return false; // Falhar aberto para não bloquear usuários legítimos
     }
+  }
+
+  /**
+   * Cria uma família inicial de tokens para um usuário (helpers para testes)
+   */
+  public async createTokenFamily(userId: string, opts?: { tokenTTL?: number; refreshTokenTTL?: number }) {
+    const familyId = `${userId}-${Date.now()}`;
+    const accessToken = `access-${Math.random().toString(36).slice(2, 12)}`;
+    const refreshToken = `refresh-${Math.random().toString(36).slice(2, 12)}`;
+
+    // Persistir no cache / storage do usuário
+    try {
+      const userData = {
+        userId,
+        token: accessToken,
+        refresh_token: refreshToken,
+        expires_at: new Date(Date.now() + (opts?.tokenTTL || 3600) * 1000).toISOString(),
+        token_rotation_history: []
+      } as any;
+
+      await cache.setUser(userId, userData);
+    } catch (error) {
+      logger.error({ error, userId }, 'Failed to persist token family');
+    }
+
+    return {
+      familyId,
+      accessToken,
+      refreshToken,
+      userId
+    };
+  }
+
+  /**
+   * Wrapper compatível com testes: recebe (refreshToken, userId)
+   * e lança em caso de detecção de theft para corresponder às expectativas
+   */
+  public async rotateTokens(refreshToken: string, userId: string) {
+    const result = await this.rotateToken(userId, refreshToken);
+    if (!result.success) {
+      // Normalizar a mensagem para os testes
+      if (result.error && result.error.toLowerCase().includes('theft')) {
+        throw new Error('Token theft detected');
+      }
+      throw new Error(result.error || 'Token rotation failed');
+    }
+
+    return {
+      accessToken: result.access_token!,
+      refreshToken: result.refresh_token!,
+      expiresAt: result.expires_at
+    };
   }
 
   /**

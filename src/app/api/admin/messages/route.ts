@@ -206,7 +206,7 @@ export async function GET(request: NextRequest) {
     // TENTATIVA 2: Simulação baseada em produtos reais
     console.log('🔄 Gerando mensagens simuladas baseadas em produtos reais...');
     
-    const productsResponse = await fetch(`${request.nextUrl.origin}/api/v1/products?format=summary&limit=20`);
+    const productsResponse = await fetch(`${request.nextUrl.origin}/api/products-public?format=summary&limit=20`);
     
     if (productsResponse.ok) {
       const productsData = await productsResponse.json();

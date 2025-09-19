@@ -358,7 +358,7 @@ npm run test:prod products-public
 npm run test:prod health
 
 # Testes via curl no Vercel
-curl https://your-app.vercel.app/api/v1/products
+curl https://your-app.vercel.app/api/products-public
 ```
 
 ### Ambiente de Desenvolvimento

@@ -64,8 +64,8 @@ async function testEndpoint() {
                 }
                 break;
 
-            case 'v1/products':
-                console.log('🆕 Produtos API v1 (unificado):');
+            case 'products-public':
+                console.log('📦 Produtos API Público:');
                 if (response.data.success) {
                     console.log(`✅ Endpoint funcionando - ${response.data.message}`);
                     console.log(`📊 Status: ${response.data.success ? 'OK' : 'Erro'}`);
@@ -95,7 +95,7 @@ async function testEndpoint() {
             case 'all':
                 console.log('🔍 Testando todos os endpoints...\n');
 
-                const endpoints = ['health', 'products-public', 'v1/products', 'products', 'auth-me'];
+                const endpoints = ['health', 'products-public', 'products', 'auth-me'];
 
                 for (const ep of endpoints) {
                     console.log(`${endpoints.indexOf(ep) + 1}. Testando ${ep}:`);
@@ -104,8 +104,8 @@ async function testEndpoint() {
 
                     if (ep === 'products-public' && testResponse.data.products) {
                         console.log(`   ✅ ${testResponse.data.total} produtos`);
-                    } else if (ep === 'v1/products' && testResponse.data.success) {
-                        console.log(`   ✅ Endpoint v1 funcionando`);
+                    } else if (ep === 'products-public' && testResponse.data.success) {
+                        console.log(`   ✅ Endpoint público funcionando`);
                     } else if (ep === 'auth-me') {
                         console.log(`   ✅ Status: ${testResponse.statusCode}`);
                     } else {
@@ -120,7 +120,7 @@ async function testEndpoint() {
                 console.log('\n📋 Endpoints disponíveis:');
                 console.log('  health          - Health check');
                 console.log('  products-public - Produtos públicos');
-                console.log('  v1/products     - Produtos API v1 (unificado)');
+                console.log('  products-public - Produtos API Público (cached)');
                 console.log('  products        - Produtos autenticados');
                 console.log('  auth-me         - Status de autenticação');
                 console.log('  sync            - Sincronização de produtos');

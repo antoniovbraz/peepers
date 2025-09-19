@@ -196,7 +196,7 @@ async function testProductsAPI() {
     const options = {
       hostname: VERCEL_URL,
       port: 443,
-      path: '/api/v1/products?format=minimal&limit=5',
+      path: '/api/products-public?format=minimal&limit=5',
       method: 'GET',
       headers: {
         'User-Agent': 'ML-Compliance-Test/1.0'

@@ -17,7 +17,7 @@ The Peepers API provides a comprehensive interface for managing Mercado Livre pr
 
 **Phase 3 Cleanup (Active)**: Several legacy endpoints are deprecated and will be removed by December 31, 2025. 
 
-**Migration Required**: All clients should migrate to the unified `/api/v1/products` endpoint.
+**Migration Required**: All clients should migrate to the enterprise `/api/products-public` endpoint.
 
 **Benefits of Migration**:
 - ✅ Single endpoint to maintain
@@ -57,7 +57,7 @@ sequenceDiagram
 
 ### 🟢 Primary Endpoints (Recommended)
 
-#### GET `/api/v1/products` ⭐ **UNIFIED API**
+#### GET `/api/products-public` ⭐ **ENTERPRISE API**
 
 **The primary endpoint for all product operations.** Consolidates functionality from multiple legacy endpoints with advanced filtering and pagination.
 
@@ -123,16 +123,28 @@ sequenceDiagram
 **Usage Examples**:
 ```bash
 # Get minimal format for homepage
-GET /api/v1/products?format=minimal&limit=6
+GET /api/products-public?limit=6
+```
+
+```bash
+GET /api/products-public?category=electronics&page=1&limit=20
+```
+
+```bash
+GET /api/products-public?search=smartphone&price_min=1000&price_max=5000
+```
+
+```bash
+GET /api/products-public?free_shipping=true
 
 # Filter by category with pagination
-GET /api/v1/products?category=electronics&page=1&limit=20
+GET /api/products-public?category=electronics&page=1&limit=20
 
 # Search with price range
-GET /api/v1/products?search=smartphone&price_min=1000&price_max=5000
+GET /api/products-public?search=smartphone&price_min=1000&price_max=5000
 
 # Get only free shipping products
-GET /api/v1/products?free_shipping=true&format=summary
+GET /api/products-public?free_shipping=true
 ```
 
 ---
@@ -275,11 +287,11 @@ Authenticated products endpoint for admin use. Still actively maintained but lim
 
 ### 🔴 Deprecated Endpoints (Sunset: Dec 31, 2025)
 
-> **⚠️ DEPRECATION WARNING**: The following endpoints are deprecated and will be removed by December 31, 2025. Please migrate to `/api/v1/products` with appropriate query parameters.
+> **⚠️ DEPRECATION WARNING**: The following endpoints are deprecated and will be removed by December 31, 2025. Please migrate to `/api/products-public` with appropriate query parameters.
 
 #### GET `/api/products-public` 🚨 DEPRECATED
 
-**Replacement**: `/api/v1/products?format=minimal`
+**Replacement**: `/api/products-public`
 
 Get all publicly available products without authentication.
 
@@ -288,7 +300,7 @@ Get all publicly available products without authentication.
 ```http
 Deprecation: true
 Sunset: Wed, 31 Dec 2025 23:59:59 GMT
-Link: </api/v1/products>; rel="successor-version"
+Link: </api/products-public>; rel="successor-version"
 ```
 
 **Response**:
@@ -301,7 +313,7 @@ Link: </api/v1/products>; rel="successor-version"
   "deprecation": {
     "deprecated": true,
     "sunset_date": "2025-12-31",
-    "replacement": "/api/v1/products?format=minimal",
+    "replacement": "/api/products-public",
     "message": "This endpoint is deprecated. Please migrate to the unified v1 API."
   }
 }
@@ -311,7 +323,7 @@ Link: </api/v1/products>; rel="successor-version"
 
 #### GET `/api/products-minimal` 🚨 DEPRECATED
 
-**Replacement**: `/api/v1/products?format=minimal&limit=3`
+**Replacement**: `/api/products-public?limit=3`
 
 Returns minimal product information for quick loading.
 
@@ -321,7 +333,7 @@ Returns minimal product information for quick loading.
 
 #### GET `/api/products-simple` 🚨 DEPRECATED
 
-**Replacement**: `/api/v1/products?format=minimal&limit=10`
+**Replacement**: `/api/products-public?limit=10`
 
 Returns simple product list with basic information.
 
@@ -331,7 +343,7 @@ Returns simple product list with basic information.
 
 #### GET `/api/test-products-path` 🚨 DEPRECATED
 
-**Replacement**: `/api/v1/products`
+**Replacement**: `/api/products-public`
 
 Debug endpoint for products logic testing. No longer needed.
 
@@ -457,7 +469,7 @@ fetch('/api/products-public')
 **After**:
 
 ```javascript
-fetch('/api/v1/products?format=minimal')
+fetch('/api/products-public')
 ```
 
 #### 2. Replace `products-minimal` calls
@@ -471,7 +483,7 @@ fetch('/api/products-minimal')
 **After**:
 
 ```javascript
-fetch('/api/v1/products?format=minimal&limit=3')
+fetch('/api/products-public?limit=3')
 ```
 
 #### 3. Add pagination for better performance
@@ -485,7 +497,7 @@ fetch('/api/products-simple')
 **After**:
 
 ```javascript
-fetch('/api/v1/products?format=minimal&limit=10&page=1')
+fetch('/api/products-public?limit=10&page=1')
 ```
 
 #### 4. Leverage advanced filtering
@@ -494,13 +506,13 @@ fetch('/api/v1/products?format=minimal&limit=10&page=1')
 
 ```javascript
 // Filter by category and price range
-fetch('/api/v1/products?category=electronics&price_min=100&price_max=1000')
+fetch('/api/products-public?category=electronics&price_min=100&price_max=1000')
 
 // Search with free shipping
-fetch('/api/v1/products?search=smartphone&free_shipping=true')
+fetch('/api/products-public?search=smartphone&free_shipping=true')
 
 // Get only new condition products
-fetch('/api/v1/products?condition=new&format=summary')
+fetch('/api/products-public?condition=new')
 ```
 
 ### Response Format Changes

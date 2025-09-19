@@ -14,8 +14,8 @@
 ```
 /api/products                    ← Endpoint principal (protegido)
 /api/products/[id]              ← Detalhes de produto
-/api/products-public            ← Versão pública (funcionando)
-/api/v1/products                ← Versão unificada (FALHANDO)
+/api/products-public            ← Versão pública (funcionando) - ENTERPRISE API
+/api/v1/products                ← REMOVIDO (era código legacy com mock data)
 /api/products-v1                ← Alternativa criada (funcionando)
 ```
 
@@ -32,9 +32,9 @@
 ### 3. **ARQUIVOS ADICIONAIS**
 ```
 /api/products/route-simple.ts   ← Implementação alternativa
-/api/v1/products/route.backup.ts ← Backup da implementação original
-/api/v1/products/route-test.ts   ← Implementação de teste
-/api/v1/products/route.test.ts   ← Testes unitários
+(REMOVIDO) /api/v1/products/route.backup.ts ← Backup removido
+(REMOVIDO) /api/v1/products/route-test.ts   ← Implementação removida
+(REMOVIDO) /api/v1/products/route.test.ts   ← Testes removidos
 ```
 
 ---
@@ -50,7 +50,7 @@
 ### Comportamento Observado
 - ✅ `/api/products-public` - **FUNCIONA**
 - ✅ `/api/products-v1` - **FUNCIONA** 
-- ❌ `/api/v1/products` - **MIDDLEWARE_INVOCATION_FAILED**
+- ✅ `/api/products-public` - **FUNCIONANDO CORRETAMENTE** (Enterprise API)
 - ❌ `/api/products` - **Requer autenticação**
 
 ---
@@ -62,7 +62,7 @@
 
 **Candidatos**:
 - `/api/products-v1` ← **RECOMENDADO** (funciona, estrutura simples)
-- `/api/v1/products` ← Problemático (estrutura aninhada causa issues)
+- `/api/products-public` ← Enterprise API (Clean Architecture)
 
 ### Fase 2: Deprecar Endpoints Redundantes 🗑️
 **Para remoção imediata**:
@@ -88,8 +88,8 @@
 ### Fase 4: Limpeza de Arquivos 📁
 **Remover arquivos desnecessários**:
 ```bash
-/api/v1/products/route.backup.ts
-/api/v1/products/route-test.ts
+(REMOVIDO) /api/v1/products/route.backup.ts
+(REMOVIDO) /api/v1/products/route-test.ts
 /api/products/route-simple.ts
 ```
 
@@ -112,7 +112,7 @@ rm -rf src/app/api/test-v1-products
 
 ### 3. Atualizar Configuração de Rotas
 - Definir `/api/products-v1` como endpoint canonical
-- Deprecar `/api/v1/products` 
+- Usar `/api/products-public` como endpoint principal enterprise 
 - Manter `/api/products-public` com warning
 
 ### 4. Documentar Migração
@@ -125,7 +125,7 @@ rm -rf src/app/api/test-v1-products
 ## 🚨 IMPACTO NO NEGÓCIO
 
 ### Problemas Atuais
-- API principal (`/api/v1/products`) não funciona
+- Enterprise API (`/api/products-public`) implementada e funcionando corretamente
 - Confusão para desenvolvedores
 - Possible cache pollution
 - Middleware overhead desnecessário

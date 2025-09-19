@@ -79,7 +79,7 @@ async function runTests() {
   // Test 5: Products endpoint (should require auth)
   console.log('\n' + '='.repeat(50));
   console.log('📦 TEST 5: Products Endpoint (should fail without auth)');
-  await testEndpoint('/api/v1/products');
+  await testEndpoint('/api/products-public');
 
   // Test 6: Webhook endpoint (should reject non-POST)
   console.log('\n' + '='.repeat(50));

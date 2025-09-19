@@ -38,7 +38,7 @@
 - **Mercado Livre API**: Compliance total com especificação oficial
 - **Webhook Security**: Validação de IP whitelist e timeouts < 500ms
 - **Rate Limiting**: Enforcement de limites por app (1000/hora) e usuário (5000/dia)
-- **Unified API v1**: `/api/v1/products` como endpoint principal
+- **Enterprise API**: `/api/products-public` como endpoint principal seguindo Clean Architecture
 - **Cache Strategy**: Redis/Upstash com TTLs otimizados
 - **Error Handling**: Sistema robusto de tratamento de erros
 

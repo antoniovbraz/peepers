@@ -5,7 +5,7 @@ function testEndpoint() {
     const options = {
       hostname: 'localhost',
       port: 3000,
-      path: '/api/v1/products',
+      path: '/api/products-public',
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'

@@ -24,7 +24,7 @@ Temos **11 endpoints diferentes** para produtos, causando:
 - ❌ `/api/debug-ml-products` 
 - ❌ `/api/test-products-path`
 - ❌ `/api/products-v1` (criado hoje)
-- ❌ `/api/v1/products` (problemático)
+- ❌ `/api/v1/products` (removido - era código legacy com mock data)
 - ❌ `/api/products-simple`
 - ❌ `/api/products-minimal`
 - ❌ `/api/products/[id]` (mover para admin se necessário)

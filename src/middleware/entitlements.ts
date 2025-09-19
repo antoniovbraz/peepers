@@ -120,7 +120,7 @@ function getRequiredFeature(path: string): PeepersFeature | null {
     '/admin/analytics': 'advanced_analytics',
 
     // API v1 requer enterprise
-    '/api/v1': 'api_access',
+    '/api/products-public': 'api_access',
     '/api/admin/users': 'advanced_analytics',
     '/api/admin/metrics': 'advanced_analytics'
   };

@@ -223,7 +223,7 @@ peepers/
 2. **Test via curl or browser**:
    ```bash
    # Test endpoints on deployed URL
-   curl https://your-app.vercel.app/api/v1/products
+   curl https://your-app.vercel.app/api/products-public
    curl https://your-app.vercel.app/api/auth/mercado-livre
    ```
 

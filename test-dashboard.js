@@ -61,7 +61,7 @@ async function testDashboard() {
   
   const tests = [
     { path: '/admin', description: 'Dashboard Admin Page' },
-    { path: '/api/v1/products?limit=5', description: 'Products API' },
+    { path: '/api/products-public?limit=5', description: 'Products API' },
     { path: '/', description: 'Homepage' }
   ];
   

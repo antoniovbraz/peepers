@@ -121,7 +121,7 @@ echo ""
 log "🛍️  TESTE 3: API de Produtos (Sem Auth)"
 echo "----------------------------------------------------------------------------"
 
-PRODUCTS_RESPONSE=$(curl_with_timing "$BASE_URL/api/v1/products?format=minimal&limit=5")
+PRODUCTS_RESPONSE=$(curl_with_timing "$BASE_URL/api/products-public?format=minimal&limit=5")
 PRODUCTS_CODE=$(echo "$PRODUCTS_RESPONSE" | jq -r '.http_code' 2>/dev/null || echo "000")
 PRODUCTS_TIME=$(echo "$PRODUCTS_RESPONSE" | jq -r '.time_total * 1000' 2>/dev/null || echo "0")
 

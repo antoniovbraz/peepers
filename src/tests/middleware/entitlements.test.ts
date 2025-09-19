@@ -99,7 +99,7 @@ describe('Middleware Entitlements', () => {
     });
 
     it('should deny access to enterprise routes without enterprise plan', async () => {
-      mockRequest = new NextRequest('http://localhost/api/v1/products');
+      mockRequest = new NextRequest('http://localhost/api/products-public');
       mockRequest.cookies.set('session_token', 'valid_session');
       mockRequest.cookies.set('user_id', '123');
 
@@ -143,7 +143,7 @@ describe('Middleware Entitlements', () => {
       { path: '/admin/dashboard', expectedFeature: 'advanced_analytics' },
       { path: '/admin/metrics', expectedFeature: 'advanced_analytics' },
       { path: '/api/admin/users', expectedFeature: 'advanced_analytics' },
-      { path: '/api/v1/products', expectedFeature: 'api_access' },
+      { path: '/api/products-public', expectedFeature: 'api_access' },
       { path: '/api/products', expectedFeature: null },
       { path: '/health', expectedFeature: null }
     ];

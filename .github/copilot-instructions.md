@@ -58,14 +58,14 @@ Peepers is an enterprise-grade Next.js 15 SaaS platform for Mercado Livre seller
 #### Centralized Configuration (`src/config/routes.ts`)
 - **NEVER use hardcoded URLs** - always import from `API_ENDPOINTS`, `PAGES`, `ML_CONFIG`
 - All routes, cache keys, and ML endpoints are centralized here
-- Example: Use `API_ENDPOINTS.PRODUCTS_V1` instead of `/api/v1/products`
+- Example: Use `API_ENDPOINTS.PRODUCTS_PUBLIC` instead of `/api/products-public`
 - Follow pattern: `BASE_URLS`, `API_ENDPOINTS`, `PAGES`, `CACHE_KEYS` for all URLs
 
-#### Unified API Strategy (`/api/v1/products`)
-- **Primary endpoint**: `/api/v1/products` replaces legacy endpoints (`/api/products-public`, `/api/products-minimal`, etc.)
-- Query parameters: `format=minimal|summary|full`, `limit`, `page`, filters (`category`, `price_min`, `price_max`)
+#### Enterprise API Strategy (`/api/products-public`)
+- **Primary endpoint**: `/api/products-public` replaces legacy endpoints following Clean Architecture principles
+- Query parameters: `limit`, `page`, filters (`category`, `price_min`, `price_max`)
 - Legacy endpoints are deprecated but active until sunset (Dec 31, 2025)
-- Always use the v1 API for new features - see `src/utils/products.ts` for usage patterns
+- Always use the enterprise API for new features - see `src/utils/products.ts` for usage patterns
 
 #### Cache Strategy (`src/lib/cache.ts`)
 - Uses Upstash Redis via `@vercel/kv` client with singleton pattern
@@ -128,7 +128,7 @@ npm run test:admin                      # Future: Admin panel testing
 ## API Structure
 
 ### Route Organization
-- **Unified API**: `/api/v1/products` (primary - use for all new development)
+- **Enterprise API**: `/api/products-public` (primary - use for all new development following Clean Architecture)
 - **Public APIs**: `/api/health`, `/api/cache-debug`
 - **Protected APIs**: `/api/products`, `/api/sync` (require authentication via middleware)
 - **OAuth Flow**: `/api/auth/mercado-livre` → `/api/auth/mercado-livre/callback`

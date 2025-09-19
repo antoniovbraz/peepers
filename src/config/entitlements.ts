@@ -110,7 +110,7 @@ export const PREMIUM_FEATURES: Record<string, PeepersPlanType> = {
   '/api/admin/users': 'professional',
 
   // API Access
-  '/api/v1': 'enterprise',
+  '/api/products-public': 'starter',
 
   // White-label
   '/admin/branding': 'enterprise',

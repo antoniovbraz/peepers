@@ -5,7 +5,7 @@ async function checkAllProducts() {
   
   const options = {
     hostname: 'peepers.vercel.app',
-    path: '/api/v1/products?format=full&limit=1000',
+    path: '/api/products-public?format=full&limit=1000',
     method: 'GET'
   };
 

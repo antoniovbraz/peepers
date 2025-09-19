@@ -12,7 +12,7 @@ async function getOurProductData() {
   return new Promise((resolve, reject) => {
     const options = {
       hostname: 'peepers.vercel.app',
-      path: '/api/v1/products?format=full',
+      path: '/api/products-public?format=full',
       method: 'GET'
     };
 

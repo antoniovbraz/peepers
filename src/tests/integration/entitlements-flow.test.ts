@@ -124,7 +124,7 @@ describe('Entitlements Integration Flow', () => {
       expect(mockStripeClient.checkEntitlement).toHaveBeenCalledWith(userId, 'advanced_analytics');
     });
 
-    it('should allow enterprise plan user API v1 access', async () => {
+    it('should allow enterprise plan user API public access', async () => {
       const userId = 'user_enterprise_123';
       const sessionToken = 'session_enterprise_456';
 
@@ -138,7 +138,7 @@ describe('Entitlements Integration Flow', () => {
         allowed: true
       });
 
-      const request = new NextRequest('http://localhost/api/v1/products');
+      const request = new NextRequest('http://localhost/api/products-public');
       request.cookies.set('session_token', sessionToken);
       request.cookies.set('user_id', userId);
 

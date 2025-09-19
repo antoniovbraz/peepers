@@ -123,7 +123,7 @@ describe('Rate Limiting Security', () => {
     it('should limit public API access', async () => {
       const { checkPublicAPILimit } = await import('@/lib/rate-limiter');
       
-      const result = await checkPublicAPILimit('192.168.1.500', '/api/v1/products');
+      const result = await checkPublicAPILimit('192.168.1.500', '/api/products-public');
       
       expect(result.allowed).toBe(true);
       expect(result.remaining).toBeGreaterThanOrEqual(0);
@@ -319,9 +319,9 @@ describe('CORS Protection', () => {
       
       const corsHandler = new CORSHandler();
       
-      // Mock security event logging
+      // Mock security event logging (use doMock so factory is not hoisted)
       const logSpy = vi.fn();
-      vi.mock('@/lib/security-events', () => ({
+      vi.doMock('@/lib/security-events', () => ({
         logSecurityEvent: logSpy
       }));
       
@@ -393,8 +393,8 @@ describe('Security Integration', () => {
 
   describe('Error Handling', () => {
     it('should gracefully handle rate limiter errors', async () => {
-      // Mock Redis failure
-      vi.mock('@/lib/cache', () => ({
+      // Mock Redis failure (doMock to avoid hoisting issues)
+      vi.doMock('@/lib/cache', () => ({
         getKVClient: () => ({
           get: vi.fn().mockRejectedValue(new Error('Redis connection failed')),
           set: vi.fn().mockRejectedValue(new Error('Redis connection failed'))
@@ -414,8 +414,8 @@ describe('Security Integration', () => {
     });
 
     it('should handle security event logging failures', async () => {
-      // Mock logging failure
-      vi.mock('@/lib/logger', () => ({
+      // Mock logging failure (doMock to avoid hoisting issues)
+      vi.doMock('@/lib/logger', () => ({
         logger: {
           error: vi.fn(),
           warn: vi.fn(),
