@@ -79,7 +79,9 @@ function transformMLProduct(mlProduct: MLProduct): Record<string, unknown> {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
+    const page = parseInt(searchParams.get('page') || '1');
     const status = searchParams.get('status');
     const search = searchParams.get('search');
 
@@ -215,7 +217,7 @@ export async function GET(request: NextRequest) {
       // Configurar parâmetros para buscar produtos
       const mlParams = new URLSearchParams({
         limit: Math.min(limit, 50).toString(), // ML limita a 50
-        offset: '0'
+        offset: offset.toString()
       });
 
       if (status) {
@@ -230,8 +232,8 @@ export async function GET(request: NextRequest) {
       
       if (mlResponse.results && Array.isArray(mlResponse.results) && mlResponse.results.length > 0) {
         // mlResponse.results contém IDs dos produtos, não produtos completos
-        // ✅ CORREÇÃO: ML API não aceita mais que 20 IDs por vez na busca de detalhes
-        const productIds = mlResponse.results.slice(0, Math.min(limit, 20)); // Limitar conforme ML API
+        // ✅ CORREÇÃO: ML API não aceita mais que 100 IDs por vez na busca de detalhes
+        const productIds = mlResponse.results.slice(0, Math.min(limit, 100)); // Limitar conforme ML API
         
         console.log(`🔍 Buscando detalhes de ${productIds.length} produtos...`);
         
@@ -264,8 +266,11 @@ export async function GET(request: NextRequest) {
           data: {
             items: validProducts,
             total: mlResponse.paging?.total || validProducts.length,
-            page: 1,
-            per_page: limit
+            page: Math.floor(offset / limit) + 1,
+            per_page: limit,
+            total_pages: Math.ceil((mlResponse.paging?.total || validProducts.length) / limit),
+            offset: offset,
+            has_more: offset + limit < (mlResponse.paging?.total || 0)
           },
           // Formato legado para compatibilidade
           products: validProducts,

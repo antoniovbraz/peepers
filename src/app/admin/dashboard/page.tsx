@@ -7,7 +7,6 @@ import {
   ChartBarIcon,
   UserGroupIcon,
   ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
   EyeIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
@@ -18,50 +17,6 @@ import SalesChart from '@/components/admin/dashboard/SalesChart';
 import AnalyticsOverview from '@/components/admin/dashboard/AnalyticsOverview';
 import ActivityFeed from '@/components/admin/dashboard/ActivityFeed';
 import QuickActions from '@/components/admin/dashboard/QuickActions';
-
-interface MetricCardProps {
-  title: string;
-  value: string | number;
-  change: number;
-  icon: typeof ShoppingBagIcon;
-  color: 'green' | 'blue' | 'purple' | 'yellow';
-  subtitle?: string;
-}
-
-function MetricCard({ title, value, change, icon: Icon, color, subtitle }: MetricCardProps) {
-  const colorClasses = {
-    green: 'bg-green-50 text-green-600 border-green-200',
-    blue: 'bg-blue-50 text-blue-600 border-blue-200',
-    purple: 'bg-purple-50 text-purple-600 border-purple-200',
-    yellow: 'bg-yellow-50 text-yellow-600 border-yellow-200'
-  };
-
-  const changeColor = change >= 0 ? 'text-green-600' : 'text-red-600';
-  const ChangeIcon = change >= 0 ? ArrowTrendingUpIcon : ArrowTrendingDownIcon;
-
-  return (
-    <div className={`rounded-xl border p-6 transition-all duration-200 hover:shadow-md ${colorClasses[color]}`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className={`rounded-lg p-2 ${color === 'green' ? 'bg-green-100' : color === 'blue' ? 'bg-blue-100' : color === 'purple' ? 'bg-purple-100' : 'bg-yellow-100'}`}>
-            <Icon className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
-            {subtitle && (
-              <p className="text-xs text-gray-500">{subtitle}</p>
-            )}
-          </div>
-        </div>
-        <div className={`flex items-center space-x-1 ${changeColor}`}>
-          <ChangeIcon className="h-4 w-4" />
-          <span className="text-sm font-medium">{Math.abs(change)}%</span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function LoadingCard() {
   return (
@@ -215,11 +170,25 @@ export default function AdminDashboard() {
         
         {/* Quick Actions */}
         <div className="flex space-x-3">
-          <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+          <button 
+            onClick={() => {
+              // TODO: Implement sync functionality
+              console.log('Sincronizando dados...');
+              // Could trigger a manual sync with Mercado Livre
+            }}
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
             <ArrowTrendingUpIcon className="h-4 w-4 mr-2" />
             Sincronizar
           </button>
-          <button className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+          <button 
+            onClick={() => {
+              // TODO: Implement report view functionality
+              console.log('Abrindo relatório detalhado...');
+              // Could open a detailed report modal or navigate to reports page
+            }}
+            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
             <EyeIcon className="h-4 w-4 mr-2" />
             Ver Relatório
           </button>

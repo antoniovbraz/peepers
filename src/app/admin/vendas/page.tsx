@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -62,11 +62,13 @@ export default function SalesPage() {
   });
   
   const { notifyError } = useNotificationActions();
+  const loadingRef = useRef(false);
 
   const loadOrders = useCallback(async () => {
-    // Prevenir múltiplas requisições simultâneas
-    if (loading) return;
+    // Prevenir múltiplas requisições simultâneas usando ref
+    if (loadingRef.current) return;
     
+    loadingRef.current = true;
     setLoading(true);
     const abortController = new AbortController();
     
@@ -121,8 +123,9 @@ export default function SalesPage() {
       });
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
-  }, [searchTerm, notifyError, loading]);
+  }, [searchTerm, notifyError]);
 
   useEffect(() => {
     let isMounted = true;

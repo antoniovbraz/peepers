@@ -15,6 +15,7 @@ import {
   EyeIcon,
   PencilIcon,
   TrashIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { API_ENDPOINTS } from '@/config/routes';
 import type { MLProduct } from '@/types/ml';
@@ -45,17 +46,29 @@ export default function AdminProductsPage() {
   const [statusFilter, setStatusFilter] = useState<ProductStatus | 'all'>('all');
   const [sortBy, setSortBy] = useState<SortOption>('title');
   const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
+  
+  // Estado para paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [pageSize] = useState(50); // 50 produtos por página para melhor performance
+  
+  // Estado para carregamento incremental
+  const [hasMoreProducts, setHasMoreProducts] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  // Função para carregar produtos reais da API
-  const loadRealProducts = async () => {
+  // Função para carregar produtos reais da API com paginação
+  const loadRealProducts = async (page: number = 1) => {
     // Evitar requisições múltiplas simultâneas
     if (loading) return;
     
     setLoading(true);
     try {
+      const offset = (page - 1) * pageSize;
       const params = new URLSearchParams({
         format: 'summary',
-        limit: '20', // ✅ CORREÇÃO: Usar limite compatível com ML API
+        limit: pageSize.toString(),
+        offset: offset.toString(),
       });
 
       const response = await fetch(`${API_ENDPOINTS.PRODUCTS}?${params.toString()}`, {
@@ -84,7 +97,15 @@ export default function AdminProductsPage() {
           
           setProducts(transformedProducts);
           setAuthenticated(true);
-          console.log('✅ Produtos reais carregados:', transformedProducts.length);
+          
+          // Atualizar informações de paginação
+          if (data.data.total) {
+            setTotalProducts(data.data.total);
+            setTotalPages(data.data.total_pages || Math.ceil(data.data.total / pageSize));
+            setCurrentPage(data.data.page || page);
+          }
+          
+          console.log(`✅ Produtos carregados: ${transformedProducts.length} (página ${page}/${Math.ceil((data.data.total || 0) / pageSize)})`);
         } else {
           throw new Error('Dados inválidos da API');
         }
@@ -110,10 +131,90 @@ export default function AdminProductsPage() {
   // ✅ CORREÇÃO: Executar apenas uma vez na montagem do componente
   useEffect(() => {
     if (!hasAttemptedLoad) {
-      loadRealProducts();
+      loadRealProducts(currentPage);
+      setHasAttemptedLoad(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Dependency array vazia para executar apenas uma vez
+
+  // Função para carregar mais produtos (incremental)
+  const loadMoreProducts = async () => {
+    if (loadingMore || !hasMoreProducts) return;
+    
+    setLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      const offset = (nextPage - 1) * pageSize;
+      
+      const params = new URLSearchParams({
+        format: 'summary',
+        limit: pageSize.toString(),
+        offset: offset.toString(),
+      });
+
+      const response = await fetch(`${API_ENDPOINTS.PRODUCTS}?${params.toString()}`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data?.items) {
+          const transformedProducts = data.data.items.map((product: MLProduct) => ({
+            id: product.id,
+            title: product.title,
+            price: product.price,
+            thumbnail: product.thumbnail,
+            status: product.status,
+            available_quantity: product.available_quantity,
+            condition: product.condition,
+            visits: 0,
+            questions: 0,
+            sold_quantity: product.sold_quantity || 0,
+          }));
+
+          // Adicionar produtos aos já existentes
+          setProducts(prevProducts => [...prevProducts, ...transformedProducts]);
+          setCurrentPage(nextPage);
+          
+          // Verificar se há mais produtos
+          if (data.data.has_more === false || transformedProducts.length < pageSize) {
+            setHasMoreProducts(false);
+          }
+          
+          console.log(`✅ ${transformedProducts.length} produtos adicionais carregados (total: ${products.length + transformedProducts.length})`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar mais produtos:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // Função para mudar de página
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      loadRealProducts(page);
+    }
+  };
+
+  // Função para ir para a próxima página
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      handlePageChange(currentPage + 1);
+    }
+  };
+
+  // Função para ir para a página anterior
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      handlePageChange(currentPage - 1);
+    }
+  };
 
   const getStatusBadge = (status: ProductStatus) => {
     switch (status) {
@@ -408,9 +509,27 @@ export default function AdminProductsPage() {
                     <button
                       className="text-gray-400 hover:text-red-500"
                       title="Excluir"
-                      onClick={() => {
-                        if (confirm('Tem certeza que deseja excluir este produto?')) {
-                          setProducts(products.filter(p => p.id !== product.id));
+                      onClick={async () => {
+                        if (confirm('Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.')) {
+                          try {
+                            // TODO: Implement actual delete API call
+                            // const response = await fetch(`/api/admin/products/${product.id}`, {
+                            //   method: 'DELETE',
+                            //   headers: { 'Content-Type': 'application/json' },
+                            //   credentials: 'include',
+                            // });
+                            
+                            // if (!response.ok) {
+                            //   throw new Error('Failed to delete product');
+                            // }
+                            
+                            // Remove from local state
+                            setProducts(products.filter(p => p.id !== product.id));
+                            console.log(`Produto ${product.id} removido com sucesso`);
+                          } catch (error) {
+                            console.error('Erro ao excluir produto:', error);
+                            alert('Erro ao excluir produto. Tente novamente.');
+                          }
                         }
                       }}
                     >
@@ -432,6 +551,108 @@ export default function AdminProductsPage() {
           </p>
         </div>
       )}
+
+      {/* Load More Button */}
+      {hasMoreProducts && products.length > 0 && (
+        <div className="text-center py-6">
+          <button
+            onClick={loadMoreProducts}
+            disabled={loadingMore}
+            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {loadingMore ? (
+              <>
+                <ArrowPathIcon className="w-5 h-5 mr-2 animate-spin" />
+                Carregando...
+              </>
+            ) : (
+              <>
+                <PlusIcon className="w-5 h-5 mr-2" />
+                Carregar Mais Produtos
+              </>
+            )}
+          </button>
+          <p className="text-sm text-gray-500 mt-2">
+            {products.length} de {totalProducts} produtos carregados
+          </p>
+        </div>
+      )}
+        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div className="flex-1 flex justify-between sm:hidden">
+            <button
+              onClick={handlePrevPage}
+              disabled={currentPage === 1}
+              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              Anterior
+            </button>
+            <button
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              Próxima
+            </button>
+          </div>
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Mostrando{' '}
+                <span className="font-medium">{((currentPage - 1) * pageSize) + 1}</span>
+                {' '}a{' '}
+                <span className="font-medium">{Math.min(currentPage * pageSize, totalProducts)}</span>
+                {' '}de{' '}
+                <span className="font-medium">{totalProducts}</span>
+                {' '}produtos
+              </p>
+            </div>
+            <div>
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <span className="sr-only">Anterior</span>
+                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+
+                {/* Page Numbers */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                  if (pageNum > totalPages) return null;
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        pageNum === currentPage
+                          ? 'z-10 bg-green-50 border-green-500 text-green-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <span className="sr-only">Próxima</span>
+                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
     </div>
   );
 }
