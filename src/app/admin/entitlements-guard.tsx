@@ -23,10 +23,31 @@ export async function EntitlementsGuard({ children }: Props) {
     return children;
   }
 
-  // Require session
+  // 🔧 OAuth Flow Fix: Allow temporary access during OAuth callback processing
+  // Parse current URL to check for OAuth query parameters
+  let isOAuthFlow = false;
+  try {
+    // Check if we're in the middle of OAuth flow by looking for query parameters
+    // that indicate OAuth success or error
+    const url = hdrs.get('x-url') || hdrs.get('referer') || '';
+    isOAuthFlow = url.includes('auth_success=') || 
+                  url.includes('auth_error=') || 
+                  url.includes('user_id=') ||
+                  pathname.includes('auth_success') || 
+                  pathname.includes('auth_error');
+  } catch {
+    // Ignore parsing errors
+  }
+  
+  // Require session (but allow OAuth flow to complete)
   const userId = cookieStore.get('user_id')?.value;
   const sessionToken = cookieStore.get('session_token')?.value;
   if (!userId || !sessionToken) {
+    // If OAuth flow is in progress, allow it to complete
+    if (isOAuthFlow) {
+      console.log('🔄 OAuth flow detected - allowing temporary access for cookie processing');
+      return children;
+    }
     redirect(PAGES.LOGIN);
   }
 
