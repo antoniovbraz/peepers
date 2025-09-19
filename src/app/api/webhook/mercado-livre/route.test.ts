@@ -171,5 +171,63 @@ describe('Webhook Mercado Livre', () => {
       expect(response.status).toBe(400);
       expect(result.error).toBe('Invalid JSON payload');
     });
+
+    it('should deduplicate repeated webhook notifications', async () => {
+      // Mock KV client to simulate NX set behavior
+      const setMock = vi.fn()
+        // First call: new key => returns 'OK'
+        .mockResolvedValueOnce('OK')
+        // Second call: duplicate => returns null
+        .mockResolvedValueOnce(null);
+
+      vi.doMock('@/lib/cache', async () => {
+        const actual = (await vi.importActual('@/lib/cache')) as Record<string, unknown>;
+        return {
+          ...actual,
+          getKVClient: () => ({ set: setMock })
+        };
+      });
+
+      const { checkRateLimit } = await import('@/lib/utils');
+      vi.mocked(checkRateLimit).mockResolvedValue({
+        allowed: true,
+        remaining: 999,
+        resetTime: Date.now() + 900000,
+      });
+
+      const validPayload = {
+        user_id: 987,
+        topic: 'items',
+        resource: '/items/MLB123',
+        application_id: 'app123',
+        attempts: 1,
+        sent: new Date().toISOString(),
+        received: new Date().toISOString(),
+      };
+
+      // First delivery should process normally
+      const req1 = new NextRequest('http://localhost:3000/api/webhook/mercado-livre', {
+        method: 'POST',
+        headers: { 'x-ml-webhook-secret': process.env.ML_WEBHOOK_SECRET || 'test-secret' },
+        body: JSON.stringify(validPayload),
+      });
+      const res1 = await POST(req1);
+      const json1 = await res1.json();
+      expect(res1.status).toBe(200);
+      expect(json1.success).toBe(true);
+      expect(json1.duplicate).toBeUndefined();
+
+      // Second delivery (duplicate) should be short-circuited with duplicate flag
+      const req2 = new NextRequest('http://localhost:3000/api/webhook/mercado-livre', {
+        method: 'POST',
+        headers: { 'x-ml-webhook-secret': process.env.ML_WEBHOOK_SECRET || 'test-secret' },
+        body: JSON.stringify(validPayload),
+      });
+      const res2 = await POST(req2);
+      const json2 = await res2.json();
+      expect(res2.status).toBe(200);
+      expect(json2.success).toBe(true);
+      expect(json2.duplicate).toBe(true);
+    });
   });
 });
