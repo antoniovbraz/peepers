@@ -12,13 +12,13 @@ import Image from 'next/image';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
-  FunnelIcon,
   EyeIcon,
   PencilIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { API_ENDPOINTS } from '@/config/routes';
 import { handleImageError } from '@/lib/utils';
+import type { MLProduct } from '@/types/ml';
 
 // Mock data para fallback
 const mockProducts = [
@@ -57,22 +57,22 @@ export default function AdminProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProductStatus | 'all'>('all');
   const [sortBy, setSortBy] = useState<SortOption>('title');
-  const [isRealData, setIsRealData] = useState(false);
+  const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
 
   // Função para carregar produtos reais da API
   const loadRealProducts = async () => {
+    // Evitar requisições múltiplas simultâneas
+    if (loading) return;
+    
     setLoading(true);
     try {
       const params = new URLSearchParams({
         format: 'summary',
         limit: '50',
-        ...(searchQuery && { q: searchQuery }),
-        ...(statusFilter !== 'all' && { status: statusFilter }),
       });
 
       const response = await fetch(`${API_ENDPOINTS.PRODUCTS}?${params.toString()}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('ml_access_token')}`,
           'Content-Type': 'application/json',
         },
         credentials: 'include',
@@ -82,7 +82,7 @@ export default function AdminProductsPage() {
         const data = await response.json();
         if (data.success && data.data?.items) {
           // Transformar dados da API para o formato esperado
-          const transformedProducts = data.data.items.map((product: any) => ({
+          const transformedProducts = data.data.items.map((product: MLProduct) => ({
             id: product.id,
             title: product.title,
             price: product.price,
@@ -90,32 +90,36 @@ export default function AdminProductsPage() {
             status: product.status,
             available_quantity: product.available_quantity,
             condition: product.condition,
-            visits: product.visits || 0,
-            questions: product.questions || 0,
+            visits: 0, // Placeholder - ML API não fornece este campo
+            questions: 0, // Placeholder - ML API não fornece este campo  
             sold_quantity: product.sold_quantity || 0,
           }));
           
           setProducts(transformedProducts);
-          setIsRealData(true);
+          console.log('✅ Produtos reais carregados:', transformedProducts.length);
         } else {
           throw new Error('Dados inválidos da API');
         }
       } else {
-        throw new Error(`API Error: ${response.status}`);
+        console.warn(`API retornou ${response.status}, usando dados mock`);
+        setProducts(mockProducts);
       }
     } catch (error) {
       console.warn('Erro ao carregar produtos reais, usando mock:', error);
       setProducts(mockProducts);
-      setIsRealData(false);
     } finally {
       setLoading(false);
+      setHasAttemptedLoad(true);
     }
   };
 
+  // ✅ CORREÇÃO: Executar apenas uma vez na montagem do componente
   useEffect(() => {
-    // Tentar carregar dados reais primeiro
-    loadRealProducts();
-  }, [searchQuery, statusFilter]);
+    if (!hasAttemptedLoad) {
+      loadRealProducts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Dependency array vazia para executar apenas uma vez
 
   const getStatusBadge = (status: ProductStatus) => {
     switch (status) {
@@ -302,6 +306,30 @@ export default function AdminProductsPage() {
                 <option value="status">Ordenar por Status</option>
               </select>
             </div>
+
+            {/* Refresh Button */}
+            <button
+              onClick={() => {
+                setHasAttemptedLoad(false);
+                loadRealProducts();
+              }}
+              disabled={loading}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+            >
+              {loading ? (
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              )}
+              <span className="ml-2">
+                {loading ? 'Carregando...' : 'Recarregar'}
+              </span>
+            </button>
           </div>
         </div>
       </div>
