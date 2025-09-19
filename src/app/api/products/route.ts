@@ -26,7 +26,10 @@ interface MLItemResponse {
 async function fetchMLProducts(accessToken: string, params: URLSearchParams, userId: string): Promise<{results: string[], paging: {total: number}}> {
   // Buscar produtos do vendedor autenticado usando o USER_ID correto
   const mlApiUrl = `https://api.mercadolibre.com/users/${userId}/items/search?${params.toString()}`;
-  
+
+  console.log('🔗 Fazendo chamada para ML API:', mlApiUrl);
+  console.log('🔑 Usando token (primeiros 10 chars):', accessToken.substring(0, 10) + '...');
+
   const response = await fetch(mlApiUrl, {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
@@ -34,11 +37,21 @@ async function fetchMLProducts(accessToken: string, params: URLSearchParams, use
     },
   });
 
+  console.log('📡 Resposta ML API - Status:', response.status, response.statusText);
+
   if (!response.ok) {
-    throw new Error(`ML API Error: ${response.status} ${response.statusText}`);
+    const errorText = await response.text();
+    console.error('❌ Erro na resposta ML API:', errorText);
+    throw new Error(`ML API Error: ${response.status} ${response.statusText} - ${errorText}`);
   }
 
   const searchResult = await response.json();
+  console.log('📦 Dados recebidos da ML API:', {
+    hasResults: !!searchResult.results,
+    resultsCount: searchResult.results?.length || 0,
+    hasPaging: !!searchResult.paging,
+    total: searchResult.paging?.total || 0
+  });
   
   // Se temos IDs de produtos, buscar detalhes completos
   if (searchResult.results && searchResult.results.length > 0) {
@@ -78,12 +91,15 @@ function transformMLProduct(mlProduct: MLProduct): Record<string, unknown> {
  */
 export async function GET(request: NextRequest) {
   try {
+    console.log('🚀 Iniciando requisição GET /api/products');
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
     const page = parseInt(searchParams.get('page') || '1');
     const status = searchParams.get('status');
     const search = searchParams.get('search');
+
+    console.log('📋 Parâmetros da requisição:', { limit, offset, page, status, search });
 
     // Obter informações do cliente para rate limiting
     const clientIP = request.headers.get('x-forwarded-for') ||
@@ -128,12 +144,23 @@ export async function GET(request: NextRequest) {
     
     // Buscar token de acesso no cache
     const kv = getKVClient();
+    console.log('🔧 Cliente KV inicializado');
+
     // 🚀 MULTI-TENANT: Dynamic authentication based on session cookies
     const sessionToken = request.cookies.get('session_token')?.value;
     const userId = request.cookies.get('user_id')?.value;
     const userEmail = request.cookies.get('user_email')?.value?.toLowerCase();
 
+    console.log('🍪 Cookies recebidos:', {
+      hasSessionToken: !!sessionToken,
+      hasUserId: !!userId,
+      hasUserEmail: !!userEmail,
+      userId: userId,
+      userEmail: userEmail?.substring(0, 10) + '...'
+    });
+
     if (!sessionToken || !userId) {
+      console.log('❌ Falta autenticação - retornando 401');
       return NextResponse.json(
         {
           success: false,
@@ -158,14 +185,41 @@ export async function GET(request: NextRequest) {
     
     try {
       // 1) Tentar recuperar token do formato USER_TOKEN(userId)
-      const userTokens = await kv.get(CACHE_KEYS.USER_TOKEN(userId));
+      const cacheKey = CACHE_KEYS.USER_TOKEN(userId);
+      console.log('🔑 Buscando token no cache com chave:', cacheKey);
+
+      const userTokens = await kv.get(cacheKey);
+      console.log('📦 Dados do cache USER_TOKEN:', {
+        found: !!userTokens,
+        type: typeof userTokens,
+        hasAccessToken: userTokens && typeof userTokens === 'object' && 'access_token' in userTokens
+      });
+
       // 2) Carregar dados do usuário para validar a sessão e, se necessário, extrair token salvo
-      const userData = await kv.get(`user:${userId}`);
+      const userDataKey = `user:${userId}`;
+      console.log('👤 Buscando dados do usuário no cache com chave:', userDataKey);
+
+      const userData = await kv.get(userDataKey);
+      console.log('📦 Dados do usuário no cache:', {
+        found: !!userData,
+        type: typeof userData,
+        hasSessionToken: userData && typeof userData === 'object' && 'session_token' in userData,
+        hasToken: userData && typeof userData === 'object' && 'token' in userData
+      });
 
       // Validar sessão primeiro
       const validSession = !!(userData && typeof userData === 'object' && 'session_token' in userData && (userData.session_token === sessionToken || isSuperAdmin));
+      console.log('🔐 Validação de sessão:', {
+        validSession,
+        hasUserData: !!userData,
+        userDataType: typeof userData,
+        hasSessionTokenInData: userData && typeof userData === 'object' && 'session_token' in userData,
+        sessionTokensMatch: userData && typeof userData === 'object' && 'session_token' in userData && userData.session_token === sessionToken,
+        isSuperAdmin
+      });
 
       if (!validSession) {
+        console.log('❌ Sessão inválida - retornando 401');
         return NextResponse.json(
           {
             success: false,
@@ -180,15 +234,19 @@ export async function GET(request: NextRequest) {
       // Fonte A: USER_TOKEN cache
       if (userTokens && typeof userTokens === 'object' && 'access_token' in userTokens) {
         accessToken = userTokens.access_token as string;
+        console.log('✅ Token encontrado na fonte A (USER_TOKEN cache)');
       }
 
       // Fonte B: user cache salvo por cache.setUser (campo token)
       if (!accessToken && userData && typeof userData === 'object' && 'token' in userData) {
         accessToken = userData.token as string;
+        console.log('✅ Token encontrado na fonte B (user cache)');
       }
 
       if (accessToken) {
         console.log(`🔑 Token validado para usuário: ${userId}`);
+      } else {
+        console.log('❌ Nenhum token de acesso encontrado');
       }
     } catch (error) {
       console.warn('Erro ao buscar token do cache:', error);
@@ -213,7 +271,10 @@ export async function GET(request: NextRequest) {
 
     try {
       console.log('🔄 Buscando produtos reais do Mercado Livre...');
-      
+      console.log('📊 Parâmetros:', { limit, offset, page, status, search });
+      console.log('👤 User ID:', userId);
+      console.log('🔑 Token presente:', !!accessToken);
+
       // Configurar parâmetros para buscar produtos
       const mlParams = new URLSearchParams({
         limit: Math.min(limit, 50).toString(), // ML limita a 50
@@ -228,37 +289,61 @@ export async function GET(request: NextRequest) {
         mlParams.append('q', search);
       }
 
+      console.log('🌐 ML API URL:', `https://api.mercadolibre.com/users/${userId}/items/search?${mlParams.toString()}`);
+
       const mlResponse = await fetchMLProducts(accessToken, mlParams, userId);
       
       if (mlResponse.results && Array.isArray(mlResponse.results) && mlResponse.results.length > 0) {
         // mlResponse.results contém IDs dos produtos, não produtos completos
         // ✅ CORREÇÃO: ML API não aceita mais que 100 IDs por vez na busca de detalhes
         const productIds = mlResponse.results.slice(0, Math.min(limit, 100)); // Limitar conforme ML API
-        
+
         console.log(`🔍 Buscando detalhes de ${productIds.length} produtos...`);
-        
+        console.log('📋 IDs dos produtos:', productIds.slice(0, 5), productIds.length > 5 ? `...e mais ${productIds.length - 5}` : '');
+
         // Buscar detalhes de todos os produtos de uma vez
-        const itemsResponse = await fetch(`https://api.mercadolibre.com/items?ids=${productIds.join(',')}`, {
+        const itemsUrl = `https://api.mercadolibre.com/items?ids=${productIds.join(',')}`;
+        console.log('🔗 URL para buscar detalhes:', itemsUrl);
+
+        const itemsResponse = await fetch(itemsUrl, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Accept': 'application/json',
           },
         });
 
+        console.log('📡 Resposta detalhes produtos - Status:', itemsResponse.status, itemsResponse.statusText);
+
         if (!itemsResponse.ok) {
-          throw new Error(`ML Items API Error: ${itemsResponse.status} ${itemsResponse.statusText}`);
+          const errorText = await itemsResponse.text();
+          console.error('❌ Erro na resposta detalhes produtos:', errorText);
+          throw new Error(`ML Items API Error: ${itemsResponse.status} ${itemsResponse.statusText} - ${errorText}`);
         }
 
         const itemsData = await itemsResponse.json();
-        
+
+        console.log('📦 Dados brutos dos produtos recebidos:', {
+          totalItems: itemsData.length,
+          firstItem: itemsData[0] ? {
+            code: itemsData[0].code,
+            hasBody: !!itemsData[0].body,
+            bodyId: itemsData[0].body?.id
+          } : null
+        });
+
         // Processar os produtos retornados
         const validProducts = (itemsData as MLItemResponse[])
           .filter((item: MLItemResponse) => item.code === 200 && item.body) // Filtrar respostas válidas
           .map((item: MLItemResponse) => item.body) // Extrair o produto
           .filter((product: MLProduct) => product && product.id) // Filtrar produtos válidos
           .map(transformMLProduct);
-        
-        console.log(`✅ ${validProducts.length} produtos reais carregados do ML!`);
+
+        console.log(`✅ ${validProducts.length} produtos válidos processados`);
+        console.log('📊 Primeiro produto processado:', validProducts[0] ? {
+          id: validProducts[0].id,
+          title: typeof validProducts[0].title === 'string' ? validProducts[0].title.substring(0, 50) : 'N/A',
+          price: validProducts[0].price
+        } : 'Nenhum produto');
 
         // Formato compatível com repository pattern
         return NextResponse.json({
@@ -295,7 +380,12 @@ export async function GET(request: NextRequest) {
 
     } catch (mlError) {
       console.error('❌ Erro ao buscar produtos do ML:', mlError);
-      
+      console.error('❌ Detalhes do erro:', {
+        message: mlError instanceof Error ? mlError.message : 'Erro desconhecido',
+        stack: mlError instanceof Error ? mlError.stack : undefined,
+        name: mlError instanceof Error ? mlError.name : undefined
+      });
+
       return NextResponse.json(
         {
           success: false,
