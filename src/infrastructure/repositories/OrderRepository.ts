@@ -64,10 +64,6 @@ export class OrderRepository implements IOrderRepository {
         success: true,
         data: {
           items: mockOrders,
-          total: 0,
-          page: 1,
-          limit: 20,
-          hasMore: false,
           pagination: {
             total: 0,
             page: 1,
@@ -183,8 +179,8 @@ export class OrderRepository implements IOrderRepository {
         conversionRate: 0.15 // Mock 15% conversion rate
       };
 
-      // Cache stats for 5 minutes
-      await this.setCachedData('order_statistics', stats, 300);
+      // Temporarily disable cache to avoid Redis connection issues
+      // await this.setCachedData('order_statistics', stats, 300);
 
       return {
         success: true,
@@ -193,6 +189,7 @@ export class OrderRepository implements IOrderRepository {
       };
 
     } catch (error) {
+      console.error('OrderRepository getStatistics error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -238,25 +235,28 @@ export class OrderRepository implements IOrderRepository {
 
   async getSalesMetrics(_sellerId: number, _period: 'day' | 'week' | 'month' | 'year'): Promise<RepositoryResult<{
     sales: Array<{
-      date: string;
-      amount: number;
+      date: Date;
       orders: number;
+      revenue: number;
+      profit: number;
     }>;
-    metrics: {
-      totalSales: number;
+    summary: {
       totalOrders: number;
+      totalRevenue: number;
+      totalProfit: number;
       averageOrderValue: number;
-      growth: number;
+      growthRate: number;
     };
   }>> {
     try {
       const mockData = {
         sales: [],
-        metrics: {
-          totalSales: 0,
+        summary: {
           totalOrders: 0,
+          totalRevenue: 0,
+          totalProfit: 0,
           averageOrderValue: 0,
-          growth: 0
+          growthRate: 0
         }
       };
 
@@ -266,6 +266,138 @@ export class OrderRepository implements IOrderRepository {
         timestamp: new Date()
       };
 
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date()
+      };
+    }
+  }
+
+  async findBySeller(_sellerId: number, _pagination?: PaginationParams): Promise<RepositoryResult<PaginatedResult<Order>>> {
+    try {
+      // Return empty result for now
+      return {
+        success: true,
+        data: {
+          items: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 20,
+            totalPages: 1,
+            hasNext: false,
+            hasPrevious: false
+          }
+        },
+        timestamp: new Date()
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date()
+      };
+    }
+  }
+
+  async findByBuyer(_buyerId: number, _pagination?: PaginationParams): Promise<RepositoryResult<PaginatedResult<Order>>> {
+    try {
+      // Return empty result for now
+      return {
+        success: true,
+        data: {
+          items: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 20,
+            totalPages: 1,
+            hasNext: false,
+            hasPrevious: false
+          }
+        },
+        timestamp: new Date()
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date()
+      };
+    }
+  }
+
+  async findByStatus(_status: Order['status'], _pagination?: PaginationParams): Promise<RepositoryResult<PaginatedResult<Order>>> {
+    try {
+      // Return empty result for now
+      return {
+        success: true,
+        data: {
+          items: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 20,
+            totalPages: 1,
+            hasNext: false,
+            hasPrevious: false
+          }
+        },
+        timestamp: new Date()
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date()
+      };
+    }
+  }
+
+  async findByDateRange(_dateFrom: Date, _dateTo: Date, _pagination?: PaginationParams): Promise<RepositoryResult<PaginatedResult<Order>>> {
+    try {
+      // Return empty result for now
+      return {
+        success: true,
+        data: {
+          items: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 20,
+            totalPages: 1,
+            hasNext: false,
+            hasPrevious: false
+          }
+        },
+        timestamp: new Date()
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date()
+      };
+    }
+  }
+
+  async updateStatus(_id: string, _status: Order['status']): Promise<RepositoryResult<Order>> {
+    return {
+      success: false,
+      error: 'Update status operation not implemented yet',
+      timestamp: new Date()
+    };
+  }
+
+  async syncFromExternal(_sellerId: number): Promise<RepositoryResult<{ synced: number; errors: string[] }>> {
+    try {
+      return {
+        success: true,
+        data: { synced: 0, errors: [] },
+        timestamp: new Date()
+      };
     } catch (error) {
       return {
         success: false,
