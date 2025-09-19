@@ -13,26 +13,11 @@ import {
 } from '@heroicons/react/24/outline';
 import useCleanAuthUrl from '@/hooks/useCleanAuthUrl';
 import KPICard from '@/components/admin/dashboard/KPICard';
-
 import { DashboardMetricsDTO } from '../../../application/dtos/DashboardMetricsDTO';
-import { GetDashboardMetricsUseCase } from '../../../application/use-cases/GetDashboardMetricsUseCase';
-import { ProductRepository } from '../../../infrastructure/repositories/ProductRepository';
-import { OrderRepository } from '../../../infrastructure/repositories/OrderRepository';
-import { SellerRepository } from '../../../infrastructure/repositories/SellerRepository';
 import SalesChart from '@/components/admin/dashboard/SalesChart';
 import AnalyticsOverview from '@/components/admin/dashboard/AnalyticsOverview';
 import ActivityFeed from '@/components/admin/dashboard/ActivityFeed';
 import QuickActions from '@/components/admin/dashboard/QuickActions';
-
-// Initialize repositories and use case with admin context
-const productRepository = new ProductRepository(undefined, true); // Admin context
-const orderRepository = new OrderRepository();
-const sellerRepository = new SellerRepository();
-const getDashboardMetrics = new GetDashboardMetricsUseCase(
-  productRepository,
-  orderRepository,
-  sellerRepository
-);
 
 interface MetricCardProps {
   title: string;
@@ -116,7 +101,20 @@ export default function AdminDashboard() {
           return;
         }
         
-        const result = await getDashboardMetrics.execute();
+        // Fetch metrics from API endpoint (server-side)
+        const response = await fetch('/api/admin/dashboard/metrics', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          cache: 'no-store'
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
         
         if (result.success && result.data) {
           setMetrics(result.data);
