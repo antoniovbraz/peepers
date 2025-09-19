@@ -18,6 +18,11 @@ interface MLProduct {
   pictures?: Array<{url: string}>;
 }
 
+interface MLItemResponse {
+  code: number;
+  body: MLProduct;
+}
+
 async function fetchMLProducts(accessToken: string, params: URLSearchParams, userId: string): Promise<{results: string[], paging: {total: number}}> {
   // Buscar produtos do vendedor autenticado usando o USER_ID correto
   const mlApiUrl = `https://api.mercadolibre.com/users/${userId}/items/search?${params.toString()}`;
@@ -37,21 +42,11 @@ async function fetchMLProducts(accessToken: string, params: URLSearchParams, use
   
   // Se temos IDs de produtos, buscar detalhes completos
   if (searchResult.results && searchResult.results.length > 0) {
-    const ids = searchResult.results.slice(0, 50); // Limitar a 50 por performance
-    const itemsResponse = await fetch(`https://api.mercadolibre.com/items?ids=${ids.join(',')}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json',
-      },
-    });
-
-    if (itemsResponse.ok) {
-      const itemsData = await itemsResponse.json();
-      return {
-        results: itemsData.map((item: any) => item.body || item),
-        paging: searchResult.paging
-      };
-    }
+    // Nesta implementação, retornamos só os IDs para buscar depois
+    return {
+      results: searchResult.results, // Array de IDs como strings
+      paging: searchResult.paging
+    };
   }
 
   return searchResult;
@@ -80,7 +75,6 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '20');
-    const format = searchParams.get('format') || 'full';
     const status = searchParams.get('status');
     const search = searchParams.get('search');
 
@@ -229,25 +223,47 @@ export async function GET(request: NextRequest) {
 
       const mlResponse = await fetchMLProducts(accessToken, mlParams, userId);
       
-      if (mlResponse.results && Array.isArray(mlResponse.results)) {
-        const transformedProducts = mlResponse.results
+      if (mlResponse.results && Array.isArray(mlResponse.results) && mlResponse.results.length > 0) {
+        // mlResponse.results contém IDs dos produtos, não produtos completos
+        const productIds = mlResponse.results.slice(0, limit); // Limitar quantos buscar
+        
+        console.log(`🔍 Buscando detalhes de ${productIds.length} produtos...`);
+        
+        // Buscar detalhes de todos os produtos de uma vez
+        const itemsResponse = await fetch(`https://api.mercadolibre.com/items?ids=${productIds.join(',')}`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/json',
+          },
+        });
+
+        if (!itemsResponse.ok) {
+          throw new Error(`ML Items API Error: ${itemsResponse.status} ${itemsResponse.statusText}`);
+        }
+
+        const itemsData = await itemsResponse.json();
+        
+        // Processar os produtos retornados
+        const validProducts = (itemsData as MLItemResponse[])
+          .filter((item: MLItemResponse) => item.code === 200 && item.body) // Filtrar respostas válidas
+          .map((item: MLItemResponse) => item.body) // Extrair o produto
           .filter((product: MLProduct) => product && product.id) // Filtrar produtos válidos
           .map(transformMLProduct);
         
-        console.log(`✅ ${transformedProducts.length} produtos reais carregados do ML!`);
+        console.log(`✅ ${validProducts.length} produtos reais carregados do ML!`);
 
         // Formato compatível com repository pattern
         return NextResponse.json({
           success: true,
           data: {
-            items: transformedProducts,
-            total: mlResponse.paging?.total || transformedProducts.length,
+            items: validProducts,
+            total: mlResponse.paging?.total || validProducts.length,
             page: 1,
             per_page: limit
           },
           // Formato legado para compatibilidade
-          products: transformedProducts,
-          total: mlResponse.paging?.total || transformedProducts.length,
+          products: validProducts,
+          total: mlResponse.paging?.total || validProducts.length,
           source: 'mercado_livre_real'
         });
       } else {
