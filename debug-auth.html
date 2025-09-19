@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste de Autenticação Peepers</title>
+</head>
+<body>
+    <h1>🔐 Teste de Autenticação Peepers</h1>
+    
+    <div id="status">Aguardando testes...</div>
+    
+    <br><br>
+    
+    <button onclick="testAuth()">1. Testar Autenticação</button>
+    <button onclick="testProducts()">2. Testar Produtos</button>
+    <button onclick="goToAuth()">3. Fazer Login ML</button>
+    <button onclick="clearServiceWorker()">4. Limpar SW</button>
+    
+    <br><br>
+    
+    <pre id="results"></pre>
+
+    <script>
+        const log = (msg) => {
+            const results = document.getElementById('results');
+            results.textContent += new Date().toLocaleTimeString() + ': ' + msg + '\n';
+            console.log(msg);
+        };
+
+        const updateStatus = (msg) => {
+            document.getElementById('status').textContent = msg;
+        };
+
+        async function testAuth() {
+            try {
+                updateStatus('🔄 Testando autenticação...');
+                const response = await fetch('https://peepers.vercel.app/api/auth/me', {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('✅ Autenticado!');
+                    log('✅ Autenticação OK: ' + JSON.stringify(data, null, 2));
+                } else {
+                    updateStatus('❌ Não autenticado');
+                    log('❌ Auth failed (' + response.status + '): ' + JSON.stringify(data, null, 2));
+                }
+            } catch (error) {
+                updateStatus('💥 Erro de rede');
+                log('💥 Erro na autenticação: ' + error.message);
+            }
+        }
+
+        async function testProducts() {
+            try {
+                updateStatus('🔄 Testando produtos...');
+                const response = await fetch('https://peepers.vercel.app/api/products?format=summary&limit=5', {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    updateStatus('✅ Produtos carregados!');
+                    log('✅ Produtos OK (' + data.data.items.length + ' items): ' + JSON.stringify(data.data.items.slice(0, 2), null, 2));
+                } else {
+                    updateStatus('❌ Falha nos produtos');
+                    log('❌ Products failed (' + response.status + '): ' + JSON.stringify(data, null, 2));
+                }
+            } catch (error) {
+                updateStatus('💥 Erro de rede');
+                log('💥 Erro nos produtos: ' + error.message);
+            }
+        }
+
+        function goToAuth() {
+            window.open('https://peepers.vercel.app/api/auth/mercado-livre', '_blank');
+        }
+
+        async function clearServiceWorker() {
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                        log('🧹 Service Worker removido');
+                    }
+                    updateStatus('🧹 Service Workers limpos');
+                }
+            } catch (error) {
+                log('❌ Erro ao limpar SW: ' + error.message);
+            }
+        }
+
+        // Auto-test ao carregar
+        window.onload = () => {
+            log('🚀 Página carregada, testando autenticação...');
+            testAuth();
+        };
+    </script>
+</body>
+</html>
