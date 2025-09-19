@@ -17,7 +17,6 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { API_ENDPOINTS } from '@/config/routes';
-import { handleImageError } from '@/lib/utils';
 import type { MLProduct } from '@/types/ml';
 
 // Mock data para fallback
@@ -26,7 +25,7 @@ const mockProducts = [
     id: 'MLB123456789',
     title: 'iPhone 15 Pro Max 256GB Azul Titânio',
     price: 7899.99,
-    thumbnail: 'https://http2.mlstatic.com/D_Q_NP_123456_MLA.jpg',
+    thumbnail: '/placeholder-image.svg', // ✅ Usando imagem local
     status: 'active' as ProductStatus,
     available_quantity: 5,
     condition: 'new',
@@ -38,13 +37,37 @@ const mockProducts = [
     id: 'MLB987654321',
     title: 'Samsung Galaxy S24 Ultra 512GB Preto',
     price: 6299.99,
-    thumbnail: 'https://http2.mlstatic.com/D_Q_NP_987654_MLA.jpg',
+    thumbnail: '/placeholder-image.svg', // ✅ Usando imagem local
     status: 'paused' as ProductStatus,
     available_quantity: 0,
     condition: 'new',
     visits: 892,
     questions: 3,
     sold_quantity: 15,
+  },
+  {
+    id: 'MLB456789123',
+    title: 'MacBook Air M3 13" 8GB 256GB Midnight',
+    price: 9999.99,
+    thumbnail: '/placeholder-image.svg', // ✅ Usando imagem local
+    status: 'active' as ProductStatus,
+    available_quantity: 3,
+    condition: 'new',
+    visits: 567,
+    questions: 2,
+    sold_quantity: 8,
+  },
+  {
+    id: 'MLB789123456',
+    title: 'PlayStation 5 Slim Digital Edition',
+    price: 3499.99,
+    thumbnail: '/placeholder-image.svg', // ✅ Usando imagem local
+    status: 'active' as ProductStatus,
+    available_quantity: 2,
+    condition: 'new',
+    visits: 2134,
+    questions: 15,
+    sold_quantity: 45,
   },
 ];
 
@@ -171,9 +194,19 @@ export default function AdminProductsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Produtos</h1>
+          <div className="flex items-center space-x-3">
+            <h1 className="text-2xl font-bold text-gray-900">Produtos</h1>
+            {hasAttemptedLoad && (
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                products.length > 4 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+              }`}>
+                {products.length > 4 ? '📡 Dados Reais' : '🔧 Dados Demo'}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-gray-500 mt-1">
             Gerencie seus produtos do Mercado Livre
+            {!hasAttemptedLoad && ' • Carregando dados...'}
           </p>
         </div>
         
@@ -343,15 +376,22 @@ export default function AdminProductsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="flex-shrink-0 h-16 w-16">
-                      <Image
-                        className="h-16 w-16 rounded-md object-cover bg-gray-100"
-                        src={product.thumbnail || '/placeholder-image.svg'}
-                        alt={product.title}
-                        width={64}
-                        height={64}
-                        onError={handleImageError}
-                        unoptimized
-                      />
+                      <div className="relative h-16 w-16 bg-gray-100 rounded-md overflow-hidden">
+                        <Image
+                          className="h-full w-full object-cover"
+                          src={product.thumbnail || '/placeholder-image.svg'}
+                          alt={product.title}
+                          width={64}
+                          height={64}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            if (target.src !== '/placeholder-image.svg') {
+                              target.src = '/placeholder-image.svg';
+                            }
+                          }}
+                          unoptimized
+                        />
+                      </div>
                     </div>
                     <div className="ml-4 flex-1">
                       <div className="flex items-center">
