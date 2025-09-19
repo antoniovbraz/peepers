@@ -1,38 +1,82 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowPathIcon, CurrencyDollarIcon, ClockIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, CurrencyDollarIcon, EyeIcon, ShoppingBagIcon } from '@heroicons/react/24/outline';
 
-import { Order } from '@/types/sales';
-import { getMockOrders, getMockSalesMetrics } from '@/data/mockSales';
 import { useNotificationActions } from '@/contexts/NotificationContext';
-import { API_ENDPOINTS } from '@/config/routes';
+
+interface TransformedOrder {
+  id: string;
+  status: string;
+  date: string;
+  total: number;
+  currency: string;
+  buyer: string;
+  quantity: number;
+  items: Array<{
+    id: string;
+    title: string;
+    quantity: number;
+    price: number;
+  }>;
+  payment_method?: string;
+  payment_status?: string;
+  shipping_status?: string;
+}
+
+interface SalesMetrics {
+  total_orders: number;
+  total_revenue: number;
+  total_products_sold: number;
+  avg_order_value: number;
+}
+
+interface SalesApiResponse {
+  success: boolean;
+  data: {
+    orders: TransformedOrder[];
+    metrics: SalesMetrics;
+    pagination: {
+      total: number;
+      offset: number;
+      limit: number;
+      has_more: boolean;
+    };
+  };
+  source: string;
+  error?: string;
+}
 
 export default function SalesPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<TransformedOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [metrics, setMetrics] = useState(getMockSalesMetrics()); // Fallback para mock
+  const [metrics, setMetrics] = useState<SalesMetrics>({
+    total_orders: 0,
+    total_revenue: 0,
+    total_products_sold: 0,
+    avg_order_value: 0,
+  });
   
   const { notifyError } = useNotificationActions();
 
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async () => {
     setLoading(true);
     try {
-      // Tentar buscar dados reais da API do Mercado Livre
-      const response = await fetch(`${API_ENDPOINTS.ADMIN_SALES}?limit=10&search=${encodeURIComponent(searchTerm)}`, {
+      // Buscar dados reais da API do Mercado Livre
+      const response = await fetch(`/api/admin/sales?limit=20&search=${encodeURIComponent(searchTerm)}`, {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('ml_access_token')}`,
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
+        credentials: 'include', // Importante para enviar cookies de autenticação
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data: SalesApiResponse = await response.json();
         if (data.success && data.data?.orders) {
           setOrders(data.data.orders);
           // Atualizar métricas se disponíveis
@@ -40,28 +84,32 @@ export default function SalesPage() {
             setMetrics(data.data.metrics);
           }
         } else {
-          throw new Error('Dados inválidos da API');
+          throw new Error(data.error || 'Dados inválidos da API');
         }
       } else {
-        // Fallback para dados mockados se a API falhar
-        console.warn('API de vendas não disponível, usando dados mockados');
-        const { orders: newOrders } = getMockOrders(10, 0, { search: searchTerm });
-        setOrders(newOrders);
+        throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
-      console.warn('Erro ao carregar vendas reais, usando mock:', error);
-      notifyError('Conectado ao modo demonstração - alguns dados podem ser fictícios');
-      // Fallback para dados mockados
-      const { orders: newOrders } = getMockOrders(10, 0, { search: searchTerm });
-      setOrders(newOrders);
+      console.error('Erro ao carregar vendas:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      notifyError(`Erro ao carregar vendas: ${errorMessage}`);
+      
+      // Limpar dados em caso de erro
+      setOrders([]);
+      setMetrics({
+        total_orders: 0,
+        total_revenue: 0,
+        total_products_sold: 0,
+        avg_order_value: 0,
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchTerm, notifyError]);
 
   useEffect(() => {
     loadOrders();
-  }, [searchTerm]);
+  }, [loadOrders]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -80,10 +128,10 @@ export default function SalesPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center">
-            <CurrencyDollarIcon className="w-6 h-6 text-blue-600" />
+            <ShoppingBagIcon className="w-6 h-6 text-blue-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total de Pedidos</p>
-              <p className="text-2xl font-bold text-gray-900">{metrics.totalOrders}</p>
+              <p className="text-2xl font-bold text-gray-900">{metrics.total_orders}</p>
             </div>
           </div>
         </div>
@@ -93,27 +141,27 @@ export default function SalesPage() {
             <CurrencyDollarIcon className="w-6 h-6 text-green-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Receita Total</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(metrics.totalRevenue)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(metrics.total_revenue)}</p>
             </div>
           </div>
         </div>
         
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center">
-            <ClockIcon className="w-6 h-6 text-yellow-600" />
+            <ShoppingBagIcon className="w-6 h-6 text-purple-600" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Pendentes</p>
-              <p className="text-2xl font-bold text-gray-900">{metrics.pendingOrders}</p>
+              <p className="text-sm font-medium text-gray-600">Produtos Vendidos</p>
+              <p className="text-2xl font-bold text-gray-900">{metrics.total_products_sold}</p>
             </div>
           </div>
         </div>
         
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center">
-            <CurrencyDollarIcon className="w-6 h-6 text-green-600" />
+            <CurrencyDollarIcon className="w-6 h-6 text-yellow-600" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Entregues</p>
-              <p className="text-2xl font-bold text-gray-900">{metrics.deliveredOrders}</p>
+              <p className="text-sm font-medium text-gray-600">Valor Médio Pedido</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(metrics.avg_order_value)}</p>
             </div>
           </div>
         </div>
@@ -142,16 +190,27 @@ export default function SalesPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-medium text-gray-900">Pedido #{order.id}</h4>
-                    <p className="text-sm text-gray-500">{order.buyer.firstName} {order.buyer.lastName}</p>
-                    <p className="text-xs text-gray-500">{order.buyer.email}</p>
+                    <p className="text-sm text-gray-500">{order.buyer}</p>
+                    <p className="text-xs text-gray-500">
+                      {order.quantity} produto{order.quantity !== 1 ? 's' : ''} • 
+                      {order.payment_method || 'Método não informado'}
+                    </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium text-gray-900">{formatCurrency(order.totalAmount)}</p>
+                    <p className="font-medium text-gray-900">{formatCurrency(order.total)}</p>
                     <p className="text-xs text-gray-500">
-                      {format(new Date(order.dateCreated), 'dd/MM/yyyy', { locale: ptBR })}
+                      {format(new Date(order.date), 'dd/MM/yyyy', { locale: ptBR })}
                     </p>
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {order.status}
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      order.status === 'paid' ? 'bg-green-100 text-green-800' :
+                      order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
+                      order.status === 'delivered' ? 'bg-purple-100 text-purple-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {order.status === 'paid' ? 'Pago' :
+                       order.status === 'shipped' ? 'Enviado' :
+                       order.status === 'delivered' ? 'Entregue' :
+                       order.status}
                     </span>
                   </div>
                   <Link
@@ -161,6 +220,23 @@ export default function SalesPage() {
                     <EyeIcon className="w-4 h-4 mr-1" />
                     Ver detalhes
                   </Link>
+                </div>
+                
+                {/* Mostrar itens do pedido */}
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <div className="text-xs text-gray-500 space-y-1">
+                    {order.items.slice(0, 2).map((item, index) => (
+                      <div key={index} className="flex justify-between">
+                        <span className="truncate flex-1">{item.title}</span>
+                        <span className="ml-2">Qtd: {item.quantity}</span>
+                      </div>
+                    ))}
+                    {order.items.length > 2 && (
+                      <div className="text-gray-400">
+                        +{order.items.length - 2} outros itens
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

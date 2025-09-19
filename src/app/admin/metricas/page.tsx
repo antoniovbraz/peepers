@@ -1,21 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   ChartBarIcon,
   ArrowTrendingUpIcon,
   EyeIcon,
   StarIcon,
-  ShoppingBagIcon,
   CurrencyDollarIcon,
-  UserGroupIcon,
-  ClockIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { clsx } from 'clsx';
 import KPICard from '@/components/admin/dashboard/KPICard';
-import { API_ENDPOINTS } from '@/config/routes';
 
 // Types
 interface MetricsData {
@@ -147,7 +143,7 @@ interface LineChartProps {
   color?: string;
 }
 
-function SimpleLineChart({ data, labels, title, color = '#0D6832' }: LineChartProps) {
+function SimpleLineChart({ data, labels: _labels, title, color = '#0D6832' }: LineChartProps) {
   const maxValue = Math.max(...data);
   const minValue = Math.min(...data);
   const range = maxValue - minValue;
@@ -194,62 +190,50 @@ export default function MetricasPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
   const [loading, setLoading] = useState(true);
   const [isRealData, setIsRealData] = useState(false);
-  const [dataSource, setDataSource] = useState<string>('');
 
   const monthLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   const dayLabels = Array.from({ length: 14 }, (_, i) => `${i + 1}`);
 
   // Load metrics from API
-  useEffect(() => {
-    loadMetrics();
-  }, [selectedPeriod]);
-
-  const loadMetrics = async () => {
+  const loadMetrics = useCallback(async () => {
     setLoading(true);
     try {
-      // Tentar obter token do localStorage (usuário logado)
-      const userToken = localStorage.getItem('ml_user_token');
-      
-      if (userToken) {
-        // Tentar buscar métricas reais do ML
-        try {
-          const response = await fetch(`${API_ENDPOINTS.ADMIN_METRICS}?period=${selectedPeriod}`, {
-            headers: {
-              'Authorization': `Bearer ${userToken}`,
-              'Content-Type': 'application/json',
-            },
-          });
+      // Buscar métricas reais da API do Mercado Livre
+      const response = await fetch(`/api/admin/metrics?period=${selectedPeriod}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Importante para enviar cookies de autenticação
+      });
 
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.data?.metrics) {
-              setMetrics(data.data.metrics);
-              setIsRealData(true);
-              setDataSource('mercado_livre');
-              console.log('✅ Métricas reais do ML carregadas!');
-              return;
-            }
-          }
-        } catch (error) {
-          console.warn('Erro ao buscar métricas do ML:', error);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data?.metrics) {
+          setMetrics(data.data.metrics);
+          setIsRealData(true);
+          console.log('✅ Métricas reais do ML carregadas!');
+          return;
         }
       }
 
-      // Fallback: usar dados mockados
+      // Fallback: usar dados mockados se a API falhar
+      console.warn('API de métricas não disponível, usando dados mockados');
       setMetrics(mockMetrics);
       setIsRealData(false);
-      setDataSource('mock');
-      console.log('⚠️ Usando métricas de demonstração');
       
     } catch (error) {
       console.error('Erro ao carregar métricas:', error);
       setMetrics(mockMetrics);
       setIsRealData(false);
-      setDataSource('error_fallback');
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedPeriod]);
+
+  useEffect(() => {
+    loadMetrics();
+  }, [loadMetrics]);
 
   return (
     <div className="space-y-6">
@@ -265,7 +249,7 @@ export default function MetricasPage() {
         <div className="flex items-center space-x-3">
           <select
             value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value as any)}
+            onChange={(e) => setSelectedPeriod(e.target.value as '7d' | '30d' | '90d' | '1y')}
             className="border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm"
           >
             <option value="7d">Últimos 7 dias</option>

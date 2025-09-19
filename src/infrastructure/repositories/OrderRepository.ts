@@ -22,6 +22,47 @@ export interface OrderFilters {
   sellerId?: number;
 }
 
+interface SalesOrderItem {
+  id: string;
+  title: string;
+  quantity: number;
+  price: number;
+}
+
+interface SalesOrder {
+  id: string;
+  status: string;
+  date: string;
+  total: number;
+  currency: string;
+  buyer: string;
+  quantity: number;
+  items: SalesOrderItem[];
+  payment_method?: string;
+  payment_status?: string;
+  shipping_status?: string;
+}
+
+interface SalesApiResponse {
+  success: boolean;
+  data: {
+    orders: SalesOrder[];
+    metrics: {
+      total_orders: number;
+      total_revenue: number;
+      total_products_sold: number;
+      avg_order_value: number;
+    };
+    pagination: {
+      total: number;
+      offset: number;
+      limit: number;
+      has_more: boolean;
+    };
+  };
+  source: string;
+}
+
 export class OrderRepository implements IOrderRepository {
   private readonly apiBaseUrl: string;
   private readonly isAdminContext: boolean;
@@ -71,52 +112,44 @@ export class OrderRepository implements IOrderRepository {
       }
       
       // Convert sales to Order entities
-      const orders: Order[] = salesData.data.sales.map((sale: any) => {
+      const orders: Order[] = (salesData as SalesApiResponse).data.orders.map((order: SalesOrder) => {
         return new Order(
-          String(sale.id), // id
-          sale.status === 'completed' ? 'paid' : 
-          sale.status === 'confirmed' ? 'confirmed' :
-          sale.status === 'paid' ? 'paid' :
-          sale.status === 'shipped' ? 'shipped' :
-          sale.status === 'delivered' ? 'delivered' :
-          sale.status === 'cancelled' ? 'cancelled' : 'payment_in_process', // status
-          sale.statusDetail || (sale.status === 'completed' ? 'approved' : 'pending'), // status_detail
-          new Date(sale.dateCreated), // date_created
-          sale.dateClosed ? new Date(sale.dateClosed) : undefined, // date_closed
-          new Date(sale.dateLastUpdated || sale.dateCreated), // last_updated
-          sale.currencyId || 'BRL', // currency_id
-          sale.totalAmount || 0, // total_amount
-          sale.totalAmount || 0, // total_amount_with_shipping (same as total for mock data)
-          sale.totalAmount || 0, // paid_amount
+          String(order.id), // id
+          order.status === 'paid' ? 'paid' :
+          order.status === 'confirmed' ? 'confirmed' :
+          order.status === 'shipped' ? 'shipped' :
+          order.status === 'delivered' ? 'delivered' :
+          order.status === 'cancelled' ? 'cancelled' : 'payment_in_process', // status
+          order.payment_status || (order.status === 'paid' ? 'approved' : 'pending'), // status_detail
+          new Date(order.date), // date_created
+          undefined, // date_closed
+          new Date(order.date), // last_updated
+          order.currency || 'BRL', // currency_id
+          order.total || 0, // total_amount
+          order.total || 0, // total_amount_with_shipping
+          order.total || 0, // paid_amount
           undefined, // expiration_date
-          sale.orderItems?.map((item: {
-            id: string | number;
-            title: string;
-            categoryId?: string;
-            quantity: number;
-            unitPrice: number;
-            currencyId?: string;
-          }) => ({
+          order.items?.map((item: SalesOrderItem) => ({
             item: {
-              id: String(item.id),
+              id: item.id,
               title: item.title,
-              category_id: item.categoryId || 'MLB5672', // Default category
+              category_id: 'MLB5672', // Default category
               variation_id: undefined,
               seller_custom_field: undefined,
               variation_attributes: []
             },
             quantity: item.quantity,
-            unit_price: item.unitPrice,
-            currency_id: item.currencyId || 'BRL',
-            full_unit_price: item.unitPrice,
+            unit_price: item.price,
+            currency_id: order.currency || 'BRL',
+            full_unit_price: item.price,
             seller_sku: undefined
           })) || [],
           {
-            id: sale.buyer.id,
-            nickname: sale.buyer.nickname,
-            email: sale.buyer.email,
-            first_name: sale.buyer.firstName || sale.buyer.nickname?.split('_')[0] || 'Cliente',
-            last_name: sale.buyer.lastName || sale.buyer.nickname?.split('_')[1] || 'ML',
+            id: 0, // We don't have buyer ID in the new structure
+            nickname: order.buyer,
+            email: '', // Not available in new structure
+            first_name: order.buyer.split(' ')[0] || order.buyer,
+            last_name: order.buyer.split(' ').slice(1).join(' ') || '',
             phone: {
               area_code: '11',
               number: '99999-9999'

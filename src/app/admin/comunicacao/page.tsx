@@ -8,13 +8,10 @@ import {
   PhoneIcon,
   ClockIcon,
   CheckCircleIcon,
-  UserIcon,
-  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { clsx } from 'clsx';
 import KPICard from '@/components/admin/dashboard/KPICard';
 import DataTable from '@/components/ui/data-display/DataTable';
-import { API_ENDPOINTS } from '@/config/routes';
 
 // Types
 interface Message {
@@ -219,7 +216,6 @@ export default function ComunicacaoPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [isRealData, setIsRealData] = useState(false);
-  const [dataSource, setDataSource] = useState<string>('');
 
   // Load messages from API
   useEffect(() => {
@@ -229,45 +225,34 @@ export default function ComunicacaoPage() {
   const loadMessages = async () => {
     setLoading(true);
     try {
-      // Tentar obter token do localStorage (usuário logado)
-      const userToken = localStorage.getItem('ml_user_token');
-      
-      if (userToken) {
-        // Tentar buscar mensagens reais do ML
-        try {
-          const response = await fetch(API_ENDPOINTS.ADMIN_MESSAGES, {
-            headers: {
-              'Authorization': `Bearer ${userToken}`,
-              'Content-Type': 'application/json',
-            },
-          });
+      // Buscar mensagens reais da API do Mercado Livre
+      const response = await fetch('/api/admin/messages', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Importante para enviar cookies de autenticação
+      });
 
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.data?.messages) {
-              setMessages(data.data.messages);
-              setIsRealData(true);
-              setDataSource('mercado_livre');
-              console.log('✅ Mensagens reais do ML carregadas!');
-              return;
-            }
-          }
-        } catch (error) {
-          console.warn('Erro ao buscar mensagens do ML:', error);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data?.messages) {
+          setMessages(data.data.messages);
+          setIsRealData(true);
+          console.log('✅ Mensagens reais do ML carregadas!');
+          return;
         }
       }
 
-      // Fallback: usar dados mockados
+      // Fallback: usar dados mockados se a API falhar
+      console.warn('API de mensagens não disponível, usando dados mockados');
       setMessages(mockMessages);
       setIsRealData(false);
-      setDataSource('mock');
-      console.log('⚠️ Usando mensagens de demonstração');
       
     } catch (error) {
       console.error('Erro ao carregar mensagens:', error);
       setMessages(mockMessages);
       setIsRealData(false);
-      setDataSource('error_fallback');
     } finally {
       setLoading(false);
     }
@@ -294,7 +279,7 @@ export default function ComunicacaoPage() {
       key: 'type',
       label: 'Tipo',
       sortable: true,
-      render: (value: Message['type'], row: Message) => {
+      render: (value: Message['type'], _row: Message) => {
         const Icon = getTypeIcon(value);
         return (
           <div className="flex items-center space-x-2">
@@ -363,7 +348,7 @@ export default function ComunicacaoPage() {
     {
       key: 'actions',
       label: 'Ações',
-      render: (value: any, row: Message) => (
+      render: (_value: void, row: Message) => (
         <button
           onClick={() => setSelectedMessage(row)}
           className="text-green-600 hover:text-green-900 text-sm font-medium"

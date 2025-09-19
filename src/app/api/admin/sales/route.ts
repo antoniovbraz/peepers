@@ -1,7 +1,7 @@
+// Rewritten clean admin sales route - uses only real Mercado Livre data
 import { NextRequest, NextResponse } from 'next/server';
 import { getKVClient } from '@/lib/cache';
-import { CACHE_KEYS, API_ENDPOINTS } from '@/config/routes';
-import { getMockOrders, getMockSalesMetrics } from '@/data/mockSales';
+import { CACHE_KEYS } from '@/config/routes';
 import { checkAuthAPILimit } from '@/lib/rate-limiter';
 import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
 
@@ -9,437 +9,143 @@ interface MLOrder {
   id: number;
   status: string;
   date_created: string;
-  date_closed?: string;
   total_amount: number;
   currency_id: string;
-  buyer: {
-    id: number;
-    nickname?: string;
-  };
-  order_items: Array<{
-    item: {
-      id: string;
-      title: string;
-    };
-    quantity: number;
-    unit_price: number;
-  }>;
-  payments: Array<{
-    status: string;
-    payment_method_id: string;
-    date_approved?: string;
-  }>;
-  shipping?: {
-    id: number;
-  };
+  buyer: { id: number; nickname?: string };
+  order_items: Array<{ item: { id: string; title: string }; quantity: number; unit_price: number }>;
+  payments?: Array<{ status: string; payment_method_id: string }>;
+  shipping?: { status?: string };
 }
 
-async function fetchMLOrders(accessToken: string, params: URLSearchParams): Promise<any> {
-  const mlApiUrl = `https://api.mercadolibre.com/orders/search?${params.toString()}`;
-  
-  const response = await fetch(mlApiUrl, {
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Accept': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`ML API Error: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
+interface MLOrderSearchResponse {
+  results: MLOrder[];
+  paging?: { total: number; offset: number; limit: number };
 }
 
-function transformMLOrderToOrder(mlOrder: MLOrder): any {
+interface TransformedOrder {
+  id: string;
+  status: string;
+  date: string;
+  total: number;
+  currency: string;
+  buyer: string;
+  quantity: number;
+  items: Array<{ id: string; title: string; quantity: number; price: number }>;
+  payment_method?: string;
+  payment_status?: string;
+  shipping_status?: string;
+}
+
+interface SalesMetrics {
+  total_orders: number;
+  total_revenue: number;
+  total_products_sold: number;
+  avg_order_value: number;
+}
+
+async function fetchMLOrders(accessToken: string, params: URLSearchParams, sellerId: string): Promise<MLOrderSearchResponse> {
+  const mlApiUrl = `https://api.mercadolibre.com/orders/search?seller=${sellerId}&${params.toString()}`;
+  const res = await fetch(mlApiUrl, { headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`ML Orders API Error: ${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+function transformMLOrderToOrder(mlOrder: MLOrder): TransformedOrder {
   return {
-    id: mlOrder.id.toString(),
+    id: String(mlOrder.id),
+    status: mlOrder.status,
     date: mlOrder.date_created,
-    status: mlOrder.status === 'paid' ? 'completed' : 'pending',
-    buyer_name: mlOrder.buyer.nickname || `Usuário ${mlOrder.buyer.id}`,
-    product_title: mlOrder.order_items[0]?.item.title || 'Produto',
-    quantity: mlOrder.order_items[0]?.quantity || 1,
-    sale_price: mlOrder.order_items[0]?.unit_price || 0,
     total: mlOrder.total_amount,
     currency: mlOrder.currency_id,
-    payment_method: mlOrder.payments[0]?.payment_method_id || 'unknown',
-    shipping: mlOrder.shipping ? { cost: 0 } : null,
-    product_id: mlOrder.order_items[0]?.item.id || '',
+    buyer: mlOrder.buyer.nickname || `Usuário ${mlOrder.buyer.id}`,
+    quantity: mlOrder.order_items.reduce((s, it) => s + (it.quantity || 0), 0),
+    items: mlOrder.order_items.map(it => ({ id: it.item.id, title: it.item.title, quantity: it.quantity, price: it.unit_price })),
+    payment_method: mlOrder.payments?.[0]?.payment_method_id,
+    payment_status: mlOrder.payments?.[0]?.status,
+    shipping_status: mlOrder.shipping?.status,
   };
 }
 
-/**
- * API de vendas integrada com Mercado Livre
- * Tenta usar dados reais do ML, com fallback inteligente para simulação
- */
+function calculateSalesMetrics(orders: TransformedOrder[]): SalesMetrics {
+  const completed = orders.filter(o => ['paid', 'shipped', 'delivered', 'completed'].includes(o.status));
+  const totalOrders = completed.length;
+  const totalRevenue = completed.reduce((s, o) => s + (o.total || 0), 0);
+  const totalProducts = completed.reduce((s, o) => s + (o.quantity || 0), 0);
+  return {
+    total_orders: totalOrders,
+    total_revenue: Math.round(totalRevenue * 100) / 100,
+    total_products_sold: totalProducts,
+    avg_order_value: totalOrders ? Math.round((totalRevenue / totalOrders) * 100) / 100 : 0,
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const limit = searchParams.get('limit') || '50';
+    const url = new URL(request.url);
+    const searchParams = url.searchParams;
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50);
+    const offset = parseInt(searchParams.get('offset') || '0', 10);
     const search = searchParams.get('search') || '';
-    const days = parseInt(searchParams.get('days') || '30');
+    const status = searchParams.get('status') || '';
 
-    // Obter informações do cliente para rate limiting
-    const clientIP = request.headers.get('x-forwarded-for') ||
-                    request.headers.get('x-real-ip') ||
-                    'unknown';
-    const userId = 'admin'; // Endpoints admin usam usuário fixo
-
-    // Rate limiting para endpoints administrativos
-    const rateLimitResult = await checkAuthAPILimit(userId, clientIP, '/api/admin/sales');
-    if (!rateLimitResult.allowed) {
-      // Log evento de segurança
-      await logSecurityEvent({
-        type: SecurityEventType.RATE_LIMIT_EXCEEDED,
-        severity: 'HIGH',
-        userId,
-        clientIP,
-        details: {
-          endpoint: '/api/admin/sales',
-          limit: 500,
-          window_ms: 60 * 1000,
-          total_hits: rateLimitResult.totalHits,
-          retry_after: rateLimitResult.retryAfter
-        },
-        path: '/api/admin/sales'
-      });
-
-      return NextResponse.json(
-        {
-          error: 'Rate limit exceeded',
-          retry_after: rateLimitResult.retryAfter,
-          limit: 500,
-          window_seconds: 60
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': rateLimitResult.retryAfter?.toString() || '60',
-            'X-RateLimit-Limit': '500',
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': rateLimitResult.resetTime.toString()
-          }
-        }
-      );
+    const clientIP = (request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown') as string;
+    const rate = await checkAuthAPILimit('admin', clientIP, '/api/admin/sales');
+    if (!rate.allowed) {
+      await logSecurityEvent({ type: SecurityEventType.RATE_LIMIT_EXCEEDED, severity: 'MEDIUM', clientIP, details: { endpoint: '/api/admin/sales' }, path: '/api/admin/sales' });
+      return NextResponse.json({ error: 'Rate limit exceeded', retry_after: rate.retryAfter }, { status: 429 });
     }
-    
-    // Tentar obter token de acesso do cache
+
     const kv = getKVClient();
+    const sessionToken = request.cookies.get('session_token')?.value;
+    const userId = request.cookies.get('user_id')?.value;
+
+    if (!sessionToken || !userId) {
+      return NextResponse.json({ success: false, error: 'Usuário não autenticado', data: { orders: [], metrics: null } }, { status: 401 });
+    }
+
     let accessToken: string | null = null;
-    
     try {
-      // Verificar token de usuário admin no cache
-      const userTokens = await kv.get(CACHE_KEYS.USER_TOKEN('admin'));
-      if (userTokens && typeof userTokens === 'object' && 'access_token' in userTokens) {
-        accessToken = userTokens.access_token as string;
-      }
-    } catch (error) {
-      console.warn('Erro ao buscar token do cache:', error);
+      const tokens: any = await kv.get(CACHE_KEYS.USER_TOKEN(userId));
+      if (tokens?.access_token) accessToken = tokens.access_token;
+      const userData: any = await kv.get(`user:${userId}`);
+      if (!accessToken && userData?.token) accessToken = userData.token;
+    } catch (err) {
+      console.warn('KV read error', err);
     }
 
-    // TENTATIVA 1: Dados reais do Mercado Livre
-    if (accessToken) {
-      try {
-        console.log('🔄 Buscando vendas reais do Mercado Livre...');
-        
-        // Configurar parâmetros para buscar orders
-        const mlParams = new URLSearchParams({
-          seller: 'me',
-          limit,
-          sort: 'date_desc',
-        });
-
-        if (search) {
-          mlParams.append('q', search);
-        }
-
-        const mlResponse = await fetchMLOrders(accessToken, mlParams);
-        
-        if (mlResponse.results && Array.isArray(mlResponse.results)) {
-          const transformedOrders = mlResponse.results.map(transformMLOrderToOrder);
-          
-          // Calcular métricas das vendas reais
-          const totalRevenue = transformedOrders
-            .filter((order: any) => order.status === 'completed')
-            .reduce((sum: number, order: any) => sum + order.total, 0);
-          
-          const analytics = {
-            totals: {
-              sales: transformedOrders.length,
-              revenue: totalRevenue,
-              avg_order_value: transformedOrders.length > 0 ? totalRevenue / transformedOrders.length : 0,
-              products_sold: transformedOrders.reduce((sum: number, order: any) => sum + order.quantity, 0),
-            },
-            top_products: calculateTopProducts(transformedOrders),
-            sales_by_day: calculateSalesByDay(transformedOrders),
-            conversion_rate: 12.5, // Valor padrão, pode ser calculado com mais dados
-          };
-
-          console.log('✅ Vendas reais do ML carregadas com sucesso!');
-
-          return NextResponse.json({
-            success: true,
-            data: {
-              sales: transformedOrders,
-              analytics,
-              period: {
-                days,
-                start: new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString(),
-                end: new Date().toISOString()
-              }
-            },
-            meta: {
-              source: 'mercado_livre_real',
-              total: mlResponse.paging?.total || transformedOrders.length,
-              timestamp: new Date().toISOString(),
-              message: 'Dados reais do Mercado Livre'
-            }
-          });
-        }
-      } catch (mlError) {
-        console.error('❌ Erro ao buscar dados do ML:', mlError);
-        // Continuar para fallback
-      }
+    if (!accessToken) {
+      return NextResponse.json({ success: false, error: 'Token de acesso não encontrado', data: { orders: [], metrics: null } }, { status: 401 });
     }
 
-    // TENTATIVA 2: Simulação baseada em produtos reais
-    console.log('🔄 Gerando vendas simuladas baseadas em produtos reais...');
-    
-    const productsResponse = await fetch(`${request.nextUrl.origin}${API_ENDPOINTS.PRODUCTS}?format=summary&limit=50`);
-    
-    if (productsResponse.ok) {
-      const productsData = await productsResponse.json();
-      const products = productsData.data?.products || [];
-      
-      if (products.length > 0) {
-        // Simular vendas baseadas nos produtos reais
-        const sales = generateRealisticSales(products, days);
-        const analytics = calculateAnalytics(sales, products, days);
-        
-        console.log('✅ Vendas simuladas baseadas em produtos reais!');
-        
-        return NextResponse.json({
-          success: true,
-          data: {
-            sales,
-            analytics,
-            period: {
-              days,
-              start: new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString(),
-              end: new Date().toISOString()
-            }
-          },
-          meta: {
-            source: 'products-based-simulation',
-            products_count: products.length,
-            sales_count: sales.length,
-            timestamp: new Date().toISOString(),
-            message: accessToken 
-              ? 'Erro no ML - usando simulação baseada em produtos reais'
-              : 'Faça login para ver dados reais - usando simulação baseada em produtos reais'
-          }
-        });
-      }
-    }
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (status) params.append('order.status', status);
+    if (!status) params.append('order.status', 'paid,confirmed,shipped,delivered');
 
-    // TENTATIVA 3: Fallback para dados mockados
-    console.log('⚠️ Usando dados mockados como último fallback');
-    
-    const mockData = getMockOrders(parseInt(limit), 0, { search });
-    const mockMetrics = getMockSalesMetrics();
-    
+    const mlResp = await fetchMLOrders(accessToken, params, userId);
+    const transformed = (mlResp.results || []).map(transformMLOrderToOrder);
+
+    const filtered = search
+      ? transformed.filter(o => o.buyer.toLowerCase().includes(search.toLowerCase()) || o.items.some(it => it.title.toLowerCase().includes(search.toLowerCase())))
+      : transformed;
+
+    const metrics = calculateSalesMetrics(transformed);
+
     return NextResponse.json({
       success: true,
       data: {
-        sales: mockData.orders,
-        analytics: {
-          totals: {
-            sales: mockMetrics.totalOrders,
-            revenue: mockMetrics.totalRevenue,
-            avg_order_value: mockMetrics.averageOrderValue,
-            products_sold: mockData.orders.reduce((sum: number, order: any) => sum + order.quantity, 0),
-          },
-          top_products: [],
-          sales_by_day: [],
-          conversion_rate: 8.5,
+        orders: filtered,
+        metrics,
+        pagination: {
+          total: mlResp.paging?.total ?? transformed.length,
+          offset: mlResp.paging?.offset ?? offset,
+          limit: mlResp.paging?.limit ?? limit,
+          has_more: (mlResp.paging?.offset ?? 0) + (mlResp.paging?.limit ?? limit) < (mlResp.paging?.total ?? transformed.length),
         },
-        period: {
-          days,
-          start: new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString(),
-          end: new Date().toISOString()
-        }
       },
-      meta: {
-        source: 'mock_fallback',
-        timestamp: new Date().toISOString(),
-        message: 'Dados de demonstração - faça login com Mercado Livre para ver dados reais'
-      }
+      source: 'mercado_livre_real',
     });
-
   } catch (error) {
-    console.error('❌ Erro crítico na API de vendas:', error);
-    
-    return NextResponse.json({
-      success: false,
-      error: 'Erro interno do servidor',
-      message: error instanceof Error ? error.message : 'Erro desconhecido'
-    }, { status: 500 });
+    console.error('sales route error', error);
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Erro desconhecido', data: { orders: [], metrics: null } }, { status: 500 });
   }
-}
-
-function calculateTopProducts(orders: any[]) {
-  const productSales = orders.reduce((acc, order) => {
-    const key = order.product_id;
-    if (!acc[key]) {
-      acc[key] = {
-        product_id: order.product_id,
-        title: order.product_title,
-        sales_count: 0,
-        revenue: 0
-      };
-    }
-    acc[key].sales_count += order.quantity;
-    acc[key].revenue += order.total;
-    return acc;
-  }, {});
-  
-  return Object.values(productSales)
-    .sort((a: any, b: any) => b.revenue - a.revenue)
-    .slice(0, 5);
-}
-
-function calculateSalesByDay(orders: any[]) {
-  const salesByDay = [];
-  
-  // Agrupar vendas por dia (últimos 7 dias)
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-    const dayStr = date.toISOString().split('T')[0];
-    const daySales = orders.filter(order => order.date.startsWith(dayStr));
-    
-    salesByDay.push({
-      date: dayStr,
-      sales_count: daySales.length,
-      revenue: daySales.reduce((sum, order) => sum + order.total, 0)
-    });
-  }
-  
-  return salesByDay;
-}
-
-function generateRealisticSales(products: any[], days: number) {
-  const sales = [];
-  const now = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
-  
-  // Gerar vendas para cada dia
-  for (let d = 0; d < days; d++) {
-    const dayStart = now - (d * dayMs);
-    const salesPerDay = Math.floor(Math.random() * 8) + 2; // 2-10 vendas por dia
-    
-    for (let s = 0; s < salesPerDay; s++) {
-      const product = products[Math.floor(Math.random() * products.length)];
-      const saleTime = dayStart - Math.random() * dayMs;
-      
-      // Simular variação de preços (desconto 0-20%)
-      const discount = Math.random() * 0.2;
-      const salePrice = product.price * (1 - discount);
-      
-      sales.push({
-        id: `SALE-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        product_id: product.id,
-        product_title: product.title,
-        product_price: product.price,
-        sale_price: Math.round(salePrice * 100) / 100,
-        quantity: Math.random() > 0.8 ? 2 : 1, // 80% chance de quantidade 1
-        currency: 'BRL',
-        date: new Date(saleTime).toISOString(),
-        status: Math.random() > 0.05 ? 'completed' : 'pending', // 95% completed
-        buyer: {
-          id: Math.floor(Math.random() * 1000000),
-          nickname: `buyer_${Math.random().toString(36).substr(2, 6)}`,
-          location: getRandomLocation()
-        },
-        shipping: {
-          type: product.shipping?.free_shipping ? 'free' : 'paid',
-          cost: product.shipping?.free_shipping ? 0 : Math.round(Math.random() * 20 + 5)
-        }
-      });
-    }
-  }
-  
-  // Ordenar por data (mais recente primeiro)
-  return sales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-}
-
-function calculateAnalytics(sales: any[], products: any[], days: number) {
-  const totalSales = sales.length;
-  const totalRevenue = sales.reduce((sum, sale) => sum + (sale.sale_price * sale.quantity), 0);
-  const avgOrderValue = totalRevenue / totalSales || 0;
-  
-  // Top produtos
-  const productSales = sales.reduce((acc, sale) => {
-    const key = sale.product_id;
-    if (!acc[key]) {
-      acc[key] = {
-        product_id: sale.product_id,
-        title: sale.product_title,
-        sales_count: 0,
-        revenue: 0
-      };
-    }
-    acc[key].sales_count += sale.quantity;
-    acc[key].revenue += sale.sale_price * sale.quantity;
-    return acc;
-  }, {});
-  
-  const topProducts = Object.values(productSales)
-    .sort((a: any, b: any) => b.revenue - a.revenue)
-    .slice(0, 5);
-  
-  // Vendas por dia (últimos 7 dias)
-  const salesByDay = [];
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-    const dayStr = date.toISOString().split('T')[0];
-    const daySales = sales.filter(sale => sale.date.startsWith(dayStr));
-    
-    salesByDay.push({
-      date: dayStr,
-      sales_count: daySales.length,
-      revenue: daySales.reduce((sum, sale) => sum + (sale.sale_price * sale.quantity), 0)
-    });
-  }
-  
-  return {
-    totals: {
-      sales: totalSales,
-      revenue: Math.round(totalRevenue * 100) / 100,
-      avg_order_value: Math.round(avgOrderValue * 100) / 100,
-      products_sold: sales.reduce((sum, sale) => sum + sale.quantity, 0)
-    },
-    growth: {
-      sales_change: Math.round((Math.random() * 40 - 20) * 100) / 100, // -20% a +20%
-      revenue_change: Math.round((Math.random() * 30 - 10) * 100) / 100, // -10% a +20%
-    },
-    top_products: topProducts,
-    sales_by_day: salesByDay,
-    conversion_rate: Math.round((Math.random() * 10 + 5) * 100) / 100 // 5-15%
-  };
-}
-
-function getRandomLocation() {
-  const locations = [
-    'São Paulo, SP', 
-    'Rio de Janeiro, RJ', 
-    'Belo Horizonte, MG',
-    'Salvador, BA',
-    'Brasília, DF',
-    'Fortaleza, CE',
-    'Curitiba, PR',
-    'Recife, PE',
-    'Porto Alegre, RS',
-    'Manaus, AM'
-  ];
-  return locations[Math.floor(Math.random() * locations.length)];
 }
