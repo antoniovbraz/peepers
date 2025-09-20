@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { 
-  ProductFilters, 
+  type ProductFilters, 
   ProductCategory, 
   PRICE_RANGES, 
   CABLE_LENGTHS, 
