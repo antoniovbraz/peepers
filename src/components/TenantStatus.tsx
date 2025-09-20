@@ -69,7 +69,7 @@ export function TenantStatus() {
   const getPlanColor = (plan: string) => {
     switch (plan) {
       case 'starter': return 'bg-gray-500';
-      case 'professional': return 'bg-blue-500';
+      case 'business': return 'bg-blue-500';
       case 'enterprise': return 'bg-purple-500';
       default: return 'bg-gray-500';
     }
@@ -94,7 +94,7 @@ export function TenantStatus() {
             </span>
             <span className={`px-3 py-1 rounded-full text-white text-sm ${getPlanColor(tenant.subscription.plan)}`}>
               {tenant.subscription.plan === 'starter' ? 'Starter' :
-               tenant.subscription.plan === 'professional' ? 'Professional' :
+               tenant.subscription.plan === 'business' ? 'Professional' :
                tenant.subscription.plan === 'enterprise' ? 'Enterprise' : tenant.subscription.plan}
             </span>
             {isOwner && (
