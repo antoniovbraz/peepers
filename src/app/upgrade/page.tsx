@@ -154,7 +154,7 @@ function UpgradeContent() {
   const getPlanOrder = (planType: PeepersPlanType): number => {
     const order: Record<PeepersPlanType, number> = { 
       starter: 1, 
-      professional: 2, 
+      business: 2, 
       enterprise: 3 
     };
     return order[planType];
