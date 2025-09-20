@@ -9,7 +9,7 @@
  */
 
 import { PeepersPlanType, PeepersFeature, TenantEntitlement, EntitlementCheck } from '@/types/stripe';
-import { PEEPERS_PLANS, EntitlementUtils } from '@/config/entitlements';
+// import { PEEPERS_PLANS } from '@/config/entitlements';
 
 export interface EntitlementValidationResult {
   isValid: boolean;
@@ -155,7 +155,7 @@ export class EntitlementsService {
     ];
 
     if (professionalFeatures.includes(feature)) {
-      return 'professional';
+      return 'business';
     }
 
     // Features do plano Enterprise
@@ -283,12 +283,12 @@ export class EntitlementsService {
       if (this.isNearLimit(entitlement, 'api_calls') ||
           this.isNearLimit(entitlement, 'products') ||
           this.isNearLimit(entitlement, 'users')) {
-        recommendations.push('professional');
+        recommendations.push('business');
       }
     }
 
     // Se está no professional e usa muito
-    if (entitlement.plan_type === 'professional') {
+    if (entitlement.plan_type === 'business') {
       if (this.isNearLimit(entitlement, 'api_calls') ||
           this.isNearLimit(entitlement, 'users')) {
         recommendations.push('enterprise');
