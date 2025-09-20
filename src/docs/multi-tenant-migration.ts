@@ -27,7 +27,7 @@ export interface Organization {
   // Billing (Stripe)
   stripe_customer_id?: string;   // Stripe Customer ID
   subscription_status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'none';
-  plan_type: 'starter' | 'professional' | 'enterprise';
+  plan_type: 'starter' | 'business' | 'enterprise';
   
   // Settings
   settings: {

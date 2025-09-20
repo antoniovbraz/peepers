@@ -80,7 +80,7 @@ export class OrganizationService {
         },
         limits: {
           max_users: plan.limits.users_limit,
-          max_ml_connections: planType === 'starter' ? 1 : planType === 'professional' ? 3 : -1,
+          max_ml_connections: planType === 'starter' ? 1 : planType === 'business' ? 3 : -1,
           max_products: plan.limits.products_limit,
           api_calls_per_month: plan.limits.api_calls_per_month,
           storage_gb: plan.limits.storage_gb
