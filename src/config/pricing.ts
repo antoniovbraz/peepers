@@ -49,6 +49,12 @@ export const PEEPERS_PLANS = {
       storefront_products: 50
     },
     
+    stripe_price_ids: {
+      monthly: process.env.STRIPE_PRICE_STARTER_MONTHLY || 'price_starter_monthly_dev',
+      quarterly: process.env.STRIPE_PRICE_STARTER_QUARTERLY || 'price_starter_quarterly_dev',
+      yearly: process.env.STRIPE_PRICE_STARTER_YEARLY || 'price_starter_yearly_dev'
+    },
+    
     highlights: [
       '✅ Site próprio básico (50 produtos)',
       '✅ Dashboard ML com métricas básicas',
@@ -104,7 +110,13 @@ export const PEEPERS_PLANS = {
       '✅ Alertas inteligentes',
       '✅ API básica',
       '✅ Relatórios avançados'
-    ]
+    ],
+
+    stripe_price_ids: {
+      monthly: process.env.STRIPE_PRICE_BUSINESS_MONTHLY || 'price_business_monthly_dev',
+      quarterly: process.env.STRIPE_PRICE_BUSINESS_QUARTERLY || 'price_business_quarterly_dev',
+      yearly: process.env.STRIPE_PRICE_BUSINESS_YEARLY || 'price_business_yearly_dev'
+    }
   },
 
   enterprise: {
@@ -158,7 +170,13 @@ export const PEEPERS_PLANS = {
       '✅ Dashboard executivo',
       '✅ White label completo',
       '✅ Account manager dedicado'
-    ]
+    ],
+
+    stripe_price_ids: {
+      monthly: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || 'price_enterprise_monthly_dev',
+      quarterly: process.env.STRIPE_PRICE_ENTERPRISE_QUARTERLY || 'price_enterprise_quarterly_dev',
+      yearly: process.env.STRIPE_PRICE_ENTERPRISE_YEARLY || 'price_enterprise_yearly_dev'
+    }
   }
 } as const;
 
