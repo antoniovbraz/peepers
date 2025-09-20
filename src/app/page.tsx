@@ -1,13 +1,13 @@
 import { PAGES } from '@/config/routes';
 import { Suspense, lazy } from 'react';
-import HeaderNew from '@/components/HeaderNew';
-import FeaturedProductsNew from '@/components/FeaturedProductsNew';
+import Header from '@/components/Header';
+import FeaturedProducts from '@/components/FeaturedProducts';
 import PreloadResources from '@/components/PreloadResources';
 import ProductsLoading from '@/components/ProductsLoading';
 import ProductsError from '@/components/ProductsError';
 
 // Lazy load components for better performance
-const HeroSection = lazy(() => import('@/components/HeroSectionNew'));
+const HeroSection = lazy(() => import('@/components/HeroSection'));
 
 export default function HomePage() {
   return (
@@ -24,7 +24,7 @@ export default function HomePage() {
       />
 
       {/* Header */}
-      <HeaderNew />
+      <Header />
 
       {/* Hero Section */}
       <Suspense fallback={<div className="h-96 bg-gray-100 animate-pulse" />}>
@@ -170,7 +170,7 @@ export default function HomePage() {
           </div>
           
           <Suspense fallback={<ProductsLoading />}>
-            <FeaturedProductsNew />
+            <FeaturedProducts />
           </Suspense>
           
           <div className="text-center mt-16">

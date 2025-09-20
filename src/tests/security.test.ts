@@ -12,11 +12,31 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock all external dependencies at the top level
+// Create a mock cache that maintains state between calls
+const mockCacheStore = new Map<string, string>();
+
 vi.mock('@/lib/cache', () => ({
   getKVClient: vi.fn(() => ({
-    get: vi.fn().mockResolvedValue(null),
-    set: vi.fn().mockResolvedValue('OK'),
-    del: vi.fn().mockResolvedValue(1),
+    get: vi.fn((key: string) => {
+      const value = mockCacheStore.get(key);
+      return Promise.resolve(value || null);
+    }),
+    set: vi.fn((key: string, value: string, opts?: { ex?: number }) => {
+      mockCacheStore.set(key, value);
+      // Simulate TTL by storing with expiration info if provided
+      if (opts?.ex) {
+        const expiryKey = `${key}:expiry`;
+        const expiryTime = Date.now() + (opts.ex * 1000);
+        mockCacheStore.set(expiryKey, expiryTime.toString());
+      }
+      return Promise.resolve('OK');
+    }),
+    del: vi.fn((key: string) => {
+      mockCacheStore.delete(key);
+      // Also delete expiry key if it exists
+      mockCacheStore.delete(`${key}:expiry`);
+      return Promise.resolve(1);
+    }),
     incr: vi.fn().mockResolvedValue(1),
     expire: vi.fn().mockResolvedValue(1),
     pipeline: vi.fn(() => ({
@@ -24,7 +44,19 @@ vi.mock('@/lib/cache', () => ({
       set: vi.fn().mockReturnThis(),
       exec: vi.fn().mockResolvedValue([null, null])
     }))
-  }))
+  })),
+  cache: {
+    getUser: vi.fn((userId: string) => {
+      const userKey = `user:${userId}`;
+      const userData = mockCacheStore.get(userKey);
+      return Promise.resolve(userData ? JSON.parse(userData) : null);
+    }),
+    setUser: vi.fn((userId: string, userData: unknown) => {
+      const userKey = `user:${userId}`;
+      mockCacheStore.set(userKey, JSON.stringify(userData));
+      return Promise.resolve('OK');
+    })
+  }
 }));
 
 vi.mock('@/lib/logger', () => ({
@@ -36,17 +68,42 @@ vi.mock('@/lib/logger', () => ({
   }
 }));
 
+// Mock fetch for ML API calls
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
+
 const mockLogSecurityEvent = vi.fn();
-const mockGetSecurityStats = vi.fn();
+const mockGetSecurityStats = vi.fn().mockResolvedValue({
+  total: 5,
+  byType: {
+    'security.rate_limit.exceeded': 2,
+    'auth.login.failure': 1,
+    'auth.csrf.detected': 1,
+    'security.suspicious_ip': 1
+  },
+  bySeverity: {
+    LOW: 2,
+    MEDIUM: 2,
+    HIGH: 1,
+    CRITICAL: 0
+  },
+  timeWindow: 3600
+});
 
 vi.mock('@/lib/security-events', () => ({
   logSecurityEvent: mockLogSecurityEvent,
   getSecurityStats: mockGetSecurityStats,
   SecurityEventType: {
-    RATE_LIMIT_EXCEEDED: 'rate_limit_exceeded',
-    AUTH_FAILED: 'auth_failed',
-    SUSPICIOUS_IP: 'suspicious_ip',
-    CSRF_DETECTED: 'csrf_detected'
+    RATE_LIMIT_EXCEEDED: 'security.rate_limit.exceeded',
+    AUTH_FAILED: 'auth.login.failure',
+    SUSPICIOUS_IP: 'security.suspicious_ip',
+    CSRF_DETECTED: 'auth.csrf.detected',
+    LOGIN_SUCCESS: 'auth.login.success',
+    LOGIN_FAILURE: 'auth.login.failure',
+    TOKEN_THEFT_DETECTED: 'auth.token_theft.detected',
+    UNAUTHORIZED_ACCESS: 'authz.unauthorized.access',
+    SESSION_CREATED: 'session.created',
+    SESSION_EXPIRED: 'session.expired'
   }
 }));
 
@@ -54,6 +111,8 @@ vi.mock('@/lib/security-events', () => ({
 describe('Rate Limiting Security', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Clear mock cache between tests
+    mockCacheStore.clear();
   });
 
   describe('IP Rate Limiting', () => {
@@ -96,14 +155,31 @@ describe('Rate Limiting Security', () => {
       
       const ip = '192.168.1.300';
       
-      // Primeiras tentativas de login devem passar
-      for (let i = 0; i < 5; i++) {
+      // Primeiras 10 tentativas de login devem passar (limite de IP: 10 por 15min)
+      for (let i = 0; i < 10; i++) {
         const result = await checkLoginLimit(ip);
         expect(result.allowed).toBe(true);
       }
       
-      // Tentativas excessivas devem ser bloqueadas
+      // Próxima tentativa deve ser bloqueada (excede limite de IP)
       const blockedResult = await checkLoginLimit(ip);
+      expect(blockedResult.allowed).toBe(false);
+    });
+
+    it('should protect against user-specific brute force attacks', async () => {
+      const { checkLoginLimit } = await import('@/lib/rate-limiter');
+      
+      const ip = '192.168.1.301';
+      const userId = 'test-user';
+      
+      // Primeiras 5 tentativas de login devem passar (limite de usuário: 5 por 10min)
+      for (let i = 0; i < 5; i++) {
+        const result = await checkLoginLimit(ip, userId);
+        expect(result.allowed).toBe(true);
+      }
+      
+      // Próxima tentativa deve ser bloqueada (excede limite de usuário)
+      const blockedResult = await checkLoginLimit(ip, userId);
       expect(blockedResult.allowed).toBe(false);
     });
   });
@@ -206,6 +282,21 @@ describe('Security Events System', () => {
 describe('Token Rotation Security', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Clear mock cache between tests
+    mockCacheStore.clear();
+    
+    // Mock successful ML API response
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        access_token: 'new-access-token-123',
+        token_type: 'Bearer',
+        expires_in: 21600,
+        scope: 'read write',
+        user_id: 123,
+        refresh_token: 'new-refresh-token-456'
+      })
+    } as unknown as Response);
   });
 
   describe('Token Family Management', () => {
@@ -262,7 +353,7 @@ describe('Token Rotation Security', () => {
         refreshTokenTTL: 604800
       });
       
-      const rotated = await tokenService.rotateTokens(family.refreshToken, userId);
+      await tokenService.rotateTokens(family.refreshToken, userId);
       
       // Tentar usar token antigo (simulando roubo)
       await expect(
@@ -319,16 +410,13 @@ describe('CORS Protection', () => {
       
       const corsHandler = new CORSHandler();
       
-      // Mock security event logging (use doMock so factory is not hoisted)
-      const logSpy = vi.fn();
-      vi.doMock('@/lib/security-events', () => ({
-        logSecurityEvent: logSpy
-      }));
+      // Clear previous calls
+      mockLogSecurityEvent.mockClear();
       
       corsHandler.handlePreflightViolation('https://evil.com', '/api/test');
       
       // Should have logged a security event
-      expect(logSpy).toHaveBeenCalled();
+      expect(mockLogSecurityEvent).toHaveBeenCalled();
     });
   });
 });

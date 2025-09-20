@@ -118,7 +118,7 @@ export function getImageUrl(url: string, size: 'thumbnail' | 'small' | 'medium' 
   return secureUrl;
 }
 
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -130,7 +130,7 @@ export function debounce<T extends (...args: any[]) => any>(
   };
 }
 
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
@@ -167,28 +167,33 @@ export class AppError extends Error {
   }
 }
 
-export function handleApiError(error: any): AppError {
+export function handleApiError(error: unknown): AppError {
   if (error instanceof AppError) {
     return error;
   }
-  
-  if (error.name === 'TypeError' && error.message.includes('fetch')) {
+
+  if (error instanceof Error && error.name === 'TypeError' && error.message.includes('fetch')) {
     return new AppError('Erro de conexão. Verifique sua internet.', 503, 'NETWORK_ERROR');
   }
-  
-  if (error.status === 404) {
-    return new AppError('Recurso não encontrado.', 404, 'NOT_FOUND');
+
+  if (error && typeof error === 'object' && 'status' in error) {
+    const status = (error as { status?: number }).status;
+    if (status === 404) {
+      return new AppError('Recurso não encontrado.', 404, 'NOT_FOUND');
+    }
+
+    if (status === 429) {
+      return new AppError('Muitas requisições. Tente novamente em alguns minutos.', 429, 'RATE_LIMIT');
+    }
   }
-  
-  if (error.status === 429) {
-    return new AppError('Muitas requisições. Tente novamente em alguns minutos.', 429, 'RATE_LIMIT');
-  }
-  
-  return new AppError(
-    error.message || 'Erro interno do servidor.',
-    error.status || 500,
-    'INTERNAL_ERROR'
-  );
+
+  // Handle generic error cases
+  const message = (error instanceof Error ? error.message : 'Erro interno do servidor.');
+  const status = (error && typeof error === 'object' && 'status' in error && typeof (error as { status?: unknown }).status === 'number')
+    ? (error as { status: number }).status
+    : 500;
+
+  return new AppError(message, status, 'INTERNAL_ERROR');
 }
 
 // Rate limiting utility

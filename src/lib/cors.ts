@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
-import { SecurityEventType } from '@/lib/security-events';
+import { SecurityEventType, logSecurityEvent } from '@/lib/security-events';
 
 /**
  * Configuração CORS Segura para APIs
@@ -176,15 +176,14 @@ export class CORSHandler {
   public handlePreflightViolation(origin: string, path: string) {
     logger.warn({ origin, path }, 'Preflight CORS violation detected');
     // Fire security event for tests or integrations
-    // Use SecurityEventType enum for typed event
-    import('@/lib/security-events').then(m => m.logSecurityEvent({
+    logSecurityEvent({
       type: SecurityEventType.CORS_VIOLATION,
       severity: 'MEDIUM',
       clientIP: 'unknown',
       origin,
       path,
       details: { reason: 'preflight_violation' }
-    })).catch(() => {});
+    });
   }
 }
 

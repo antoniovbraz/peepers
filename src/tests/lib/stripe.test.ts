@@ -6,7 +6,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { stripeClient } from '@/lib/stripe';
-import { cache } from '@/lib/cache';
 
 // Mock do Stripe SDK
 vi.mock('stripe', () => ({
@@ -26,14 +25,40 @@ vi.mock('stripe', () => ({
   }))
 }));
 
-vi.mock('@/lib/cache');
+// Mock do cache
+vi.mock('@/lib/cache', () => ({
+  getKVClient: vi.fn(() => ({
+    get: vi.fn(),
+    set: vi.fn(),
+    del: vi.fn()
+  }))
+}));
 
 describe('StripeClient', () => {
-  let mockStripe: any;
-  let mockCache: any;
+  let mockStripe: {
+    customers: {
+      list: ReturnType<typeof vi.fn>;
+      create: ReturnType<typeof vi.fn>;
+    };
+    subscriptions: {
+      list: ReturnType<typeof vi.fn>;
+      create: ReturnType<typeof vi.fn>;
+      update: ReturnType<typeof vi.fn>;
+    };
+    webhooks: {
+      constructEvent: ReturnType<typeof vi.fn>;
+    };
+  };
+  let mockCache: {
+    get: ReturnType<typeof vi.fn>;
+    set: ReturnType<typeof vi.fn>;
+    del: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
-    // Reset mocks
+    vi.clearAllMocks();
+
+    // Setup Stripe mock
     mockStripe = {
       customers: {
         list: vi.fn(),
@@ -49,18 +74,12 @@ describe('StripeClient', () => {
       }
     };
 
+    // Setup cache mock
     mockCache = {
       get: vi.fn(),
       set: vi.fn(),
       del: vi.fn()
     };
-
-    // Mock do cache
-    (cache as any) = mockCache;
-
-    // Mock do Stripe constructor
-    const StripeMock = vi.fn().mockReturnValue(mockStripe);
-    // vi.mocked(import('stripe')).mockResolvedValue({ default: StripeMock });
   });
 
   describe('getOrCreateCustomer', () => {
@@ -246,6 +265,142 @@ describe('StripeClient', () => {
 
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain('canceled');
+    });
+  });
+
+  describe('processWebhook', () => {
+    beforeEach(() => {
+      // Mock constructEvent
+      mockStripe.webhooks.constructEvent.mockReturnValue({
+        id: 'evt_test',
+        type: 'customer.subscription.created',
+        data: {
+          object: {
+            id: 'sub_test',
+            customer: 'cus_test',
+            status: 'active',
+            metadata: { tenant_id: 'tenant_123' }
+          }
+        }
+      });
+    });
+
+    it('should handle subscription created event', async () => {
+      mockStripe.webhooks.constructEvent.mockReturnValue({
+        id: 'evt_test',
+        type: 'customer.subscription.created',
+        data: {
+          object: {
+            id: 'sub_test',
+            customer: 'cus_test',
+            status: 'active',
+            metadata: { tenant_id: 'tenant_123' }
+          }
+        }
+      });
+
+      await stripeClient.processWebhook('raw_body', 'signature');
+
+      expect(mockCache.del).toHaveBeenCalledWith('stripe:entitlement:cus_test');
+    });
+
+    it('should handle payment succeeded event', async () => {
+      mockStripe.webhooks.constructEvent.mockReturnValue({
+        id: 'evt_test',
+        type: 'invoice.payment_succeeded',
+        data: {
+          object: {
+            id: 'inv_test',
+            customer: 'cus_test',
+            subscription: 'sub_test',
+            amount_paid: 14900
+          }
+        }
+      });
+
+      await stripeClient.processWebhook('raw_body', 'signature');
+
+      expect(mockCache.del).toHaveBeenCalledWith('stripe:entitlement:cus_test');
+    });
+
+    it('should handle payment failed event', async () => {
+      mockStripe.webhooks.constructEvent.mockReturnValue({
+        id: 'evt_test',
+        type: 'invoice.payment_failed',
+        data: {
+          object: {
+            id: 'inv_test',
+            customer: 'cus_test',
+            attempt_count: 1,
+            next_payment_attempt: 1234567890
+          }
+        }
+      });
+
+      await stripeClient.processWebhook('raw_body', 'signature');
+
+      // Payment failure should not invalidate cache immediately
+      expect(mockCache.del).not.toHaveBeenCalled();
+    });
+
+    it('should handle invoice created event', async () => {
+      mockStripe.webhooks.constructEvent.mockReturnValue({
+        id: 'evt_test',
+        type: 'invoice.created',
+        data: {
+          object: {
+            id: 'inv_test',
+            customer: 'cus_test',
+            amount_due: 14900,
+            due_date: 1234567890
+          }
+        }
+      });
+
+      await stripeClient.processWebhook('raw_body', 'signature');
+
+      // Invoice created should not invalidate cache
+      expect(mockCache.del).not.toHaveBeenCalled();
+    });
+
+    it('should handle trial ending event', async () => {
+      mockStripe.webhooks.constructEvent.mockReturnValue({
+        id: 'evt_test',
+        type: 'customer.subscription.trial_will_end',
+        data: {
+          object: {
+            id: 'sub_test',
+            customer: 'cus_test',
+            trial_end: 1234567890
+          }
+        }
+      });
+
+      await stripeClient.processWebhook('raw_body', 'signature');
+
+      // Trial ending should not invalidate cache
+      expect(mockCache.del).not.toHaveBeenCalled();
+    });
+
+    it('should handle unknown webhook events gracefully', async () => {
+      mockStripe.webhooks.constructEvent.mockReturnValue({
+        id: 'evt_test',
+        type: 'unknown.event',
+        data: { object: {} }
+      });
+
+      await stripeClient.processWebhook('raw_body', 'signature');
+
+      expect(mockCache.del).not.toHaveBeenCalled();
+    });
+
+    it('should throw error for invalid webhook signature', async () => {
+      mockStripe.webhooks.constructEvent.mockImplementation(() => {
+        throw new Error('Invalid signature');
+      });
+
+      await expect(stripeClient.processWebhook('raw_body', 'invalid_signature'))
+        .rejects.toThrow('Invalid signature');
     });
   });
 });

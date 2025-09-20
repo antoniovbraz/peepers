@@ -1,6 +1,6 @@
 'use client';
 
-import { PAGES } from '@/config/routes';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { 
   MagnifyingGlassIcon, 
@@ -8,16 +8,24 @@ import {
   Bars3Icon, 
   XMarkIcon 
 } from '@heroicons/react/24/outline';
-import { useState } from 'react';
+
+import { PAGES } from '@/config/routes';
+import { Button } from '@/components/ui/primitives/Button';
+import { Input } from '@/components/ui/primitives/Input';
+import { Container } from '@/components/ui/layout/Container';
+import { HStack, VStack } from '@/components/ui/layout/Stack';
+import { Flex, FlexItem } from '@/components/ui/layout/Flex';
+
+// ==================== COMPONENT ====================
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  // Safe function to handle mobile menu clicks
   const handleMobileMenuClick = (callback?: () => void) => {
     try {
       setIsMobileMenuOpen(false);
@@ -29,133 +37,161 @@ export default function Header() {
     }
   };
 
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      // Implementar busca
+      console.log('Buscar por:', searchQuery);
+    }
+  };
+
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center">
-            <div className="flex items-center space-x-2">
-              {/* Placeholder para o logo - substituir pela imagem real */}
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-sm">P</span>
-              </div>
-              <span className="text-xl font-bold text-gray-900">Peepers</span>
-            </div>
-          </Link>
-          
-          {/* Barra de Pesquisa - Desktop */}
-          <div className="hidden md:flex flex-1 max-w-md mx-6">
-            <div className="relative w-full">
-              <input 
-                type="text" 
-                placeholder="Buscar produtos..." 
-                className="w-full pl-10 pr-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-              />
-              <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-            </div>
-          </div>
-          
-          {/* Navegação Principal - Desktop */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link 
-              href={PAGES.PRODUTOS} 
-              className="text-gray-700 hover:text-primary transition-colors font-medium"
-            >
-              Produtos
-            </Link>
-            <Link 
-              href="/categorias" 
-              className="text-gray-700 hover:text-primary transition-colors font-medium"
-            >
-              Categorias
-            </Link>
-            <a 
-              href="https://www.mercadolivre.com.br/pagina/peepersshop" 
-              target="_blank"
-              rel="noopener noreferrer" 
-              className="text-primary font-semibold hover:text-primary-dark transition-colors"
-            >
-              Nossa Loja ML
-            </a>
-          </nav>
-          
-          {/* Ações da Direita */}
-          <div className="flex items-center space-x-4">
-            {/* Busca Mobile */}
-            <button className="md:hidden p-2 rounded-full hover:bg-gray-100 transition-colors">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-700" />
-            </button>
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <Container size="full" padding="none">
+        <div className="px-4 sm:px-6">
+          <Flex align="center" justify="between" className="h-16">
+            {/* Logo */}
+            <FlexItem shrink={0}>
+              <Link href="/" className="flex items-center group">
+                <HStack spacing="sm" align="center">
+                  {/* Logo Icon */}
+                  <div className="w-8 h-8 bg-gradient-to-br from-brand-primary-500 to-brand-primary-600 rounded-full flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+                    <span className="text-white font-bold text-sm">P</span>
+                  </div>
+                  {/* Brand Name */}
+                  <span className="text-xl font-bold text-gray-900 group-hover:text-brand-primary-600 transition-colors">
+                    Peepers
+                  </span>
+                </HStack>
+              </Link>
+            </FlexItem>
             
-            {/* Login */}
-            <Link href={PAGES.LOGIN} className="hidden sm:block p-2 rounded-full hover:bg-gray-100 transition-colors">
-              <UserIcon className="h-5 w-5 text-gray-700" />
-            </Link>
-            
-            {/* Menu Mobile */}
-            <button 
-              className="md:hidden p-2 rounded-full hover:bg-gray-100 transition-colors"
-              onClick={toggleMobileMenu}
-              aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
-            >
-              {isMobileMenuOpen ? (
-                <XMarkIcon className="h-5 w-5 text-gray-700" />
-              ) : (
-                <Bars3Icon className="h-5 w-5 text-gray-700" />
-              )}
-            </button>
-          </div>
-        </div>
-        
-        {/* Menu Mobile */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200">
-            <div className="flex flex-col space-y-4">
-              {/* Barra de Pesquisa Mobile */}
-              <div className="relative">
-                <input 
-                  type="text" 
-                  placeholder="Buscar produtos..." 
-                  className="w-full pl-10 pr-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            {/* Search Bar - Desktop */}
+            <FlexItem grow={1} className="hidden md:block mx-6 max-w-md">
+              <form onSubmit={handleSearchSubmit}>
+                <Input
+                  placeholder="Buscar produtos..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
+                  fullWidth
                 />
-                <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-              </div>
+              </form>
+            </FlexItem>
+            
+            {/* Desktop Navigation */}
+            <FlexItem shrink={0} className="hidden md:block">
+              <HStack spacing="md" align="center">
+                <nav>
+                  <HStack spacing="lg" align="center">
+                    <Link 
+                      href={PAGES.HOME}
+                      className="text-gray-700 hover:text-brand-primary-600 font-medium transition-colors"
+                    >
+                      Início
+                    </Link>
+                    <Link 
+                      href={PAGES.PRODUTOS}
+                      className="text-gray-700 hover:text-brand-primary-600 font-medium transition-colors"
+                    >
+                      Produtos
+                    </Link>
+                    <Link 
+                      href="/admin"
+                      className="text-gray-700 hover:text-brand-primary-600 font-medium transition-colors"
+                    >
+                      Admin
+                    </Link>
+                  </HStack>
+                </nav>
+                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-gray-700 hover:text-brand-primary-600"
+                >
+                  <UserIcon className="h-5 w-5" />
+                </Button>
+              </HStack>
+            </FlexItem>
+            
+            {/* Mobile Menu Button */}
+            <FlexItem shrink={0} className="md:hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleMobileMenu}
+                className="text-gray-700"
+              >
+                {isMobileMenuOpen ? (
+                  <XMarkIcon className="h-6 w-6" />
+                ) : (
+                  <Bars3Icon className="h-6 w-6" />
+                )}
+              </Button>
+            </FlexItem>
+          </Flex>
+        </div>
+      </Container>
+      
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden border-t border-gray-200 bg-white">
+          <Container padding="md">
+            <VStack spacing="lg">
+              {/* Mobile Search */}
+              <form onSubmit={handleSearchSubmit} className="w-full">
+                <Input
+                  placeholder="Buscar produtos..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
+                  fullWidth
+                />
+              </form>
               
-              {/* Links de Navegação */}
-              <Link 
-                href={PAGES.PRODUTOS} 
-                className="text-gray-700 hover:text-primary transition-colors font-medium py-2"
-                onClick={() => handleMobileMenuClick()}
-              >
-                Produtos
-              </Link>
-              <Link 
-                href="/categorias" 
-                className="text-gray-700 hover:text-primary transition-colors font-medium py-2"
-                onClick={() => handleMobileMenuClick()}
-              >
-                Categorias
-              </Link>
-              <a 
-                href="https://www.mercadolivre.com.br/pagina/peepersshop" 
-                target="_blank"
-                rel="noopener noreferrer" 
-                className="text-primary font-semibold hover:text-primary-dark transition-colors py-2"
-                onClick={() => handleMobileMenuClick()}
-              >
-                Nossa Loja ML
-              </a>
-              <Link 
-                href={PAGES.LOGIN} 
-                className="text-gray-700 hover:text-primary transition-colors font-medium py-2 sm:hidden"
-                onClick={() => handleMobileMenuClick()}
-              >
-                Login
-              </Link>
-            </div>
-          </div>
-        )}
-      </div>
+              {/* Mobile Navigation */}
+              <nav className="w-full">
+                <VStack spacing="md">
+                  <Link 
+                    href={PAGES.HOME}
+                    className="block w-full py-2 text-gray-900 hover:text-brand-primary-600 font-medium transition-colors"
+                    onClick={() => handleMobileMenuClick()}
+                  >
+                    Início
+                  </Link>
+                  <Link 
+                    href={PAGES.PRODUTOS}
+                    className="block w-full py-2 text-gray-900 hover:text-brand-primary-600 font-medium transition-colors"
+                    onClick={() => handleMobileMenuClick()}
+                  >
+                    Produtos
+                  </Link>
+                  <Link 
+                    href="/admin"
+                    className="block w-full py-2 text-gray-900 hover:text-brand-primary-600 font-medium transition-colors"
+                    onClick={() => handleMobileMenuClick()}
+                  >
+                    Admin
+                  </Link>
+                  
+                  {/* Mobile User Profile */}
+                  <div className="pt-4 border-t border-gray-200">
+                    <Button
+                      variant="outline"
+                      fullWidth
+                      onClick={() => handleMobileMenuClick()}
+                    >
+                      <UserIcon className="h-4 w-4 mr-2" />
+                      Minha Conta
+                    </Button>
+                  </div>
+                </VStack>
+              </nav>
+            </VStack>
+          </Container>
+        </div>
+      )}
     </header>
   );
 }

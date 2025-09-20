@@ -1,33 +1,36 @@
 'use client';
 
 import { ProductBadge } from '@/utils/productCategories';
+import { Badge } from '@/components/ui/primitives/Badge';
+
+// ==================== TYPES ====================
 
 interface ProductBadgesProps {
   badges: ProductBadge[];
   className?: string;
 }
 
+// ==================== COMPONENT ====================
+
 export default function ProductBadges({ badges, className = '' }: ProductBadgesProps) {
   if (badges.length === 0) return null;
 
-  const getBadgeStyles = (badge: ProductBadge) => {
-    const baseStyles = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium';
-    
+  const getBadgeVariant = (badge: ProductBadge): 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'default' => {
     switch (badge.color) {
       case 'blue':
-        return `${baseStyles} bg-blue-100 text-blue-800`;
+        return 'primary';
       case 'green':
-        return `${baseStyles} bg-green-100 text-green-800`;
+        return 'success';
       case 'purple':
-        return `${baseStyles} bg-purple-100 text-purple-800`;
+        return 'secondary';
       case 'orange':
-        return `${baseStyles} bg-orange-100 text-orange-800`;
+        return 'warning';
       case 'red':
-        return `${baseStyles} bg-red-100 text-red-800`;
+        return 'error';
       case 'yellow':
-        return `${baseStyles} bg-yellow-100 text-yellow-800`;
+        return 'warning';
       default:
-        return `${baseStyles} bg-gray-100 text-gray-800`;
+        return 'default';
     }
   };
 
@@ -54,18 +57,21 @@ export default function ProductBadges({ badges, className = '' }: ProductBadgesP
 
   return (
     <div className={`flex flex-wrap gap-1 ${className}`}>
-      {badges.map((badge, index) => (
-        <span
-          key={`${badge.type}-${index}`}
-          className={getBadgeStyles(badge)}
-          title={`${badge.label}`}
-        >
-          {getBadgeIcon(badge.type) && (
-            <span className="mr-1">{getBadgeIcon(badge.type)}</span>
-          )}
-          {badge.label}
-        </span>
-      ))}
+      {badges.map((badge, index) => {
+        const icon = getBadgeIcon(badge.type);
+        
+        return (
+          <Badge
+            key={`${badge.type}-${index}`}
+            variant={getBadgeVariant(badge)}
+            size="sm"
+            className="shadow-sm"
+          >
+            {icon && <span className="mr-1">{icon}</span>}
+            {badge.label}
+          </Badge>
+        );
+      })}
     </div>
   );
 }

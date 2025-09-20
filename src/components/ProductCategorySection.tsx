@@ -8,12 +8,22 @@ import ProductBadges from './ProductBadges';
 import PeepersLogo from './PeepersLogo';
 import { PAGES } from '@/config/routes';
 
+// Design System Imports
+import { Button } from '@/components/ui/primitives/Button';
+import { Badge } from '@/components/ui/primitives/Badge';
+import { Container, Section } from '@/components/ui/layout/Container';
+import { VStack, HStack } from '@/components/ui/layout/Stack';
+
+// ==================== TYPES ====================
+
 interface ProductCategorySectionProps {
   category: ProductCategory;
   products: CategorizedProduct[];
   onViewAll: (categoryId: string, subcategoryId?: string) => void;
   className?: string;
 }
+
+// ==================== COMPONENT ====================
 
 export default function ProductCategorySection({ 
   category, 
@@ -32,73 +42,83 @@ export default function ProductCategorySection({
 
   if (products.length === 0) return null;
 
+  const formatPrice = (price: number) => {
+    try {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(price || 0);
+    } catch (error) {
+      return `R$ ${(price || 0).toFixed(2)}`;
+    }
+  };
+
   return (
-    <section className={`mb-12 ${className}`}>
-      {/* Design clean sem bordas grossas */}
-      <div className="space-y-6">
-        {/* Header da seção - mais clean */}
-        <div className="px-4 sm:px-6">
+    <Section className={className}>
+      <Container>
+        <VStack spacing="lg">
+          
+          {/* Header da seção */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-3 mb-1">
+            <VStack spacing="xs">
+              <HStack spacing="sm" align="center">
                 <span className="text-2xl">{category.icon}</span>
-                {category.name}
-                <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                <h2 className="text-xl font-bold text-gray-900">{category.name}</h2>
+                <Badge variant="secondary" size="sm">
                   {category.count}
-                </span>
-              </h2>
-              <p className="text-sm text-gray-600">
-                {category.description}
-              </p>
-            </div>
+                </Badge>
+              </HStack>
+              <p className="text-sm text-gray-600">{category.description}</p>
+            </VStack>
             
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => onViewAll(category.id)}
-              className="btn-secondary text-sm self-start sm:self-center"
+              className="self-start sm:self-center"
+              rightIcon={
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              }
             >
-              Ver Todos →
-            </button>
+              Ver Todos
+            </Button>
           </div>
           
           {/* Subcategorias */}
           {category.subcategories && category.subcategories.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              <button
+            <div className="flex flex-wrap gap-2">
+              <Badge
+                variant={selectedSubcategory === null ? 'primary' : 'secondary'}
+                className="cursor-pointer"
                 onClick={() => setSelectedSubcategory(null)}
-                className={`px-4 py-2 text-sm rounded-xl transition-all duration-200 ${
-                  selectedSubcategory === null
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                }`}
               >
                 Todas
-              </button>
+              </Badge>
               {category.subcategories.map(sub => (
-                <button
+                <Badge
                   key={sub.id}
+                  variant={selectedSubcategory === sub.id ? 'primary' : 'secondary'}
+                  className="cursor-pointer"
                   onClick={() => setSelectedSubcategory(sub.id)}
-                  className={`px-4 py-2 text-sm rounded-xl transition-all duration-200 ${
-                    selectedSubcategory === sub.id
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                  }`}
                 >
                   {sub.name} ({sub.count})
-                </button>
+                </Badge>
               ))}
             </div>
           )}
-        </div>
-        
-        {/* Grid de produtos - espaçamento otimizado para mobile */}
-        <div className="px-4 sm:px-6">
+          
+          {/* Grid de produtos */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
             {visibleProducts.map((product) => (
-              <div
+              <article
                 key={product.id}
                 className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-all duration-300 group"
               >
-                <div className="aspect-square bg-peepers-neutral-100 relative overflow-hidden">
+                
+                {/* Product Image */}
+                <div className="aspect-square bg-gray-50 relative overflow-hidden">
                   {product.thumbnail ? (
                     <Image
                       src={product.thumbnail}
@@ -135,90 +155,93 @@ export default function ProductCategorySection({
                   </div>
                 </div>
                 
-                <div className="p-4">
-                  <h3 className="font-semibold text-peepers-neutral-900 mb-2 line-clamp-2 min-h-[3rem] group-hover:text-peepers-primary-600 transition-colors text-sm">
+                {/* Product Content */}
+                <VStack spacing="md" className="p-4">
+                  
+                  {/* Title */}
+                  <h3 className="font-semibold text-gray-900 line-clamp-2 min-h-[3rem] group-hover:text-brand-primary-600 transition-colors text-sm">
                     {product.title}
                   </h3>
                   
-                  <div className="mb-3">
-                    <p className="text-lg font-bold text-peepers-primary-600">
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                      }).format(product.price || 0)}
+                  {/* Price */}
+                  <VStack spacing="xs">
+                    <p className="text-lg font-bold text-brand-primary-600">
+                      {formatPrice(product.price)}
                     </p>
                     
-                    <div className="flex items-center justify-between text-xs text-peepers-neutral-600 mt-1">
+                    <HStack spacing="sm" align="center" justify="between" className="text-xs text-gray-600">
                       <span>{product.available_quantity} disponíveis</span>
                       {product.installments && (
-                        <span className="text-peepers-secondary-600 font-medium">
+                        <span className="text-brand-secondary-600 font-medium">
                           {product.installments.quantity}x sem juros
                         </span>
                       )}
-                    </div>
-                  </div>
+                    </HStack>
+                  </VStack>
                   
                   {/* Características específicas */}
-                  <div className="mb-3 space-y-1">
-                    {product.length && (
-                      <p className="text-xs text-peepers-neutral-500">
-                        {product.length === 'short' && '📏 Cabo curto (≤30cm)'}
-                        {product.length === 'medium' && '📏 Cabo médio (1m)'}
-                        {product.length === 'long' && '📏 Cabo longo (≥2m)'}
-                      </p>
-                    )}
-                    {product.powerRating && product.powerRating >= 30 && (
-                      <p className="text-xs text-peepers-neutral-500">
-                        ⚡ {product.powerRating}W de potência
-                      </p>
-                    )}
-                  </div>
+                  {(product.length || (product.powerRating && product.powerRating >= 30)) && (
+                    <VStack spacing="xs" className="text-xs text-gray-500">
+                      {product.length && (
+                        <p>
+                          {product.length === 'short' && '📏 Cabo curto (≤30cm)'}
+                          {product.length === 'medium' && '📏 Cabo médio (1m)'}
+                          {product.length === 'long' && '📏 Cabo longo (≥2m)'}
+                        </p>
+                      )}
+                      {product.powerRating && product.powerRating >= 30 && (
+                        <p>⚡ {product.powerRating}W de potência</p>
+                      )}
+                    </VStack>
+                  )}
                   
                   {/* Badges de estoque baixo */}
-                  <div className="mb-3">
-                    <ProductBadges 
-                      badges={product.badges.filter(badge => badge.type === 'low-stock')} 
-                    />
-                  </div>
+                  <ProductBadges 
+                    badges={product.badges.filter(badge => badge.type === 'low-stock')} 
+                  />
                   
-                  <Link
-                    href={PAGES.PRODUTO_DETALHE(product.id)}
-                    className="btn-primary w-full text-center text-sm group relative overflow-hidden"
+                  {/* Action Button */}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    fullWidth
+                    onClick={() => window.location.href = PAGES.PRODUTO_DETALHE(product.id)}
                   >
-                    <span className="relative z-10">Comprar no ML</span>
-                    <div className="absolute inset-0 bg-peepers-primary-700 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-                  </Link>
+                    Comprar no ML
+                  </Button>
                   
                   {/* Compatibilidade */}
                   {product.compatibility && product.compatibility.length > 0 && (
-                    <p className="text-xs text-center text-peepers-neutral-500 mt-2">
+                    <p className="text-xs text-center text-gray-500">
                       {product.compatibility.slice(0, 2).join(', ')}
                       {product.compatibility.length > 2 && ' +'}
                     </p>
                   )}
-                </div>
-              </div>
+                  
+                </VStack>
+              </article>
             ))}
           </div>
           
-          {/* Call to action para ver mais */}
+          {/* Ver mais produtos */}
           {hasMoreProducts && (
-            <div className="text-center mt-6 pt-6">
-              <p className="text-sm text-gray-600 mb-3">
-                Mostrando {visibleProducts.length} de {displayProducts.length} produtos
-                {selectedSubcategory && ` em ${category.subcategories?.find(s => s.id === selectedSubcategory)?.name}`}
-              </p>
-              <button
+            <div className="text-center">
+              <Button
+                variant="outline"
                 onClick={() => onViewAll(category.id, selectedSubcategory || undefined)}
-                className="btn-secondary"
+                rightIcon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                }
               >
-                Ver todos os {displayProducts.length} produtos
-                {selectedSubcategory && ` em ${category.subcategories?.find(s => s.id === selectedSubcategory)?.name}`}
-              </button>
+                Ver mais {displayProducts.length - 4} produtos em {category.name}
+              </Button>
             </div>
           )}
-        </div>
-      </div>
-    </section>
+          
+        </VStack>
+      </Container>
+    </Section>
   );
 }

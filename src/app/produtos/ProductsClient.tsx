@@ -3,15 +3,15 @@
 // Force cache invalidation - Updated: 2025-09-15T19:30:00Z
 import { useState, useEffect, useMemo } from 'react';
 import PeepersLogo from '@/components/PeepersLogo';
-import ProductFiltersNew from '@/components/ProductFiltersNew';
-import ProductSortNew from '@/components/ProductSortNew';
-import FeaturedProductsNew from '@/components/FeaturedProductsNew';
-import ProductCategorySectionNew from '@/components/ProductCategorySectionNew';
-import ProductBadgesNew from '@/components/ProductBadgesNew';
-import ProductsLoadingNew from '@/components/ProductsLoadingNew';
-import ProductsErrorNew from '@/components/ProductsErrorNew';
-import EmptyProductsNew from '@/components/EmptyProductsNew';
-import ProductCardNew from '@/components/ProductCardNew';
+import ProductFilters from '@/components/ProductFilters';
+import ProductSort from '@/components/ProductSort';
+import FeaturedProducts from '@/components/FeaturedProducts';
+import ProductCategorySection from '@/components/ProductCategorySection';
+import ProductBadges from '@/components/ProductBadges';
+import ProductsLoading from '@/components/ProductsLoading';
+import ProductsError from '@/components/ProductsError';
+import EmptyProducts from '@/components/EmptyProducts';
+import ProductCard from '@/components/ProductCard';
 import type { ProductSummary } from '@/types/product';
 import { PAGES, API_ENDPOINTS } from '@/config/routes';
 import { 
@@ -319,7 +319,7 @@ export default function ProductsClient() {
           </div>
           
           <div className="flex items-center gap-4">
-            <ProductSortNew 
+            <ProductSort 
               currentSort={sortBy}
               onSortChange={setSortBy}
             />
@@ -335,7 +335,7 @@ export default function ProductsClient() {
 
         {/* Produtos destacados */}
         {featuredProducts.length > 0 && (
-          <FeaturedProductsNew limit={6} />
+          <FeaturedProducts limit={6} />
         )}
 
         {/* Seções por categoria */}
@@ -344,7 +344,7 @@ export default function ProductsClient() {
           .map(category => {
             const categoryProducts = categorizedProducts.filter(p => p.category === category.id);
             return (
-              <ProductCategorySectionNew
+              <ProductCategorySection
                 key={category.id}
                 category={category}
                 products={categoryProducts}
@@ -360,7 +360,7 @@ export default function ProductsClient() {
   return (
     <div className="space-y-6">
       {/* Filtros */}
-      <ProductFiltersNew
+      <ProductFilters
         categories={categories}
         filters={filters}
         onFiltersChange={setFilters}
@@ -386,7 +386,7 @@ export default function ProductsClient() {
           </h2>
         </div>
         
-        <ProductSortNew 
+        <ProductSort 
           currentSort={sortBy}
           onSortChange={setSortBy}
         />
@@ -414,7 +414,7 @@ export default function ProductsClient() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredProducts.map((product: CategorizedProduct) => (
-            <ProductCardNew
+            <ProductCard
               key={product.id}
               id={product.id}
               title={product.title}

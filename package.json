@@ -14,6 +14,8 @@
     "test": "vitest run --coverage",
     "test:prod": "node test-prod.js",
     "test:ml-compliance": "node test-ml-compliance.js",
+    "setup:stripe": "tsx src/scripts/setup-stripe.ts",
+    "setup:stripe-portal": "tsx src/scripts/setup-stripe-portal.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

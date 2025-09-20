@@ -267,32 +267,241 @@ class StripeClient {
   }
 
   /**
-   * Busca próxima invoice
+   * Cria sessão do portal de cobrança do Stripe
    */
-  async getUpcomingInvoice(customerId: string): Promise<any> {
+  async createBillingPortalSession(
+    customerId: string,
+    returnUrl: string = `${process.env.NEXT_PUBLIC_APP_URL}/admin/billing`
+  ): Promise<{ url: string }> {
     try {
-      // Para upcoming invoice, precisamos de uma subscription ativa
-      const subscriptions = await this.stripe.subscriptions.list({
+      const session = await this.stripe.billingPortal.sessions.create({
         customer: customerId,
-        status: 'active',
-        limit: 1
+        return_url: returnUrl,
       });
 
-      if (subscriptions.data.length === 0) {
-        return null;
-      }
+      logger.info({
+        customerId,
+        sessionId: session.id
+      }, 'Created billing portal session');
 
-      const invoice = await this.stripe.invoices.create({
-        customer: customerId,
-        subscription: subscriptions.data[0].id
-      });
-
-      return invoice;
+      return { url: session.url };
 
     } catch (error) {
-      logger.error({ error, customerId }, 'Failed to get upcoming invoice');
-      // Pode não ter upcoming invoice, retornar null
-      return null;
+      logger.error({ error, customerId }, 'Failed to create billing portal session');
+      throw error;
+    }
+  }
+
+  /**
+   * Cria sessão de checkout para upgrade/downgrade
+   */
+  async createCheckoutSession(
+    customerId: string,
+    priceId: string,
+    successUrl: string = `${process.env.NEXT_PUBLIC_APP_URL}/admin/billing?success=true`,
+    cancelUrl: string = `${process.env.NEXT_PUBLIC_APP_URL}/admin/billing?canceled=true`,
+    mode: 'subscription' | 'payment' = 'subscription'
+  ): Promise<{ url: string; sessionId: string }> {
+    try {
+      const session = await this.stripe.checkout.sessions.create({
+        customer: customerId,
+        line_items: [{
+          price: priceId,
+          quantity: 1,
+        }],
+        mode,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        allow_promotion_codes: true,
+        billing_address_collection: 'required',
+        metadata: {
+          customer_id: customerId,
+          price_id: priceId
+        }
+      });
+
+      logger.info({
+        customerId,
+        priceId,
+        sessionId: session.id
+      }, 'Created checkout session');
+
+      return {
+        url: session.url!,
+        sessionId: session.id
+      };
+
+    } catch (error) {
+      logger.error({ error, customerId, priceId }, 'Failed to create checkout session');
+      throw error;
+    }
+  }
+
+  /**
+   * Upgrade de plano (mantém período de cobrança)
+   */
+  async upgradeSubscription(
+    subscriptionId: string,
+    newPriceId: string,
+    prorationBehavior: 'create_prorations' | 'none' = 'create_prorations'
+  ): Promise<StripeSubscription> {
+    try {
+      // Buscar subscription atual
+      const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
+
+      // Atualizar com novo price
+      const updatedSubscription = await this.stripe.subscriptions.update(subscriptionId, {
+        items: [{
+          id: subscription.items.data[0].id,
+          price: newPriceId,
+        }],
+        proration_behavior: prorationBehavior,
+      });
+
+      // Invalidar cache
+      const cacheKey = `${this.cachePrefix}entitlement:${subscription.customer}`;
+      const kv = getKVClient();
+      await kv.del(cacheKey);
+
+      logger.info({
+        subscriptionId,
+        oldPriceId: subscription.items.data[0].price.id,
+        newPriceId,
+        prorationBehavior
+      }, '✅ Subscription upgraded successfully');
+
+      return updatedSubscription as unknown as StripeSubscription;
+
+    } catch (error) {
+      logger.error({ error, subscriptionId, newPriceId }, 'Failed to upgrade subscription');
+      throw error;
+    }
+  }
+
+  /**
+   * Downgrade de plano (agenda para próximo ciclo)
+   */
+  async scheduleDowngrade(
+    subscriptionId: string,
+    newPriceId: string
+  ): Promise<StripeSubscription> {
+    try {
+      // Buscar subscription atual
+      const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
+
+      // Agendar mudança para próximo ciclo
+      const updatedSubscription = await this.stripe.subscriptions.update(subscriptionId, {
+        items: [{
+          id: subscription.items.data[0].id,
+          price: newPriceId,
+        }],
+        proration_behavior: 'none', // Sem proration para downgrade
+      });
+
+      logger.info({
+        subscriptionId,
+        oldPriceId: subscription.items.data[0].price.id,
+        newPriceId,
+        effectiveDate: new Date((subscription as unknown as { current_period_end: number }).current_period_end * 1000)
+      }, '📅 Downgrade scheduled for next billing cycle');
+
+      return updatedSubscription as unknown as StripeSubscription;
+
+    } catch (error) {
+      logger.error({ error, subscriptionId, newPriceId }, 'Failed to schedule downgrade');
+      throw error;
+    }
+  }
+
+  /**
+   * Cancela downgrade agendado
+   */
+  async cancelScheduledDowngrade(subscriptionId: string): Promise<StripeSubscription> {
+    try {
+      // Reverter para preço atual (remove mudanças agendadas)
+      const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
+      const currentPriceId = subscription.items.data[0].price.id;
+
+      const updatedSubscription = await this.stripe.subscriptions.update(subscriptionId, {
+        items: [{
+          id: subscription.items.data[0].id,
+          price: currentPriceId,
+        }],
+        proration_behavior: 'none'
+      });
+
+      logger.info({
+        subscriptionId,
+        priceId: currentPriceId
+      }, '❌ Scheduled downgrade cancelled');
+
+      return updatedSubscription as unknown as StripeSubscription;
+
+    } catch (error) {
+      logger.error({ error, subscriptionId }, 'Failed to cancel scheduled downgrade');
+      throw error;
+    }
+  }
+
+  /**
+   * Busca preços disponíveis para upgrade/downgrade
+   */
+  async getAvailablePrices(): Promise<Array<{
+    id: string;
+    currency: string;
+    unit_amount: number | null;
+    recurring: { interval: string; interval_count: number } | null;
+    metadata: Record<string, string>;
+  }>> {
+    try {
+      const prices = await this.stripe.prices.list({
+        active: true,
+        type: 'recurring'
+      });
+
+      return prices.data.map(price => ({
+        id: price.id,
+        currency: price.currency,
+        unit_amount: price.unit_amount,
+        recurring: price.recurring,
+        metadata: price.metadata
+      }));
+
+    } catch (error) {
+      logger.error({ error }, 'Failed to get available prices');
+      throw error;
+    }
+  }
+
+  /**
+   * Calcula preview de upgrade/downgrade
+   */
+  async calculateUpgradePreview(
+    subscriptionId: string,
+    newPriceId: string
+  ): Promise<{
+    immediate_total: number;
+    currency: string;
+    period_end: Date;
+  }> {
+    try {
+      const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
+
+      // Calcular proration usando invoice preview
+      const invoice = await this.stripe.invoices.create({
+        customer: subscription.customer as string,
+        subscription: subscriptionId
+      });
+
+      return {
+        immediate_total: invoice.amount_due,
+        currency: invoice.currency,
+        period_end: new Date((subscription as unknown as { current_period_end: number }).current_period_end * 1000)
+      };
+
+    } catch (error) {
+      logger.error({ error, subscriptionId, newPriceId }, 'Failed to calculate upgrade preview');
+      throw error;
     }
   }
 
@@ -412,7 +621,7 @@ class StripeClient {
             allowed: false,
             reason: `${currentUsage.type} limit exceeded`,
             limit_exceeded: {
-              type: currentUsage.type as any,
+              type: currentUsage.type as 'api_calls' | 'products' | 'users' | 'storage',
               current: used,
               limit
             }
@@ -458,7 +667,14 @@ class StripeClient {
           break;
 
         default:
-          logger.info({ eventType: event.type }, 'Unhandled Stripe webhook event');
+          // Handle additional webhook events
+          if (event.type === 'invoice.created') {
+            await this.handleInvoiceCreated(event);
+          } else if (event.type === 'customer.subscription.trial_will_end') {
+            await this.handleTrialEnding(event);
+          } else {
+            logger.info({ eventType: event.type }, 'Unhandled Stripe webhook event');
+          }
       }
 
     } catch (error) {
@@ -469,14 +685,14 @@ class StripeClient {
 
   // Métodos privados auxiliares
 
-  private extractPlanTypeFromPrice(price: any): PeepersPlanType | null {
+  private extractPlanTypeFromPrice(price: { metadata?: { plan_type?: string } } | null): PeepersPlanType | null {
     if (!price?.metadata?.plan_type) return null;
 
     const planType = price.metadata.plan_type as PeepersPlanType;
     return Object.keys(PEEPERS_PLANS).includes(planType) ? planType : null;
   }
 
-  private async getTrialEntitlement(tenantId: string): Promise<TenantEntitlement | null> {
+  private async getTrialEntitlement(_tenantId: string): Promise<TenantEntitlement | null> {
     // TODO: implementar lógica de trial baseada em database
     // Por enquanto, retorna null (sem trial)
     return null;
@@ -498,13 +714,60 @@ class StripeClient {
   }
 
   private async handlePaymentSuccess(event: StripeWebhookEvent): Promise<void> {
-    // TODO: implementar lógica de payment success
-    logger.info({ eventId: event.id }, 'Payment succeeded');
+    const invoice = event.data.object as { id: string; subscription?: string; customer: string; amount_paid?: number };
+
+    // Atualizar status de pagamento
+    const subscriptionId = invoice.subscription;
+    if (subscriptionId) {
+      // Invalidar cache do tenant
+      const cacheKey = `${this.cachePrefix}entitlement:${invoice.customer}`;
+      const kv = getKVClient();
+      await kv.del(cacheKey);
+
+      logger.info({
+        invoiceId: invoice.id,
+        subscriptionId,
+        customerId: invoice.customer,
+        amount: invoice.amount_paid
+      }, '💰 Payment succeeded - cache invalidated');
+    }
   }
 
   private async handlePaymentFailure(event: StripeWebhookEvent): Promise<void> {
-    // TODO: implementar lógica de payment failure
-    logger.warn({ eventId: event.id }, 'Payment failed');
+    const invoice = event.data.object as { id: string; customer: string; attempt_count?: number; next_payment_attempt?: number };
+
+    logger.warn({
+      invoiceId: invoice.id,
+      customerId: invoice.customer,
+      attemptCount: invoice.attempt_count,
+      nextPaymentAttempt: invoice.next_payment_attempt
+    }, '❌ Payment failed');
+
+    // TODO: Implementar notificações de falha de pagamento
+    // TODO: Implementar downgrade automático após múltiplas tentativas
+  }
+
+  private async handleInvoiceCreated(event: StripeWebhookEvent): Promise<void> {
+    const invoice = event.data.object as { id: string; customer: string; amount_due?: number; due_date?: number };
+
+    logger.info({
+      invoiceId: invoice.id,
+      customerId: invoice.customer,
+      amount: invoice.amount_due,
+      dueDate: invoice.due_date
+    }, '📄 Invoice created');
+  }
+
+  private async handleTrialEnding(event: StripeWebhookEvent): Promise<void> {
+    const subscription = event.data.object as { id: string; customer: string; trial_end?: number };
+
+    logger.info({
+      subscriptionId: subscription.id,
+      customerId: subscription.customer,
+      trialEnd: subscription.trial_end
+    }, '⏰ Trial ending soon');
+
+    // TODO: Implementar notificações de fim de trial
   }
 }
 

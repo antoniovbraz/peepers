@@ -1,16 +1,43 @@
-import { NextResponse } from 'next/server';
+/**
+ * Health Check API Endpoint
+ * Provides comprehensive system health status and metrics
+ */
 
-export async function GET() {
-  return NextResponse.json({
-    message: 'Este endpoint está funcionando!',
-    timestamp: new Date().toISOString(),
-    status: 'success',
-    deployment: 'working',
-    environment: process.env.NODE_ENV || 'unknown',
-    analysis: {
-      problem: 'Vercel Deployment Protection está bloqueando acesso aos endpoints',
-      solution: 'Desabilitar Deployment Protection nas configurações do projeto',
-      confirmation: 'Se você conseguir ver esta mensagem, o problema NÃO é no código'
+import { NextRequest, NextResponse } from 'next/server';
+import { MonitoringService } from '@/lib/monitoring';
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const detailed = searchParams.get('detailed') === 'true';
+
+    if (detailed) {
+      // Return detailed metrics
+      const healthStatus = await MonitoringService.getHealthStatus();
+      const slaMetrics = MonitoringService.getSLAMetrics(1); // Last hour
+      const systemMetrics = MonitoringService.getSystemMetrics();
+      const exportedMetrics = MonitoringService.exportMetrics();
+
+      return NextResponse.json({
+        ...healthStatus,
+        sla_metrics: slaMetrics,
+        system_metrics: systemMetrics,
+        exported_metrics: exportedMetrics
+      });
+    } else {
+      // Return basic health status
+      const healthStatus = await MonitoringService.getHealthStatus();
+      return NextResponse.json(healthStatus);
     }
-  });
+  } catch (error) {
+    console.error('Health check error:', error);
+    return NextResponse.json(
+      {
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        error: 'Health check failed'
+      },
+      { status: 500 }
+    );
+  }
 }

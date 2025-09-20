@@ -1,8 +1,8 @@
 import { PAGES } from '@/config/routes';
 import Link from 'next/link';
 import { Suspense, lazy } from 'react';
-import HeaderNew from '@/components/HeaderNew';
-import ProductsLoadingNew from '@/components/ProductsLoadingNew';
+import Header from '@/components/Header';
+import ProductsLoading from '@/components/ProductsLoading';
 
 // Lazy load the heavy ProductsClient component
 const ProductsClient = lazy(() => import('./ProductsClient'));
@@ -11,7 +11,7 @@ export default function ProdutosPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <HeaderNew />
+      <Header />
 
       {/* Breadcrumb */}
       <div className="bg-white border-b border-gray-200">
@@ -60,7 +60,7 @@ export default function ProdutosPage() {
         </div>
 
         {/* Products Grid */}
-        <Suspense fallback={<ProductsLoadingNew count={8} />}>
+        <Suspense fallback={<ProductsLoading count={8} />}>
           <ProductsClient />
         </Suspense>
       </main>
