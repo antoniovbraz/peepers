@@ -92,7 +92,7 @@ export class OrganizationService {
           api_calls_used: 0,
           storage_used_gb: 0
         },
-        features: plan.features
+        features: [...plan.features]
       };
 
       // 7. Criar User (owner)
