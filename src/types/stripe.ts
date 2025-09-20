@@ -63,7 +63,7 @@ export interface StripeCustomer {
   };
 }
 
-export type PeepersPlanType = 'starter' | 'professional' | 'enterprise';
+export type PeepersPlanType = 'starter' | 'business' | 'enterprise';
 
 export interface PeepersPlan {
   type: PeepersPlanType;

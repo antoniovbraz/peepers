@@ -15,7 +15,7 @@ import { PEEPERS_PLANS } from '@/config/entitlements';
 // Map dos price IDs do Stripe (devem estar nas variáveis de ambiente)
 const STRIPE_PRICE_IDS: Record<PeepersPlanType, string> = {
   starter: process.env.STRIPE_PRICE_STARTER_MONTHLY || 'price_starter_dev',
-  professional: process.env.STRIPE_PRICE_PROFESSIONAL_MONTHLY || 'price_professional_dev', 
+  business: process.env.STRIPE_PRICE_BUSINESS_MONTHLY || 'price_business_dev',
   enterprise: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || 'price_enterprise_dev'
 };
 

@@ -48,7 +48,7 @@ const PLAN_DISPLAY: Record<PeepersPlanType, PlanDisplayInfo> = {
       { name: 'Suporte prioritário', included: false }
     ]
   },
-  professional: {
+  business: {
     name: 'Professional',
     price: 'R$ 97/mês',
     description: 'Para vendedores que querem escalar suas operações',
