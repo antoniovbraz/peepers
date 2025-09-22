@@ -70,19 +70,35 @@ function ensureHttps(url: string): string {
   return url.replace(/^http:\/\//, 'https://');
 }
 
-function transformMLProduct(mlProduct: MLProduct): Record<string, unknown> {
-  return {
-    id: mlProduct.id,
-    title: mlProduct.title,
-    price: mlProduct.price,
-    thumbnail: ensureHttps(mlProduct.thumbnail || (mlProduct.pictures?.[0]?.url || 'https://via.placeholder.com/300x300')),
-    condition: mlProduct.condition,
-    status: mlProduct.status,
-    available_quantity: mlProduct.available_quantity,
-    category_id: mlProduct.category_id,
-    permalink: mlProduct.permalink,
-    sold_quantity: mlProduct.sold_quantity || 0
-  };
+function transformMLProduct(mlProduct: any): Record<string, unknown> {
+  try {
+    return {
+      id: mlProduct?.id || '',
+      title: mlProduct?.title || 'Produto sem título',
+      price: typeof mlProduct?.price === 'number' ? mlProduct.price : 0,
+      thumbnail: ensureHttps(mlProduct?.thumbnail || (mlProduct?.pictures?.[0]?.url || 'https://via.placeholder.com/300x300')),
+      condition: mlProduct?.condition || 'not_specified',
+      status: mlProduct?.status || 'unknown',
+      available_quantity: typeof mlProduct?.available_quantity === 'number' ? mlProduct.available_quantity : 0,
+      category_id: mlProduct?.category_id || '',
+      permalink: mlProduct?.permalink || '',
+      sold_quantity: typeof mlProduct?.sold_quantity === 'number' ? mlProduct.sold_quantity : 0
+    };
+  } catch (error) {
+    console.error('❌ Erro ao transformar produto:', error, mlProduct);
+    return {
+      id: 'error',
+      title: 'Erro ao processar produto',
+      price: 0,
+      thumbnail: 'https://via.placeholder.com/300x300',
+      condition: 'unknown',
+      status: 'error',
+      available_quantity: 0,
+      category_id: '',
+      permalink: '',
+      sold_quantity: 0
+    };
+  }
 }
 
 /**
@@ -301,9 +317,10 @@ export async function GET(request: NextRequest) {
         console.log(`🔍 Buscando detalhes de ${productIds.length} produtos...`);
         console.log('📋 IDs dos produtos:', productIds.slice(0, 5), productIds.length > 5 ? `...e mais ${productIds.length - 5}` : '');
 
-        // Buscar detalhes de todos os produtos de uma vez
-        const itemsUrl = `https://api.mercadolibre.com/items?ids=${productIds.join(',')}`;
-        console.log('🔗 URL para buscar detalhes:', itemsUrl);
+        try {
+          // Buscar detalhes de todos os produtos de uma vez
+          const itemsUrl = `https://api.mercadolibre.com/items?ids=${productIds.join(',')}`;
+          console.log('🔗 URL para buscar detalhes:', itemsUrl);
 
         const itemsResponse = await fetch(itemsUrl, {
           headers: {
@@ -323,19 +340,51 @@ export async function GET(request: NextRequest) {
         const itemsData = await itemsResponse.json();
 
         console.log('📦 Dados brutos dos produtos recebidos:', {
-          totalItems: itemsData.length,
-          firstItem: itemsData[0] ? {
+          totalItems: Array.isArray(itemsData) ? itemsData.length : 'not array',
+          firstItem: Array.isArray(itemsData) && itemsData[0] ? {
             code: itemsData[0].code,
             hasBody: !!itemsData[0].body,
             bodyId: itemsData[0].body?.id
           } : null
         });
 
-        // Processar os produtos retornados
-        const validProducts = (itemsData as MLItemResponse[])
-          .filter((item: MLItemResponse) => item.code === 200 && item.body) // Filtrar respostas válidas
-          .map((item: MLItemResponse) => item.body) // Extrair o produto
-          .filter((product: MLProduct) => product && product.id) // Filtrar produtos válidos
+        // Verificar se itemsData é um array válido
+        if (!Array.isArray(itemsData)) {
+          console.error('❌ Resposta da API não é um array:', typeof itemsData, itemsData);
+          throw new Error('Resposta inválida da API do Mercado Livre - esperado array de produtos');
+        }
+
+        // Processar os produtos retornados com validação robusta
+        const validProducts = itemsData
+          .filter((item: any) => {
+            // Verificar se o item tem a estrutura esperada
+            if (!item || typeof item !== 'object') {
+              console.warn('⚠️ Item inválido (não é objeto):', item);
+              return false;
+            }
+            if (item.code !== 200) {
+              console.warn('⚠️ Item com código diferente de 200:', item.code);
+              return false;
+            }
+            if (!item.body) {
+              console.warn('⚠️ Item sem body:', item);
+              return false;
+            }
+            return true;
+          })
+          .map((item: any) => item.body)
+          .filter((product: any) => {
+            // Verificar se o produto tem campos obrigatórios
+            if (!product || typeof product !== 'object') {
+              console.warn('⚠️ Produto inválido (não é objeto):', product);
+              return false;
+            }
+            if (!product.id) {
+              console.warn('⚠️ Produto sem ID:', product);
+              return false;
+            }
+            return true;
+          })
           .map(transformMLProduct);
 
         console.log(`✅ ${validProducts.length} produtos válidos processados`);
@@ -362,6 +411,26 @@ export async function GET(request: NextRequest) {
           total: mlResponse.paging?.total || validProducts.length,
           source: 'mercado_livre_real'
         });
+        } catch (itemsError) {
+          console.error('❌ Erro ao buscar detalhes dos produtos:', itemsError);
+          // Retornar resposta com produtos vazios em vez de erro 500
+          return NextResponse.json({
+            success: true,
+            data: {
+              items: [],
+              total: mlResponse.paging?.total || 0,
+              page: Math.floor(offset / limit) + 1,
+              per_page: limit,
+              total_pages: Math.ceil((mlResponse.paging?.total || 0) / limit),
+              offset: offset,
+              has_more: offset + limit < (mlResponse.paging?.total || 0)
+            },
+            products: [],
+            total: mlResponse.paging?.total || 0,
+            message: 'Erro ao carregar detalhes dos produtos. Tente novamente.',
+            error: itemsError instanceof Error ? itemsError.message : 'Erro desconhecido'
+          });
+        }
       } else {
         // Sem produtos encontrados
         return NextResponse.json({
