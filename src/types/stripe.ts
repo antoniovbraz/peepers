@@ -88,15 +88,27 @@ export interface PeepersPlan {
 }
 
 export type PeepersFeature =
-  | 'basic_dashboard'
-  | 'product_sync'
-  | 'order_management'
+  | 'basic_analytics'
+  | 'product_monitoring'
+  | 'basic_pricing'
+  | 'basic_storefront'
+  | 'weekly_reports'
+  | 'chat_support'
   | 'advanced_analytics'
-  | 'multi_user'
+  | 'ai_descriptions'
+  | 'competitor_analysis'
+  | 'ai_recommendations'
+  | 'inventory_analysis'
+  | 'smart_alerts'
   | 'api_access'
+  | 'advanced_reports'
+  | 'market_intelligence'
+  | 'dynamic_pricing'
+  | 'reputation_analysis'
+  | 'executive_dashboard'
   | 'white_label'
-  | 'priority_support'
-  | 'custom_integrations';
+  | 'dedicated_support'
+  | 'multi_user';
 
 export interface TenantEntitlement {
   tenant_id: string;

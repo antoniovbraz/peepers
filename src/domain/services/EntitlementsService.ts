@@ -139,9 +139,9 @@ export class EntitlementsService {
   private getMinimumPlanForFeature(feature: PeepersFeature): PeepersPlanType {
     // Features básicas disponíveis em todos os planos
     const basicFeatures: PeepersFeature[] = [
-      'basic_dashboard',
-      'product_sync',
-      'order_management'
+      'basic_analytics',
+      'product_monitoring',
+      'basic_pricing'
     ];
 
     if (basicFeatures.includes(feature)) {
@@ -151,7 +151,7 @@ export class EntitlementsService {
     // Features do plano Professional
     const professionalFeatures: PeepersFeature[] = [
       'advanced_analytics',
-      'multi_user'
+      'advanced_reports'
     ];
 
     if (professionalFeatures.includes(feature)) {
@@ -162,8 +162,8 @@ export class EntitlementsService {
     const enterpriseFeatures: PeepersFeature[] = [
       'api_access',
       'white_label',
-      'priority_support',
-      'custom_integrations'
+      'dedicated_support',
+      'market_intelligence'
     ];
 
     if (enterpriseFeatures.includes(feature)) {

@@ -240,7 +240,7 @@ export class TenantMiddleware {
         first_name: 'Demo',
         last_name: 'User',
         role: 'owner',
-        permissions: ['manage_products', 'manage_orders', 'view_analytics'],
+        permissions: ['basic_analytics', 'product_monitoring', 'basic_pricing'],
         preferences: {
           timezone: 'America/Sao_Paulo',
           language: 'pt-BR',

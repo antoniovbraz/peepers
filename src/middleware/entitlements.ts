@@ -8,7 +8,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { stripeClient } from '@/lib/stripe';
-import { PREMIUM_FEATURES } from '@/config/entitlements';
 import { PeepersFeature } from '@/types/stripe';
 
 export interface EntitlementContext {

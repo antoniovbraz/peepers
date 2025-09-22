@@ -62,7 +62,12 @@ async function setupStripeProducts() {
       logger.info(`✅ Produto criado: ${product.name} (${product.id})`);
 
       // Criar preços para cada ciclo de cobrança
-      for (const [cycle, price] of Object.entries(plan.price)) {
+      const priceMap = {
+        monthly: plan.price_monthly,
+        yearly: plan.price_yearly
+      };
+
+      for (const [cycle, price] of Object.entries(priceMap)) {
         logger.info(`💰 Criando preço ${cycle} para ${plan.name}: R$ ${(price / 100).toFixed(2)}`);
 
         const stripePrice = await stripe.prices.create({

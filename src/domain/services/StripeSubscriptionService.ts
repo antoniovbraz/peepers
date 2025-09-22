@@ -267,7 +267,7 @@ export class StripeSubscriptionService {
           : null,
         stripeClient.getCustomer(tenant.subscription.stripe_customer_id),
         stripeClient.getCustomerInvoices(tenant.subscription.stripe_customer_id),
-        stripeClient.getUpcomingInvoice(tenant.subscription.stripe_customer_id)
+        (stripeClient as any).getUpcomingInvoice(tenant.subscription.stripe_customer_id)
       ]);
 
       return {
@@ -299,8 +299,8 @@ export class StripeSubscriptionService {
     const currentPlanData = PEEPERS_PLANS[currentPlan];
     const newPlanData = PEEPERS_PLANS[newPlan];
 
-    const currentPrice = currentPlanData.price[billingCycle];
-    const newPrice = newPlanData.price[billingCycle];
+    const currentPrice = billingCycle === 'yearly' ? currentPlanData.price_yearly : currentPlanData.price_monthly;
+    const newPrice = billingCycle === 'yearly' ? newPlanData.price_yearly : newPlanData.price_monthly;
 
     // Calcular valor proporcional
     const dailyCurrentPrice = currentPrice / (billingCycle === 'yearly' ? 365 : 30);

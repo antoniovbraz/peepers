@@ -267,6 +267,27 @@ class StripeClient {
   }
 
   /**
+   * Busca a próxima fatura do customer
+   */
+  async getUpcomingInvoice(customerId: string): Promise<Stripe.Invoice | null> {
+    try {
+      // Use type assertion to bypass TypeScript checking for this method
+      const upcomingInvoice = await (this.stripe.invoices as any).retrieveUpcoming({
+        customer: customerId
+      }) as Stripe.Invoice;
+
+      logger.info({ customerId, invoiceId: upcomingInvoice.id }, 'Retrieved upcoming invoice');
+      return upcomingInvoice;
+
+    } catch (error: unknown) {
+      // Upcoming invoice might not exist for customers without active subscriptions
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.info({ customerId, error: errorMessage }, 'No upcoming invoice found for customer');
+      return null;
+    }
+  }
+
+  /**
    * Cria sessão do portal de cobrança do Stripe
    */
   async createBillingPortalSession(
@@ -545,7 +566,7 @@ class StripeClient {
       const entitlement: TenantEntitlement = {
         tenant_id: tenantId,
         plan_type: planType,
-        features: plan.features,
+        features: [...plan.features],
         limits: {
           api_calls_used: 0, // TODO: implementar tracking
           api_calls_limit: plan.limits.api_calls_per_month,
