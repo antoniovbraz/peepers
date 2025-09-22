@@ -83,16 +83,16 @@ export default function AdminProductsPage() {
         if (data.success && data.data?.items) {
           // Transformar dados da API para o formato esperado
           const transformedProducts = data.data.items.map((product: MLProduct) => ({
-            id: product.id,
-            title: product.title,
-            price: product.price,
-            thumbnail: product.thumbnail,
-            status: product.status,
-            available_quantity: product.available_quantity,
-            condition: product.condition,
+            id: product.id || '',
+            title: product.title || 'Produto sem título',
+            price: typeof product.price === 'number' ? product.price : 0,
+            thumbnail: product.thumbnail || '/placeholder-image.svg',
+            status: product.status || 'unknown',
+            available_quantity: typeof product.available_quantity === 'number' ? product.available_quantity : 0,
+            condition: product.condition || 'not_specified',
             visits: 0, // Placeholder - ML API não fornece este campo
-            questions: 0, // Placeholder - ML API não fornece este campo  
-            sold_quantity: product.sold_quantity || 0,
+            questions: 0, // Placeholder - ML API não fornece este campo
+            sold_quantity: typeof product.sold_quantity === 'number' ? product.sold_quantity : 0,
           }));
           
           setProducts(transformedProducts);
@@ -216,7 +216,7 @@ export default function AdminProductsPage() {
     }
   };
 
-  const getStatusBadge = (status: ProductStatus) => {
+  const getStatusBadge = (status: ProductStatus | undefined) => {
     switch (status) {
       case 'active':
         return 'bg-green-100 text-green-800';
@@ -229,7 +229,7 @@ export default function AdminProductsPage() {
     }
   };
 
-  const getStatusText = (status: ProductStatus) => {
+  const getStatusText = (status: ProductStatus | undefined) => {
     switch (status) {
       case 'active':
         return 'Ativo';
@@ -238,13 +238,14 @@ export default function AdminProductsPage() {
       case 'closed':
         return 'Finalizado';
       default:
-        return status;
+        return status || 'Desconhecido';
     }
   };
 
   const filteredProducts = products
     .filter(product => {
-      const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = !searchQuery ||
+        (product.title && product.title.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
       return matchesSearch && matchesStatus;
     })
@@ -255,9 +256,9 @@ export default function AdminProductsPage() {
         case 'visits':
           return (b.visits || 0) - (a.visits || 0);
         case 'status':
-          return a.status.localeCompare(b.status);
+          return (a.status || '').localeCompare(b.status || '');
         default:
-          return a.title.localeCompare(b.title);
+          return (a.title || '').localeCompare(b.title || '');
       }
     });
 
@@ -481,13 +482,13 @@ export default function AdminProductsPage() {
                         ID: {product.id}
                       </p>
                       <div className="mt-2 flex items-center text-sm text-gray-500">
-                        <span>R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        <span>R$ {(product.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                         <span className="mx-2">•</span>
-                        <span>{product.available_quantity} disponíveis</span>
+                        <span>{product.available_quantity || 0} disponíveis</span>
                         <span className="mx-2">•</span>
-                        <span>{product.visits} visualizações</span>
+                        <span>{product.visits || 0} visualizações</span>
                         <span className="mx-2">•</span>
-                        <span>{product.sold_quantity} vendidos</span>
+                        <span>{product.sold_quantity || 0} vendidos</span>
                       </div>
                     </div>
                   </div>
