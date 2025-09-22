@@ -34,9 +34,10 @@ export const API_ENDPOINTS = {
   CACHE_DEBUG: '/api/cache-debug',
   
   // Produtos - CANONICAL ENDPOINTS
-  PRODUCTS: '/api/products',                    // 🔒 Main endpoint (auth required)
+  PRODUCTS: '/api/products-public',             // ✅ PUBLIC: Para home e /produtos (cache)
   PRODUCTS_V1: '/api/products-v1',             // ✅ CANONICAL: Public products API  
-  PRODUCTS_PUBLIC: '/api/products-public',     // � DEPRECATED: Use PRODUCTS_V1 instead
+  PRODUCTS_PUBLIC: '/api/products-public',     // ✅ PUBLIC: Alias para PRODUCTS
+  PRODUCTS_ADMIN: '/api/products',             // 🔒 ADMIN: Auth required for admin panel
   PRODUCT_BY_ID: (id: string) => `/api/products/${id}`,
   
   // Autenticação OAuth (público)
