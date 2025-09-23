@@ -360,7 +360,7 @@ export class ProductRepository implements IProductRepository {
       let hasMore = true;
 
       while (hasMore) {
-        // Build URL for ML API
+        // Build URL for ML API using scan search
         const baseUrl = `https://api.mercadolibre.com/users/${sellerId}/items/search`;
         const params = new URLSearchParams({
           limit: '100', // Maximum allowed by ML API
@@ -372,6 +372,7 @@ export class ProductRepository implements IProductRepository {
         }
 
         const url = `${baseUrl}?${params.toString()}`;
+        console.log('🔍 Fetching from ML API:', url);
 
         // Get access token from cache
         const tokenKey = CACHE_KEYS.USER_TOKEN(sellerId.toString());
@@ -396,13 +397,29 @@ export class ProductRepository implements IProductRepository {
         }
 
         const data = await response.json();
-        console.log('🔍 ML API Response data:', JSON.stringify(data, null, 2).substring(0, 500));
+        console.log('🔍 Raw ML API response keys:', Object.keys(data));
+        console.log('🔍 Results type:', Array.isArray(data.results) ? 'array' : typeof data.results);
+        console.log('🔍 First result type:', data.results?.[0] ? typeof data.results[0] : 'no results');
 
         if (data.results && Array.isArray(data.results)) {
           console.log('📦 Processing', data.results.length, 'products from ML API');
-          console.log('🔍 First product sample:', JSON.stringify(data.results[0], null, 2));
-          allProducts.push(...data.results);
-          
+
+          // Ensure each result is an object with proper structure
+          for (const result of data.results) {
+            if (typeof result === 'object' && result !== null && !Array.isArray(result)) {
+              console.log('🔍 Product sample:', {
+                id: result.id,
+                title: result.title?.substring(0, 50),
+                status: result.status,
+                price: result.price,
+                available_quantity: result.available_quantity
+              });
+              allProducts.push(result as MLProductRaw);
+            } else {
+              console.warn('⚠️ Skipping invalid product result:', result);
+            }
+          }
+
           // Check if there's more data to fetch
           scrollId = data.scroll_id || null;
           hasMore = Boolean(scrollId) && data.results.length === 100;
@@ -413,12 +430,13 @@ export class ProductRepository implements IProductRepository {
             hasMore = false;
           }
         } else {
+          console.warn('⚠️ No valid results in ML API response');
           hasMore = false;
         }
 
         // Small delay to respect rate limits
         if (hasMore) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
       }
 
