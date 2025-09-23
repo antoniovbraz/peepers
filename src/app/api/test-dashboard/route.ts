@@ -12,10 +12,29 @@ export async function GET(_request: NextRequest) {
     // Test product statistics
     const productStats = await productRepository.getStatistics(sellerId);
 
+    // Also test raw product fetch to see status distribution
+    const rawProducts = await (productRepository as any).fetchAllSellerProducts(sellerId);
+
+    // Count products by status
+    const statusCounts: Record<string, number> = {};
+    rawProducts.forEach((product: any) => {
+      const status = product.status || 'unknown';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+
     return NextResponse.json({
       success: true,
       productStats: productStats.success ? productStats.data : null,
       productStatsError: productStats.error,
+      rawProductsCount: rawProducts.length,
+      statusDistribution: statusCounts,
+      sampleProducts: rawProducts.slice(0, 3).map((p: any) => ({
+        id: p.id,
+        title: p.title?.substring(0, 50),
+        status: p.status,
+        price: p.price,
+        available_quantity: p.available_quantity
+      })),
       timestamp: new Date().toISOString()
     });
 
