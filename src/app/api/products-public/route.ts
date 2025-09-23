@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getKVClient } from '@/lib/cache';
-import { CACHE_KEYS } from '@/config/routes';
+import { cache } from '@/lib/cache';
 import { checkAuthAPILimit } from '@/lib/rate-limiter';
 import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
 
@@ -77,28 +76,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Buscar produtos do cache
-    const kv = getKVClient();
-    console.log('🔧 Cliente KV inicializado');
+    console.log('🔧 Usando cache manager para buscar produtos');
 
     try {
-      // Buscar produtos do cache
-      const cacheKey = CACHE_KEYS.PRODUCTS_ALL;
-      console.log('🔑 Buscando produtos no cache com chave:', cacheKey);
-
-      const cachedProducts = await kv.get(cacheKey);
+      // Buscar produtos do cache usando o método correto que faz a transformação
+      const products = await cache.getAllProducts();
       console.log('📦 Dados do cache:', {
-        found: !!cachedProducts,
-        type: typeof cachedProducts,
-        isArray: Array.isArray(cachedProducts),
-        length: Array.isArray(cachedProducts) ? cachedProducts.length : 'N/A'
+        found: !!products,
+        length: products ? products.length : 'N/A'
       });
 
-      let products: MLProduct[] = [];
-
-      if (cachedProducts && Array.isArray(cachedProducts) && cachedProducts.length > 0) {
-        products = cachedProducts as MLProduct[];
-        console.log(`✅ ${products.length} produtos encontrados no cache`);
-      } else {
+      if (!products || products.length === 0) {
         console.log('⚠️ Nenhum produto encontrado no cache - retornando lista vazia');
         return NextResponse.json({
           success: true,
@@ -118,32 +106,35 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      console.log(`✅ ${products.length} produtos encontrados no cache`);
+
       // Filtrar por status se especificado
+      let filteredProducts = products;
       if (status) {
-        products = products.filter(product => product.status === status);
-        console.log(`🔍 Filtrados ${products.length} produtos com status: ${status}`);
+        filteredProducts = filteredProducts.filter(product => product.status === status);
+        console.log(`🔍 Filtrados ${filteredProducts.length} produtos com status: ${status}`);
       }
 
       // Filtrar por busca se especificada
       if (search) {
         const searchLower = search.toLowerCase();
-        products = products.filter(product =>
+        filteredProducts = filteredProducts.filter(product =>
           (product.title || '').toLowerCase().includes(searchLower) ||
           product.id.includes(search)
         );
-        console.log(`🔍 Filtrados ${products.length} produtos com busca: ${search}`);
+        console.log(`🔍 Filtrados ${filteredProducts.length} produtos com busca: ${search}`);
       }
 
       // Aplicar paginação
-      const totalProducts = products.length;
+      const totalProducts = filteredProducts.length;
       const startIndex = offset;
       const endIndex = startIndex + limit;
-      const paginatedProducts = products.slice(startIndex, endIndex);
+      const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
 
       console.log(`📄 Pagina ${page}: ${paginatedProducts.length} produtos (${startIndex}-${endIndex} de ${totalProducts})`);
 
       // Transformar produtos baseado no formato solicitado
-      let transformedProducts: any[] = paginatedProducts;
+      let transformedProducts: MLProduct[] = paginatedProducts;
 
       if (format === 'summary') {
         // Formato summary inclui pictures array para melhores imagens
@@ -163,8 +154,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Estatísticas dos produtos
-      const activeProducts = products.filter(p => p.status === 'active').length;
-      const pausedProducts = products.filter(p => p.status === 'paused').length;
+      const activeProducts = filteredProducts.filter(p => p.status === 'active').length;
+      const pausedProducts = filteredProducts.filter(p => p.status === 'paused').length;
 
       console.log(`📊 Estatísticas: ${activeProducts} ativos, ${pausedProducts} pausados, ${products.length} total`);
 
