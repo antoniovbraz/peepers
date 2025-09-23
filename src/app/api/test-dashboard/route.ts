@@ -30,10 +30,11 @@ export async function GET(_request: NextRequest) {
       statusDistribution: statusCounts,
       sampleProducts: rawProducts.slice(0, 3).map((p: any) => ({
         id: p.id,
-        title: p.title?.substring(0, 50),
+        title: p.title?.substring(0, 30) + '...',
         status: p.status,
         price: p.price,
-        available_quantity: p.available_quantity
+        available_quantity: p.available_quantity,
+        allKeys: Object.keys(p)
       })),
       timestamp: new Date().toISOString()
     });
