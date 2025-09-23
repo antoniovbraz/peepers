@@ -396,8 +396,11 @@ export class ProductRepository implements IProductRepository {
         }
 
         const data = await response.json();
+        console.log('🔍 ML API Response data:', JSON.stringify(data, null, 2).substring(0, 500));
 
         if (data.results && Array.isArray(data.results)) {
+          console.log('📦 Processing', data.results.length, 'products from ML API');
+          console.log('🔍 First product sample:', JSON.stringify(data.results[0], null, 2));
           allProducts.push(...data.results);
           
           // Check if there's more data to fetch
