@@ -130,6 +130,7 @@ export const MIDDLEWARE_CONFIG = {
 export const CACHE_KEYS = {
   PRODUCTS_ALL: 'products:all',
   PRODUCT: 'product:',
+  USER: 'user:',
   USER_TOKEN: (userId: string) => `access_token:${userId}`,
   PKCE_VERIFIER: (state: string) => `pkce_verifier:${state}`,
   SYNC_LOCK: 'sync:lock',
