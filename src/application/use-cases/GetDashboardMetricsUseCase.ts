@@ -57,7 +57,7 @@ export class GetDashboardMetricsUseCase {
     private readonly sellerRepository: ISellerRepository
   ) {}
 
-  async execute(filters?: DashboardFiltersDTO): Promise<{
+  async execute(filters?: DashboardFiltersDTO, isAdmin: boolean = false): Promise<{
     success: boolean;
     data?: DashboardMetricsDTO;
     error?: string;
@@ -82,14 +82,20 @@ export class GetDashboardMetricsUseCase {
         this.orderRepository.findNeedingAttention(sellerId)
       ]);
 
-      // Extract data with fallbacks - don't throw errors, use defaults
-      const productStats = productStatsResult.success ? productStatsResult.data! : this.getDefaultProductStats();
-      const orderStats = orderStatsResult.success ? orderStatsResult.data! : this.getDefaultOrderStats();
-      const sellerReputation = sellerReputationResult.success ? sellerReputationResult.data! : this.getDefaultSellerReputation();
-      const sellerPerformance = sellerPerformanceResult.success ? sellerPerformanceResult.data! : this.getDefaultPerformance();
+      // Extract data - admin context never uses fallbacks, public context does
+      const productStats = productStatsResult.success ? productStatsResult.data! : 
+        (isAdmin ? (() => { throw new Error('Failed to load product statistics'); })() : this.getDefaultProductStats());
+      const orderStats = orderStatsResult.success ? orderStatsResult.data! : 
+        (isAdmin ? (() => { throw new Error('Failed to load order statistics'); })() : this.getDefaultOrderStats());
+      const sellerReputation = sellerReputationResult.success ? sellerReputationResult.data! : 
+        (isAdmin ? (() => { throw new Error('Failed to load seller reputation'); })() : this.getDefaultSellerReputation());
+      const sellerPerformance = sellerPerformanceResult.success ? sellerPerformanceResult.data! : 
+        (isAdmin ? (() => { throw new Error('Failed to load seller performance'); })() : this.getDefaultPerformance());
       const sellerStats = this.getDefaultSellerStats(); // Mock data for now
-      const productsNeedingAttention = productsNeedingAttentionResult.success ? productsNeedingAttentionResult.data! : [];
-      const ordersNeedingAttention = ordersNeedingAttentionResult.success ? ordersNeedingAttentionResult.data! : [];
+      const productsNeedingAttention = productsNeedingAttentionResult.success ? productsNeedingAttentionResult.data! : 
+        (isAdmin ? (() => { throw new Error('Failed to load products needing attention'); })() : []);
+      const ordersNeedingAttention = ordersNeedingAttentionResult.success ? ordersNeedingAttentionResult.data! : 
+        (isAdmin ? (() => { throw new Error('Failed to load orders needing attention'); })() : []);
 
       // Generate alerts based on business rules
       const alerts = this.generateAlerts(
