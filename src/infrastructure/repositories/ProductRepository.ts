@@ -364,7 +364,8 @@ export class ProductRepository implements IProductRepository {
         const baseUrl = `https://api.mercadolibre.com/users/${sellerId}/items/search`;
         const params = new URLSearchParams({
           limit: '100', // Maximum allowed by ML API
-          search_type: 'scan'
+          search_type: 'scan',
+          site_id: 'MLB' // Specify Brazilian marketplace
         });
 
         if (scrollId) {
