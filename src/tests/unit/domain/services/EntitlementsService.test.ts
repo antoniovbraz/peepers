@@ -18,13 +18,22 @@ describe('EntitlementsService', () => {
 
     mockEntitlement = {
       tenant_id: 'tenant_123',
-      plan_type: 'professional',
+      plan_type: 'business',
       features: [
-        'basic_dashboard',
-        'product_sync',
-        'order_management',
+        'basic_analytics',
+        'product_monitoring',
+        'basic_pricing',
+        'basic_storefront',
+        'weekly_reports',
+        'chat_support',
         'advanced_analytics',
-        'multi_user'
+        'ai_descriptions',
+        'competitor_analysis',
+        'ai_recommendations',
+        'inventory_analysis',
+        'smart_alerts',
+        'api_access',
+        'advanced_reports'
       ],
       limits: {
         api_calls_used: 1000,
@@ -52,15 +61,15 @@ describe('EntitlementsService', () => {
     });
 
     it('should deny access when feature is not included in plan', () => {
-      const result = service.validateFeatureAccess(mockEntitlement, 'api_access');
+      const result = service.validateFeatureAccess(mockEntitlement, 'market_intelligence');
 
       expect(result.isValid).toBe(false);
-      expect(result.reason).toContain('not included in professional plan');
+      expect(result.reason).toContain('not included in business plan');
       expect(result.requiredPlan).toBe('enterprise');
     });
 
     it('should deny access when no entitlement exists', () => {
-      const result = service.validateFeatureAccess(null, 'basic_dashboard');
+      const result = service.validateFeatureAccess(null, 'basic_analytics');
 
       expect(result.isValid).toBe(false);
       expect(result.reason).toBe('No active subscription found');
@@ -121,7 +130,7 @@ describe('EntitlementsService', () => {
     });
 
     it('should return denied with upgrade required when feature not included', () => {
-      const result = service.checkEntitlement(mockEntitlement, 'api_access');
+      const result = service.checkEntitlement(mockEntitlement, 'market_intelligence');
 
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain('not included');
@@ -130,7 +139,7 @@ describe('EntitlementsService', () => {
 
     it('should return denied with limit exceeded when usage limit reached', () => {
       const usageCheck = { type: 'users' as const, current: 6, limit: 5 };
-      const result = service.checkEntitlement(mockEntitlement, 'multi_user', usageCheck);
+      const result = service.checkEntitlement(mockEntitlement, 'advanced_analytics', usageCheck);
 
       expect(result.allowed).toBe(false);
       expect(result.limit_exceeded).toEqual({
@@ -197,7 +206,7 @@ describe('EntitlementsService', () => {
       };
 
       const recommendations = service.getUpgradeRecommendations(starterEntitlement);
-      expect(recommendations).toContain('professional');
+      expect(recommendations).toContain('business');
     });
 
     it('should recommend enterprise for professional near limits', () => {

@@ -245,7 +245,7 @@ export default function AdminProductsPage() {
   const filteredProducts = products
     .filter(product => {
       const matchesSearch = !searchQuery ||
-        (product.title && product.title.toLowerCase().includes(searchQuery.toLowerCase()));
+        (String(product.title || '').toLowerCase().includes(String(searchQuery || '').toLowerCase()));
       const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
       return matchesSearch && matchesStatus;
     })

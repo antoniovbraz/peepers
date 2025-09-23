@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
       if (search) {
         const searchLower = search.toLowerCase();
         products = products.filter(product =>
-          product.title.toLowerCase().includes(searchLower) ||
+          (product.title || '').toLowerCase().includes(searchLower) ||
           product.id.includes(search)
         );
         console.log(`🔍 Filtrados ${products.length} produtos com busca: ${search}`);

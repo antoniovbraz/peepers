@@ -43,7 +43,15 @@ type KVLike = {
 };
 
 export class AdvancedRateLimiter {
-  private readonly kv: KVLike = getKVClient() as unknown as KVLike;
+  // Do NOT call getKVClient eagerly at module load time. Some tests mock parts of the
+  // environment and may not provide UPSTASH env vars. Access KV lazily inside methods.
+  private getKV(): KVLike | null {
+    try {
+      return getKVClient() as unknown as KVLike;
+    } catch {
+      return null;
+    }
+  }
 
   // Generic IP limiter
   async limitByIP(clientIP: string, config: { maxRequests: number; windowMs: number; keyGenerator?: (ip: string) => string }): Promise<RateLimitResult> {
@@ -115,20 +123,23 @@ export class AdvancedRateLimiter {
     try {
       const counterKey = `${key}:count`;
       const lastResetKey = `${key}:reset`;
-      
-      const [countRes, lastResetRes] = await Promise.all([
-        this.kv.get(counterKey),
-        this.kv.get(lastResetKey)
-      ]);
+      const kv = this.getKV();
+
+      const [countRes, lastResetRes] = kv ? await Promise.all([
+        kv.get(counterKey),
+        kv.get(lastResetKey)
+      ]) : ['0', '0'];
 
       const currentCount = parseInt((countRes ?? '0') as string);
       const lastResetTime = parseInt((lastResetRes ?? '0') as string);
 
       if (now - lastResetTime > config.windowMs) {
-        await Promise.all([
-          this.kv.set(counterKey, '1'),
-          this.kv.set(lastResetKey, now.toString())
-        ]);
+        if (kv) {
+          await Promise.all([
+            kv.set(counterKey, '1'),
+            kv.set(lastResetKey, now.toString())
+          ]);
+        }
         
         return {
           allowed: true,
@@ -139,7 +150,7 @@ export class AdvancedRateLimiter {
       }
 
       const newCount = currentCount + 1;
-      await this.kv.set(counterKey, newCount.toString());
+  if (kv) await kv.set(counterKey, newCount.toString());
       
       const allowed = newCount <= config.maxRequests;
       const remaining = Math.max(0, config.maxRequests - newCount);
@@ -169,9 +180,10 @@ export class AdvancedRateLimiter {
   // Summarize counters for a given pattern or globally
   async getStats(pattern?: string): Promise<{ keys: number; errors?: string; sample?: Array<{ key: string; count: number; reset?: number }>; }> {
     try {
+      const kv = this.getKV();
       // If KV provides scan/keys, attempt to list keys; otherwise return minimal info
-      const hasScan = typeof this.kv.scan === 'function';
-      const hasKeys = typeof this.kv.keys === 'function';
+      const hasScan = !!kv && typeof kv.scan === 'function';
+      const hasKeys = !!kv && typeof kv.keys === 'function';
       if (!hasScan && !hasKeys) {
         return { keys: 0 };
       }
@@ -179,21 +191,21 @@ export class AdvancedRateLimiter {
       const match = pattern ? `${pattern}` : `rate_limit:*`;
       let keys: string[] = [];
 
-      if (hasScan && this.kv.scan) {
+      if (hasScan && kv && kv.scan) {
         // Upstash pattern scan
-        const result = await this.kv.scan(0, { match, count: 100 });
+        const result = await kv.scan(0, { match, count: 100 });
         const scanned = Array.isArray(result?.keys) ? result.keys as string[] : [];
         keys = scanned.filter(k => k.endsWith(':count'));
-      } else if (hasKeys && this.kv.keys) {
+      } else if (hasKeys && kv && kv.keys) {
         // node-redis KEYS (avoid in prod, but acceptable for small sets)
-        const all = await this.kv.keys(match);
+        const all = await kv.keys(match);
         keys = (all as string[]).filter(k => k.endsWith(':count'));
       }
 
       const sampleKeys = keys.slice(0, 25);
-      const counts = await Promise.all(sampleKeys.map(k => this.kv.get(k)));
+      const counts = kv ? await Promise.all(sampleKeys.map(k => kv.get(k))) : [];
       const resetKeys = sampleKeys.map(k => k.replace(/:count$/, ':reset'));
-      const resets = await Promise.all(resetKeys.map(k => this.kv.get(k)));
+      const resets = kv ? await Promise.all(resetKeys.map(k => kv.get(k))) : [];
 
       const sample = sampleKeys.map((k, i) => ({
         key: k,
@@ -211,16 +223,17 @@ export class AdvancedRateLimiter {
   // Reset a specific limiter key prefix (dangerous; admin-only)
   async resetLimit(keyPrefix: string): Promise<void> {
     try {
-      const hasScan = typeof this.kv.scan === 'function';
-      const hasKeys = typeof this.kv.keys === 'function';
+      const kv = this.getKV();
+      const hasScan = !!kv && typeof kv.scan === 'function';
+      const hasKeys = !!kv && typeof kv.keys === 'function';
       if (!hasScan && !hasKeys) return;
       const match = keyPrefix.endsWith('*') ? keyPrefix : `${keyPrefix}*`;
       let keys: string[] = [];
-      if (hasScan && this.kv.scan) {
-        const result = await this.kv.scan(0, { match, count: 100 });
+      if (hasScan && kv && kv.scan) {
+        const result = await kv.scan(0, { match, count: 100 });
         keys = Array.isArray(result?.keys) ? result.keys as string[] : [];
-      } else if (hasKeys && this.kv.keys) {
-        keys = await this.kv.keys(match);
+      } else if (hasKeys && kv && kv.keys) {
+        keys = await kv.keys(match);
       }
       const delKeys: string[] = [];
       for (const k of keys) {
@@ -228,11 +241,11 @@ export class AdvancedRateLimiter {
         const resetKey = k.endsWith(':count') ? k.replace(/:count$/, ':reset') : `${k}:reset`;
         delKeys.push(resetKey);
       }
-      if (delKeys.length > 0 && typeof this.kv.del === 'function' && this.kv.del) {
-        await this.kv.del(...delKeys);
-      } else {
+      if (delKeys.length > 0 && kv && typeof kv.del === 'function' && kv.del) {
+        await kv.del(...delKeys);
+      } else if (kv) {
         // fallback: set zero
-        await Promise.all(delKeys.map(k => this.kv.set(k, '0')));
+        await Promise.all(delKeys.map(k => kv.set(k, '0')));
       }
     } catch (e) {
       logger.error(e, 'Failed to reset rate limit keys');

@@ -18,11 +18,11 @@ describe('EntitlementsManager', () => {
 
     mockEntitlement = {
       tenant_id: 'tenant_123',
-      plan_type: 'professional',
+      plan_type: 'business',
       features: [
-        'basic_dashboard',
-        'product_sync',
-        'order_management',
+        'basic_analytics',
+        'product_monitoring',
+        'basic_pricing',
         'advanced_analytics',
         'multi_user'
       ],
@@ -74,7 +74,7 @@ describe('EntitlementsManager', () => {
       const result = await manager.checkEntitlement(context, mockEntitlement);
 
       expect(result.allowed).toBe(false);
-      expect(result.reason).toContain('not included in professional plan');
+      expect(result.reason).toContain('not included in business plan');
       expect(result.upgrade_required).toBe(true); // Domain service sets this
     });
 
@@ -82,7 +82,7 @@ describe('EntitlementsManager', () => {
       const context = {
         tenantId: 'tenant_123',
         userId: 'user_123',
-        feature: 'basic_dashboard' as PeepersFeature
+        feature: 'basic_analytics' as PeepersFeature
       };
 
       const result = await manager.checkEntitlement(context, null);
@@ -124,7 +124,7 @@ describe('EntitlementsManager', () => {
       };
 
       // Create a mock entitlement that will cause a TypeError
-      const badEntitlement = null as any; // This will cause the domain service to throw
+      const badEntitlement = null as unknown as TenantEntitlement; // This will cause the domain service to throw
 
       // Mock the domain service to throw an error
       const error = new Error('Test error');
@@ -261,7 +261,7 @@ describe('EntitlementsManager', () => {
       };
 
       const recommendations = manager.getUpgradeRecommendations(highUsageEntitlement);
-      expect(recommendations).toContain('professional');
+      expect(recommendations).toContain('business');
     });
   });
 });

@@ -13,7 +13,8 @@ import {
   isValidMLWebhookIP,
   extractRealIP,
   WEBHOOK_TIMEOUT_MS,
-  WEBHOOK_SECURITY
+  WEBHOOK_SECURITY,
+  ML_WEBHOOK_IPS
 } from '@/config/webhook';
 import {
   startWebhookPerformance,
@@ -26,7 +27,7 @@ export interface WebhookValidationResult {
   clientIP: string;
   error?: string;
   warning?: string;
-  performanceMetrics?: any;
+  performanceMetrics?: unknown;
 }
 
 /**
@@ -43,7 +44,7 @@ export function validateMLWebhook(request: NextRequest): WebhookValidationResult
     const error = `IP ${clientIP} not in ML official whitelist`;
     logger.error({
       clientIP,
-      allowedIPs: require('@/config/webhook').ML_WEBHOOK_IPS,
+      allowedIPs: ML_WEBHOOK_IPS,
       userAgent: request.headers.get('user-agent'),
       headers: {
         'x-forwarded-for': request.headers.get('x-forwarded-for'),
@@ -135,17 +136,16 @@ export async function processWebhookWithPerformance<T>(
 export function createWebhookErrorResponse(
   error: string,
   status: number = 403,
-  details?: any
+  details?: unknown
 ): NextResponse {
   logger.error({ error, details }, 'Webhook error response');
 
   return NextResponse.json(
-    {
+    Object.assign({
       error,
       message: 'Webhook validation failed',
       timestamp: new Date().toISOString(),
-      ...details
-    },
+    }, details as Record<string, unknown> || {}),
     { status }
   );
 }
@@ -156,7 +156,7 @@ export function createWebhookErrorResponse(
 export function createWebhookSuccessResponse(
   topic: string,
   processingTimeMs: number,
-  additionalData?: any,
+  additionalData?: unknown,
   timeoutId?: NodeJS.Timeout
 ): NextResponse {
   // Limpar timeout se fornecido
@@ -164,14 +164,14 @@ export function createWebhookSuccessResponse(
     clearTimeout(timeoutId);
   }
 
-  const response = {
+  const response = Object.assign({
     success: true,
     message: 'Webhook processed successfully',
+    received: true,
     received_at: new Date().toISOString(),
     topic,
-    processing_time_ms: processingTimeMs,
-    ...additionalData
-  };
+    processing_time_ms: processingTimeMs
+  }, additionalData as Record<string, unknown> || {});
 
   // Log warning se excedeu timeout
   if (WEBHOOK_SECURITY.ENFORCE_TIMEOUT && processingTimeMs > WEBHOOK_TIMEOUT_MS) {

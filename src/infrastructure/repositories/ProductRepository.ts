@@ -538,7 +538,7 @@ export class ProductRepository implements IProductRepository {
       }
 
       const filteredProducts = result.data.items.filter(product =>
-        product.title.toLowerCase().includes(query.toLowerCase())
+        (product.title || '').toLowerCase().includes(query.toLowerCase())
       );
 
       return {

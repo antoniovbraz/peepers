@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSecurityStats } from '@/lib/security-events';
 import { rateLimiter } from '@/lib/rate-limiter';
 import { logger } from '@/lib/logger';
+import { isSuperAdmin } from '@/config/platform-admin';
 
 /**
  * Endpoint de Estatísticas de Segurança
@@ -20,8 +21,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const allowedUserIds = process.env.ALLOWED_USER_IDS?.split(',') || [];
-    if (!allowedUserIds.includes(userId)) {
+    // Only super admins can access this endpoint (platform-level)
+    const userEmail = request.cookies.get('user_email')?.value;
+    if (!isSuperAdmin({ email: userEmail || undefined, id: userId })) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

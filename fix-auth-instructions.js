@@ -7,13 +7,15 @@ const USER_ID = '669073070'; // Do seu histórico anterior
 const BASE_URL = 'https://peepers.vercel.app';
 
 console.log('🔧 CRITICAL FIX NEEDED:\n');
-console.log('The ALLOWED_USER_IDS environment variable is NOT SET on Vercel.');
-console.log('This is why you get 401 errors on all admin APIs.\n');
+console.log('Please ensure SUPER_ADMIN_EMAIL or SUPER_ADMIN_USER_IDS are configured on Vercel.');
+console.log('ALLOWED_USER_IDS is deprecated and may be removed; use SUPER_ADMIN_USER_IDS for backward compatibility.\n');
 
 console.log('📝 TO FIX THIS:');
 console.log('1. Go to Vercel Dashboard -> peepers project -> Settings -> Environment Variables');
-console.log('2. Add a new environment variable:');
-console.log('   Name: ALLOWED_USER_IDS');
+console.log('2. Add/verify these environment variables:');
+console.log('   Name: SUPER_ADMIN_EMAIL');
+console.log('   Value: peepers.shop@gmail.com');
+console.log('   Name (optional for backward compatibility): SUPER_ADMIN_USER_IDS');
 console.log(`   Value: ${USER_ID}`);
 console.log('   Environment: All (Production, Preview, Development)');
 console.log('3. Redeploy the application\n');
@@ -28,7 +30,7 @@ console.log('the EntitlementsGuard should bypass the ALLOWED_USER_IDS check.');
 console.log('But some API endpoints still require it.\n');
 
 console.log('⚡ PRIORITY ACTIONS:');
-console.log('1. Set ALLOWED_USER_IDS in Vercel environment variables');
+console.log('1. Set SUPER_ADMIN_EMAIL and optionally SUPER_ADMIN_USER_IDS in Vercel environment variables');
 console.log('2. Test authentication again');
 console.log('3. Your admin panel should work normally after this fix');
 

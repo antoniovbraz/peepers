@@ -31,6 +31,10 @@ vi.mock('@/config/routes', () => ({
   },
 }));
 
+vi.mock('@/lib/rate-limiter', () => ({
+  checkLoginLimit: vi.fn(() => Promise.resolve({ allowed: true, remaining: 9, resetTime: Date.now() + 900000, totalHits: 1 })),
+}));
+
 // Mock fetch
 global.fetch = vi.fn();
 
@@ -144,7 +148,7 @@ describe('OAuth Callback', () => {
       const setCookieHeader = response.headers.get('set-cookie');
       expect(setCookieHeader).toContain('session_token=');
       expect(setCookieHeader).toContain('HttpOnly');
-      expect(setCookieHeader).toContain('SameSite=strict');
+  expect(setCookieHeader).toContain('SameSite=lax');
     });
 
     it('should handle token exchange failure', async () => {

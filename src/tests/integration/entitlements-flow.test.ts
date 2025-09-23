@@ -3,6 +3,7 @@
  *
  * Testes de integração para o fluxo completo de entitlements
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
@@ -193,10 +194,5 @@ describe('Entitlements Integration Flow', () => {
       expect(response.status).toBe(307);
       expect(response.headers.get('location')).toContain('/login');
     });
-  });
-
-  describe('Cache Behavior', () => {
-    // Cache behavior is tested through the checkEntitlement calls in other tests
-    // The actual Redis caching cannot be tested in unit tests without Redis
   });
 });

@@ -84,7 +84,15 @@ export async function GET() {
 
 // Função para verificar e renovar tokens expirados automaticamente
 async function checkAndRefreshExpiredTokens() {
-  const allowedUserIds = process.env.ALLOWED_USER_IDS?.split(',') || [];
+  // Prefer explicit list passed via env for backward compatibility. Preferably
+  // this routine should be called by an authenticated platform admin and can
+  // accept a list of userIds in the request in future versions.
+  // Prefer SUPER_ADMIN_USER_IDS for backward compatibility; ALLOWED_USER_IDS is deprecated
+  const configuredUserIds = (process.env.SUPER_ADMIN_USER_IDS || process.env.ALLOWED_USER_IDS || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
   const results = {
     checked: 0,
     refreshed: 0,
@@ -98,7 +106,38 @@ async function checkAndRefreshExpiredTokens() {
     }>
   };
 
-  for (const userId of allowedUserIds) {
+  // Build candidate user list. If ALLOWED_USER_IDS isn't set, try to read an
+  // indexed list of users from the cache (key: 'users:all'). If that's not
+  // available, fail fast with a descriptive message so callers can provide
+  // an explicit list.
+  let candidateUserIds: string[] = configuredUserIds;
+
+  if (candidateUserIds.length === 0) {
+    try {
+      const { cache } = await import('@/lib/cache');
+      if (typeof (cache as any).getUsersIndex === 'function') {
+        const index = await (cache as any).getUsersIndex();
+        if (Array.isArray(index)) {
+          candidateUserIds = index.map(String);
+        }
+      }
+    } catch (_) {
+      // ignore and fallthrough
+    }
+  }
+
+  if (candidateUserIds.length === 0) {
+    // No configured users found - return helpful error so admin can invoke
+    // the endpoint with an explicit list instead of relying on deprecated env.
+    return {
+      checked: 0,
+      refreshed: 0,
+      errors: 1,
+      details: [{ userId: 'none', status: 'no_user_list_configured', error: 'No user list configured. Set SUPER_ADMIN_USER_IDS or populate cache key users:all' }]
+    };
+  }
+
+  for (const userId of candidateUserIds) {
     try {
       results.checked++;
       

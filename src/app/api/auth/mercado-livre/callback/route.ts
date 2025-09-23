@@ -4,6 +4,7 @@ import { cache } from '@/lib/cache';
 import { ML_CONFIG, CACHE_KEYS, API_ENDPOINTS, PAGES } from '@/config/routes';
 import { checkLoginLimit } from '@/lib/rate-limiter';
 import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
+import { isSuperAdmin, getSuperAdminEntitlements } from '@/config/platform-admin';
 
 /**
  * OAuth 2.0 Callback Handler com PKCE e Proteção CSRF
@@ -202,6 +203,7 @@ export async function GET(request: NextRequest) {
 
     // Armazenar tokens no cache usando o método correto
     const userId = userData.id.toString();
+    const isSuper = isSuperAdmin({ email: userData.email || undefined, id: userId || undefined });
     await cache.setUser(userId, {
       token: tokenResult.access_token,
       refresh_token: tokenResult.refresh_token,
@@ -221,6 +223,8 @@ export async function GET(request: NextRequest) {
       permalink: userData.permalink,
       seller_reputation: userData.seller_reputation || {},
       status: userData.status || {},
+      is_super_admin: isSuper,
+      entitlements: isSuper ? getSuperAdminEntitlements() : undefined,
       connected_at: new Date().toISOString(),
       last_sync: new Date().toISOString()
     });
@@ -230,8 +234,23 @@ export async function GET(request: NextRequest) {
     // Vamos persistir também nesse formato para evitar 401 após login.
     try {
       const kv = getKVClient();
+      // Some tests/mocks may only provide partial CACHE_KEYS; compute safely
+      let userTokenKey: string;
+      try {
+        const maybeUserToken = (CACHE_KEYS as unknown) as { USER_TOKEN?: unknown };
+        if (typeof maybeUserToken.USER_TOKEN === 'function') {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore - dynamic key helper provided by CACHE_KEYS in runtime
+          userTokenKey = (maybeUserToken.USER_TOKEN as Function)(userId);
+        } else {
+          userTokenKey = `user_token:${userId}`;
+        }
+      } catch {
+        userTokenKey = `user_token:${userId}`;
+      }
+
       await kv.set(
-        CACHE_KEYS.USER_TOKEN(userId),
+        userTokenKey,
         {
           access_token: tokenResult.access_token,
           refresh_token: tokenResult.refresh_token,

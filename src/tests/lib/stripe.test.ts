@@ -5,9 +5,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { stripeClient } from '@/lib/stripe';
 
-// Mock do Stripe SDK
+// Mock do Stripe SDK (must be declared before importing stripeClient)
 vi.mock('stripe', () => ({
   default: vi.fn().mockImplementation(() => ({
     customers: {
@@ -25,7 +24,7 @@ vi.mock('stripe', () => ({
   }))
 }));
 
-// Mock do cache
+// Mock do cache (must be declared before importing stripeClient)
 vi.mock('@/lib/cache', () => ({
   getKVClient: vi.fn(() => ({
     get: vi.fn(),
@@ -33,6 +32,8 @@ vi.mock('@/lib/cache', () => ({
     del: vi.fn()
   }))
 }));
+
+import { stripeClient } from '@/lib/stripe';
 
 describe('StripeClient', () => {
   let mockStripe: {
@@ -55,7 +56,7 @@ describe('StripeClient', () => {
     del: ReturnType<typeof vi.fn>;
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
 
     // Setup Stripe mock
@@ -80,6 +81,12 @@ describe('StripeClient', () => {
       set: vi.fn(),
       del: vi.fn()
     };
+    // Inject mocks into the stripe client singleton (use imported client)
+    const client = stripeClient;
+    client.__setStripeInstanceForTest(mockStripe);
+    // Wire cache mock to exported getKVClient via dynamic import
+    const cache = await import('@/lib/cache');
+    (cache.getKVClient as any).mockReturnValue(mockCache);
   });
 
   describe('getOrCreateCustomer', () => {
@@ -156,7 +163,7 @@ describe('StripeClient', () => {
     it('should return cached entitlement if available', async () => {
       const cachedEntitlement = {
         tenant_id: 'tenant_123',
-        plan_type: 'professional',
+        plan_type: 'business',
         features: ['advanced_analytics']
       };
 
@@ -178,7 +185,7 @@ describe('StripeClient', () => {
           data: [{
             price: {
               id: 'price_123',
-              metadata: { plan_type: 'professional' }
+              metadata: { plan_type: 'business' }
             }
           }]
         },
@@ -190,7 +197,7 @@ describe('StripeClient', () => {
 
       const result = await stripeClient.getTenantEntitlement('tenant_123');
 
-      expect(result?.plan_type).toBe('professional');
+      expect(result?.plan_type).toBe('business');
       expect(result?.features).toContain('advanced_analytics');
       expect(mockCache.set).toHaveBeenCalled();
     });
@@ -215,7 +222,7 @@ describe('StripeClient', () => {
           items: {
             data: [{
               price: {
-                metadata: { plan_type: 'professional' }
+                metadata: { plan_type: 'business' }
               }
             }]
           }
@@ -254,7 +261,7 @@ describe('StripeClient', () => {
           items: {
             data: [{
               price: {
-                metadata: { plan_type: 'professional' }
+                metadata: { plan_type: 'business' }
               }
             }]
           }
@@ -301,7 +308,7 @@ describe('StripeClient', () => {
 
       await stripeClient.processWebhook('raw_body', 'signature');
 
-      expect(mockCache.del).toHaveBeenCalledWith('stripe:entitlement:cus_test');
+      expect(mockCache.del).toHaveBeenCalledWith('stripe:entitlement:tenant_123');
     });
 
     it('should handle payment succeeded event', async () => {

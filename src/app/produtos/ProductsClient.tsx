@@ -7,10 +7,7 @@ import ProductFilters from '@/components/ProductFilters';
 import ProductSort from '@/components/ProductSort';
 import FeaturedProducts from '@/components/FeaturedProducts';
 import ProductCategorySection from '@/components/ProductCategorySection';
-import ProductBadges from '@/components/ProductBadges';
-import ProductsLoading from '@/components/ProductsLoading';
-import ProductsError from '@/components/ProductsError';
-import EmptyProducts from '@/components/EmptyProducts';
+// ...existing imports (some components are intentionally not used in this client)
 import ProductCard from '@/components/ProductCard';
 import type { ProductSummary } from '@/types/product';
 import { PAGES, API_ENDPOINTS } from '@/config/routes';
@@ -70,7 +67,14 @@ export default function ProductsClient() {
 
   // Filtrar e ordenar produtos
   const filteredProducts = useMemo(() => {
-    const filtered = filterProducts(categorizedProducts, filters);
+    // Defensive: ensure titles and compatibility arrays exist
+    const normalized: CategorizedProduct[] = categorizedProducts.map(p => ({
+      ...p,
+      title: String(p.title || ''),
+      compatibility: Array.isArray(p.compatibility) ? p.compatibility.map(c => String(c || '')) : [],
+    } as CategorizedProduct));
+
+    const filtered = filterProducts(normalized, filters);
     return sortProducts(filtered, sortBy);
   }, [categorizedProducts, filters, sortBy]);
 

@@ -3,14 +3,16 @@ import { NextRequest } from 'next/server';
 import { GET } from './route';
 
 // Mocks
+const mockKV = {
+  set: vi.fn().mockResolvedValue('OK'),
+};
 vi.mock('@/lib/cache', () => ({
-  getKVClient: vi.fn(() => ({
-    set: vi.fn().mockResolvedValue('OK'),
-  })),
+  getKVClient: vi.fn(() => mockKV),
 }));
 
 vi.mock('@/lib/rate-limiter', () => ({
   checkLoginLimit: vi.fn(async () => ({ allowed: true, remaining: 100, resetTime: Date.now() + 60000, totalHits: 1 })),
+  checkMLUserDaily: vi.fn().mockResolvedValue({ allowed: true, remaining: 4999, resetTime: Date.now() + 24 * 60 * 60 * 1000, totalHits: 1 }),
 }));
 
 vi.mock('@/lib/security-events', () => ({
@@ -61,9 +63,6 @@ describe('OAuth Init (PKCE)', () => {
   it('redirects to ML with PKCE S256 and stores verifier', async () => {
     // Arrange
     const request = new NextRequest('http://localhost:3000/api/auth/mercado-livre');
-    const { getKVClient } = await import('@/lib/cache');
-    const kv = getKVClient();
-    const setSpy = vi.mocked(kv.set);
 
     // Act
     const response = await GET(request);
@@ -79,8 +78,8 @@ describe('OAuth Init (PKCE)', () => {
     expect(url.searchParams.get('scope')).toBe('offline_access read write');
 
     // Verifier stored with TTL ~10min
-    expect(setSpy).toHaveBeenCalled();
-    const [key, value, opts] = setSpy.mock.calls[0];
+    expect(mockKV.set).toHaveBeenCalled();
+    const [key, value, opts] = mockKV.set.mock.calls[0];
     expect(String(key)).toMatch(/^pkce_verifier:/);
     expect(typeof value).toBe('string');
     expect(opts).toHaveProperty('ex');

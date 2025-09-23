@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getKVClient } from '@/lib/cache';
 import { ML_CONFIG, CACHE_KEYS, API_ENDPOINTS } from '@/config/routes';
+import { randomBytes, sha256, base64UrlEncode } from '@/lib/crypto-utils';
 import { checkLoginLimit } from '@/lib/rate-limiter';
 import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
 
@@ -19,13 +20,9 @@ import { logSecurityEvent, SecurityEventType } from '@/lib/security-events';
  * 
  * @returns {string} Code verifier Base64URL de 43 caracteres
  */
+// Node/browser-safe Base64URL encode helpers
 function generateCodeVerifier(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return btoa(String.fromCharCode.apply(null, Array.from(array)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
+  return base64UrlEncode(randomBytes(32));
 }
 
 /**
@@ -44,14 +41,9 @@ function generateCodeVerifier(): string {
  * @param verifier - Code verifier original (43+ chars)
  * @returns {Promise<string>} Code challenge SHA-256 Base64URL
  */
-async function generateCodeChallenge(verifier: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(verifier);
-  const digest = await crypto.subtle.digest('SHA-256', data);
-  return btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(digest))))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
+function generateCodeChallenge(verifier: string): string {
+  const hash = sha256(verifier);
+  return base64UrlEncode(hash);
 }
 
 /**

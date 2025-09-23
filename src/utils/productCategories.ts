@@ -77,7 +77,7 @@ export const POWER_RATINGS = [
 ];
 
 export function categorizeProduct(product: ProductSummary): CategorizedProduct {
-  const title = product.title.toLowerCase();
+  const title = (product.title || '').toLowerCase();
   const badges: ProductBadge[] = [];
   
   // Detectar categoria principal
@@ -339,9 +339,14 @@ export function filterProducts(products: CategorizedProduct[], filters: ProductF
       if (filters.powerRating === 'ultra' && product.powerRating < 60) return false;
     }
 
-    // Filtro de compatibilidade
+    // Filtro de compatibilidade (defensivo: garante que comp e filtro sejam strings)
     if (filters.compatibility && product.compatibility) {
-      if (!product.compatibility.some(comp => comp.toLowerCase().includes(filters.compatibility!.toLowerCase()))) {
+      const target = String(filters.compatibility).toLowerCase();
+      const hasMatch = product.compatibility.some(comp => {
+        return String(comp || '').toLowerCase().includes(target);
+      });
+
+      if (!hasMatch) {
         return false;
       }
     }
@@ -359,7 +364,7 @@ export function filterProducts(products: CategorizedProduct[], filters: ProductF
     // Filtro de busca
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
-      if (!product.title.toLowerCase().includes(searchLower)) {
+      if (!((product.title || '').toLowerCase().includes(searchLower))) {
         return false;
       }
     }

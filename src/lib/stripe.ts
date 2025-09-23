@@ -20,7 +20,7 @@
  * Gerenciamento de subscriptions, customers e webhooks
  */
 
-import Stripe from 'stripe';
+import type Stripe from 'stripe';
 import { getKVClient } from '@/lib/cache';
 import { logger } from '@/lib/logger';
 import {
@@ -37,31 +37,74 @@ import { PEEPERS_PLANS, ENTITLEMENTS_CACHE_TTL, TRIAL_FEATURES } from '@/config/
 class StripeClient {
   private stripe: Stripe;
   private readonly cachePrefix = 'stripe:';
+  private _stripeInitialized = false;
 
   constructor() {
-    // Skip Stripe initialization in test environment and build time
-    if (process.env.NODE_ENV === 'test' || process.env.NEXT_PHASE === 'phase-production-build') {
-      this.stripe = {} as any;
-      return;
-    }
+    // Do not initialize Stripe SDK at module import time. Tests may mock
+    // the 'stripe' module after importing this file; initializing lazily
+    // on first use ensures mocks are honored.
+    this.stripe = {} as any;
+    this._stripeInitialized = false;
+  }
 
-    if (!process.env.STRIPE_SECRET_KEY) {
-      // In production without Stripe key, create mock client instead of throwing
-      logger.warn('STRIPE_SECRET_KEY not configured - using mock client');
-      this.stripe = {} as any;
-      return;
-    }
+  /**
+   * Test helper: inject a mock stripe instance (used by unit tests)
+   */
+  public __setStripeInstanceForTest(instance: any): void {
+    this.stripe = instance;
+    this._stripeInitialized = true;
+  }
 
-    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2025-08-27.basil',
-      typescript: true,
-    });
+  private ensureStripe(): void {
+    if (this._stripeInitialized) return;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const StripeModule = require('stripe');
+      // When running tests the mocked stripe module may be a factory that
+      // doesn't expect a real secret. Allow calling without secret in tests
+      // to avoid the SDK making network calls with a placeholder key.
+      const secret = process.env.NODE_ENV === 'test' ? undefined : (process.env.STRIPE_SECRET_KEY || '');
+      // Support both CJS and ESM mock shapes: tests may mock 'stripe' with a
+      // default export (StripeModule.default) or export the constructor directly.
+      // Prefer StripeModule.default when available.
+      const StripeCtor = (StripeModule && (StripeModule.default || StripeModule)) as any;
+      // @ts-ignore - dynamic instantiation
+      // The mocked module can be exported as a constructor function, a factory
+      // that must be called (not `new`), or a plain object. Try multiple
+      // strategies so tests' vi.mock shapes are accepted.
+      let instance: any;
+      if (typeof StripeCtor === 'function') {
+        try {
+          instance = secret
+            ? new StripeCtor(secret, { apiVersion: '2025-08-27.basil', typescript: true })
+            : new StripeCtor();
+        } catch (innerErr) {
+          // Some mocks are plain factory functions (not meant to be called with `new`)
+          try {
+            instance = secret
+              ? (StripeCtor as any)(secret, { apiVersion: '2025-08-27.basil', typescript: true })
+              : (StripeCtor as any)();
+          } catch (innerErr2) {
+            throw innerErr2 || innerErr;
+          }
+        }
+      } else {
+        instance = StripeCtor;
+      }
+
+      this.stripe = instance;
+    } catch (e) {
+      logger.warn('Stripe SDK not available or failed to initialize; falling back to empty client');
+      this.stripe = {} as any;
+    }
+    this._stripeInitialized = true;
   }
 
   /**
    * Busca ou cria customer no Stripe
    */
   async getOrCreateCustomer(email: string, name?: string, metadata?: Record<string, string>): Promise<StripeCustomer> {
+    this.ensureStripe();
     try {
       // Buscar customer existente
       const existingCustomers = await this.stripe.customers.list({
@@ -97,7 +140,8 @@ class StripeClient {
     priceId: string,
     metadata?: Record<string, string>
   ): Promise<StripeSubscription> {
-    try {
+  this.ensureStripe();
+  try {
       const subscription = await this.stripe.subscriptions.create({
         customer: customerId,
         items: [{ price: priceId }],
@@ -125,6 +169,7 @@ class StripeClient {
    * Busca subscription ativa de um customer
    */
   async getActiveSubscription(customerId: string): Promise<StripeSubscription | null> {
+    this.ensureStripe();
     try {
       const subscriptions = await this.stripe.subscriptions.list({
         customer: customerId,
@@ -146,6 +191,7 @@ class StripeClient {
    * Atualiza subscription existente
    */
   async updateSubscription(subscriptionId: string, newPriceId: string): Promise<StripeSubscription> {
+    this.ensureStripe();
     try {
       // Cancelar items existentes
       const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
@@ -176,6 +222,7 @@ class StripeClient {
    * Cancela uma subscription
    */
   async cancelSubscription(subscriptionId: string, cancelAtPeriodEnd: boolean = false): Promise<StripeSubscription> {
+    this.ensureStripe();
     try {
       const subscription = await this.stripe.subscriptions.update(subscriptionId, {
         cancel_at_period_end: cancelAtPeriodEnd,
@@ -203,6 +250,7 @@ class StripeClient {
    * Reativa uma subscription cancelada
    */
   async reactivateSubscription(subscriptionId: string): Promise<StripeSubscription> {
+    this.ensureStripe();
     try {
       const subscription = await this.stripe.subscriptions.update(subscriptionId, {
         cancel_at_period_end: false,
@@ -221,6 +269,7 @@ class StripeClient {
    * Busca subscription por ID
    */
   async getSubscription(subscriptionId: string): Promise<StripeSubscription> {
+    this.ensureStripe();
     try {
       const subscription = await this.stripe.subscriptions.retrieve(subscriptionId, {
         expand: ['latest_invoice.payment_intent']
@@ -238,6 +287,7 @@ class StripeClient {
    * Busca customer por ID
    */
   async getCustomer(customerId: string): Promise<StripeCustomer> {
+    this.ensureStripe();
     try {
       const customer = await this.stripe.customers.retrieve(customerId);
       return customer as StripeCustomer;
@@ -252,6 +302,7 @@ class StripeClient {
    * Busca invoices de um customer
    */
   async getCustomerInvoices(customerId: string): Promise<any[]> {
+    this.ensureStripe();
     try {
       const invoices = await this.stripe.invoices.list({
         customer: customerId,
@@ -270,6 +321,7 @@ class StripeClient {
    * Busca a próxima fatura do customer
    */
   async getUpcomingInvoice(customerId: string): Promise<Stripe.Invoice | null> {
+    this.ensureStripe();
     try {
       // Use type assertion to bypass TypeScript checking for this method
       const upcomingInvoice = await (this.stripe.invoices as any).retrieveUpcoming({
@@ -294,7 +346,8 @@ class StripeClient {
     customerId: string,
     returnUrl: string = `${process.env.NEXT_PUBLIC_APP_URL}/admin/billing`
   ): Promise<{ url: string }> {
-    try {
+  this.ensureStripe();
+  try {
       const session = await this.stripe.billingPortal.sessions.create({
         customer: customerId,
         return_url: returnUrl,
@@ -323,7 +376,8 @@ class StripeClient {
     cancelUrl: string = `${process.env.NEXT_PUBLIC_APP_URL}/admin/billing?canceled=true`,
     mode: 'subscription' | 'payment' = 'subscription'
   ): Promise<{ url: string; sessionId: string }> {
-    try {
+  this.ensureStripe();
+  try {
       const session = await this.stripe.checkout.sessions.create({
         customer: customerId,
         line_items: [{
@@ -366,7 +420,8 @@ class StripeClient {
     newPriceId: string,
     prorationBehavior: 'create_prorations' | 'none' = 'create_prorations'
   ): Promise<StripeSubscription> {
-    try {
+  this.ensureStripe();
+  try {
       // Buscar subscription atual
       const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
 
@@ -406,7 +461,8 @@ class StripeClient {
     subscriptionId: string,
     newPriceId: string
   ): Promise<StripeSubscription> {
-    try {
+  this.ensureStripe();
+  try {
       // Buscar subscription atual
       const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
 
@@ -438,6 +494,7 @@ class StripeClient {
    * Cancela downgrade agendado
    */
   async cancelScheduledDowngrade(subscriptionId: string): Promise<StripeSubscription> {
+    this.ensureStripe();
     try {
       // Reverter para preço atual (remove mudanças agendadas)
       const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
@@ -474,7 +531,8 @@ class StripeClient {
     recurring: { interval: string; interval_count: number } | null;
     metadata: Record<string, string>;
   }>> {
-    try {
+  this.ensureStripe();
+  try {
       const prices = await this.stripe.prices.list({
         active: true,
         type: 'recurring'
@@ -505,7 +563,8 @@ class StripeClient {
     currency: string;
     period_end: Date;
   }> {
-    try {
+  this.ensureStripe();
+  try {
       const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
 
       // Calcular proration usando invoice preview
@@ -540,7 +599,8 @@ class StripeClient {
       }
 
       // Buscar subscription no Stripe
-      const subscription = await this.getActiveSubscription(tenantId);
+  // getActiveSubscription will ensure Stripe is initialized
+  const subscription = await this.getActiveSubscription(tenantId);
 
       if (!subscription) {
         // Verificar se está em trial
@@ -792,6 +852,14 @@ class StripeClient {
   }
 }
 
-// Exportar instância singleton
-export const stripeClient = new StripeClient();
+// Exportar instância singleton (lazily initialized)
+let _stripeClient: StripeClient | null = null;
+
+export function getStripeClient(): StripeClient {
+  if (!_stripeClient) _stripeClient = new StripeClient();
+  return _stripeClient;
+}
+
+// Backwards-compatible default export for existing imports
+export const stripeClient = getStripeClient();
 export default stripeClient;

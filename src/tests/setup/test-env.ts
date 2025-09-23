@@ -20,7 +20,9 @@ const TEST_ENV_VARS = {
   NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
   
   // Auth
-  ALLOWED_USER_IDS: '468424240,123456789',
+  // Deprecated: ALLOWED_USER_IDS
+  SUPER_ADMIN_EMAIL: 'antonio@peepers.com',
+  SUPER_ADMIN_USER_IDS: '468424240,123456789',
   
   // Stripe
   STRIPE_SECRET_KEY: 'sk_test_test',

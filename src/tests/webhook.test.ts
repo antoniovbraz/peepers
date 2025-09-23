@@ -22,6 +22,8 @@ vi.mock('@/lib/rate-limiter', () => ({
     limitWebhook: vi.fn().mockResolvedValue({ allowed: true, remaining: 999, resetTime: Date.now() + 3600000, totalHits: 1 })
   },
   checkWebhookLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 999, resetTime: Date.now() + 3600000, totalHits: 1 })
+  ,
+  checkMLUserDaily: vi.fn().mockResolvedValue({ allowed: true, remaining: 4999, resetTime: Date.now() + 24 * 60 * 60 * 1000, totalHits: 1 })
 }));
 
 vi.mock('@/lib/cache', () => ({

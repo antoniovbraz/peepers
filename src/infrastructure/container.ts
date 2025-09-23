@@ -437,13 +437,15 @@ export interface AuthConfig {
 }
 
 export function createAuthConfig(): AuthConfig {
-  const allowedIds = process.env.ALLOWED_USER_IDS || '';
-  
+  // ALLOWED_USER_IDS is deprecated in favor of per-tenant/org checks and SUPER_ADMIN
+  // Keep backward compatibility by reading SUPER_ADMIN_USER_IDS from platform config
+  const superAdminUserIds = (process.env.SUPER_ADMIN_USER_IDS || '')
+    .split(',')
+    .map(id => parseInt(id.trim()))
+    .filter(id => !isNaN(id));
+
   return {
-    allowedUserIds: allowedIds
-      .split(',')
-      .map(id => parseInt(id.trim()))
-      .filter(id => !isNaN(id)),
+    allowedUserIds: superAdminUserIds,
     sessionTimeout: 3600 // 1 hour
   };
 }
