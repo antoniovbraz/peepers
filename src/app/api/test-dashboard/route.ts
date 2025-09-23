@@ -3,39 +3,26 @@ import { ProductRepository } from '@/infrastructure/repositories/ProductReposito
 
 export async function GET(_request: NextRequest) {
   try {
-    // Test endpoint - no auth required for debugging
+    // Test endpoint - simulate admin context
     const sellerId = 669073070; // Hardcoded for testing
 
     // Initialize repositories with admin context (server-side)
     const productRepository = new ProductRepository(undefined, true);
 
-    // Test product statistics
+    // Test product statistics with admin context (should fetch real data)
+    console.log('🧪 Testing product statistics in admin context...');
     const productStats = await productRepository.getStatistics(sellerId);
 
-    // Also test raw product fetch to see status distribution
-    const rawProducts = await (productRepository as any).fetchAllSellerProducts(sellerId);
-
-    // Count products by status
-    const statusCounts: Record<string, number> = {};
-    rawProducts.forEach((product: any) => {
-      const status = product.status || 'unknown';
-      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    console.log('📊 Product stats result:', {
+      success: productStats.success,
+      error: productStats.error,
+      data: productStats.data
     });
 
     return NextResponse.json({
       success: true,
       productStats: productStats.success ? productStats.data : null,
       productStatsError: productStats.error,
-      rawProductsCount: rawProducts.length,
-      statusDistribution: statusCounts,
-      sampleProducts: rawProducts.slice(0, 3).map((p: any) => ({
-        id: p.id,
-        title: p.title?.substring(0, 30) + '...',
-        status: p.status,
-        price: p.price,
-        available_quantity: p.available_quantity,
-        allKeys: Object.keys(p)
-      })),
       timestamp: new Date().toISOString()
     });
 
