@@ -143,7 +143,7 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
-  async getStatistics(_sellerId?: number, _dateFrom?: Date, _dateTo?: Date): Promise<RepositoryResult<{
+  async getStatistics(sellerId?: number, _dateFrom?: Date, _dateTo?: Date): Promise<RepositoryResult<{
     total: number;
     byStatus: Record<Order['status'], number>;
     totalRevenue: number;
@@ -152,6 +152,64 @@ export class OrderRepository implements IOrderRepository {
     conversionRate: number;
   }>> {
     try {
+      // Try to fetch real data from ML API
+      if (typeof window === 'undefined' && sellerId) {
+        try {
+          const kv = getKVClient();
+          const tokenKey = `user_token_${sellerId}`;
+          const tokenData = await kv.get(tokenKey) as { access_token: string } | null;
+
+          if (tokenData?.access_token) {
+            console.log('🔄 Buscando estatísticas reais de pedidos do ML para vendedor:', sellerId);
+
+            // Fetch orders from ML API
+            const response = await fetch(`https://api.mercadolibre.com/orders/search?seller=${sellerId}&limit=200`, {
+              headers: {
+                'Authorization': `Bearer ${tokenData.access_token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (response.ok) {
+              const ordersData = await response.json();
+              const orders = ordersData.results || [];
+
+              const byStatus: Record<Order['status'], number> = {
+                confirmed: orders.filter((o: Record<string, unknown>) => (o.status as string) === 'confirmed').length,
+                payment_required: orders.filter((o: Record<string, unknown>) => (o.status as string) === 'payment_required').length,
+                payment_in_process: orders.filter((o: Record<string, unknown>) => (o.status as string) === 'payment_in_process').length,
+                paid: orders.filter((o: Record<string, unknown>) => (o.status as string) === 'paid').length,
+                shipped: orders.filter((o: Record<string, unknown>) => (o.status as string) === 'shipped').length,
+                delivered: orders.filter((o: Record<string, unknown>) => (o.status as string) === 'delivered').length,
+                cancelled: orders.filter((o: Record<string, unknown>) => (o.status as string) === 'cancelled').length
+              };
+
+              const completedOrders = orders.filter((o: Record<string, unknown>) => ['paid', 'shipped', 'delivered'].includes(o.status as string));
+              const totalRevenue = completedOrders.reduce((sum: number, o: Record<string, unknown>) => sum + ((o.total_amount as number) || 0), 0);
+
+              const realStats = {
+                total: orders.length,
+                byStatus,
+                totalRevenue,
+                totalProfit: totalRevenue * 0.1, // Mock 10% profit margin
+                averageOrderValue: completedOrders.length > 0 ? totalRevenue / completedOrders.length : 0,
+                conversionRate: 0.15 // Mock conversion rate
+              };
+
+              console.log('✅ Estatísticas reais de pedidos obtidas:', realStats);
+              return {
+                success: true,
+                data: realStats,
+                timestamp: new Date()
+              };
+            }
+          }
+        } catch (error) {
+          console.warn('❌ Falha ao buscar estatísticas reais de pedidos:', error);
+        }
+      }
+
+      // Fallback: Get all orders to calculate statistics (using existing mock data)
       const result = await this.findAll();
       
       if (!result.success || !result.data) {
