@@ -145,18 +145,11 @@ export async function GET(request: NextRequest) {
     // Não usar filtros complexos por enquanto para evitar erros da API
     // if (status) params.append('order.status', status);
 
-    // Buscar todos os pedidos para calcular métricas corretas
-    const allOrdersParams = new URLSearchParams({
-      limit: '200', // Buscar mais pedidos para métricas mais precisas
-      offset: '0'
-    });
-
-    const allOrdersResp = await fetchMLOrders(accessToken, allOrdersParams, userId);
-    const allOrders = (allOrdersResp.results || []).map(transformMLOrderToOrder);
-    const globalMetrics = calculateSalesMetrics(allOrders);
-
     const mlResp = await fetchMLOrders(accessToken, params, userId);
     const transformed = (mlResp.results || []).map(transformMLOrderToOrder);
+
+    // Calcular métricas baseadas nos pedidos retornados (não fazer chamada extra)
+    const metrics = calculateSalesMetrics(transformed);
 
     const filtered = search
       ? transformed.filter(o => o.buyer.toLowerCase().includes(search.toLowerCase()) || o.items.some(it => it.title.toLowerCase().includes(search.toLowerCase())))
@@ -166,7 +159,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         orders: filtered,
-        metrics: globalMetrics,
+        metrics: metrics,
         pagination: {
           total: mlResp.paging?.total ?? transformed.length,
           offset: mlResp.paging?.offset ?? offset,
