@@ -3,7 +3,9 @@
  * 
  * Real-time activity feed showing recent events and actions
  * Supports different activity types with contextual icons
- */
+export default function ActivityFeed({ className, maxItems = 10, realData }: ActivityFeedProps) {
+  // Generate real activities from metrics if available
+  const activities = realData ? generateRealActivities(realData, maxItems) : mockActivities;*/
 
 'use client';
 
@@ -35,62 +37,91 @@ interface ActivityItem {
 interface ActivityFeedProps {
   className?: string;
   maxItems?: number;
+  // Real data from dashboard metrics
+  realData?: {
+    orders: {
+      total: number;
+      byStatus: Record<string, number>;
+      totalRevenue: number;
+    };
+    products: {
+      total: number;
+      active: number;
+      paused: number;
+      closed: number;
+    };
+    alerts: Array<{
+      id: string;
+      type: string;
+      severity: string;
+      title: string;
+      message: string;
+      timestamp: Date;
+    }>;
+  };
 }
 
-// Mock activity data
-const mockActivities: ActivityItem[] = [
-  {
-    id: '1',
-    type: 'sale',
-    title: 'Nova venda realizada',
-    description: 'iPhone 15 Pro Max vendido para João Silva',
-    timestamp: '2025-09-17T14:30:00Z',
-    status: 'success',
-    metadata: { amount: 7899.99, productId: 'MLB123456789' }
-  },
-  {
-    id: '2',
-    type: 'question',
-    title: 'Nova pergunta recebida',
-    description: 'Cliente perguntou sobre prazo de entrega',
-    timestamp: '2025-09-17T14:15:00Z',
-    status: 'info'
-  },
-  {
-    id: '3',
-    type: 'payment',
-    title: 'Pagamento aprovado',
-    description: 'Pagamento de R$ 6.299,99 aprovado via PIX',
-    timestamp: '2025-09-17T13:45:00Z',
-    status: 'success',
-    metadata: { amount: 6299.99 }
-  },
-  {
-    id: '4',
-    type: 'issue',
-    title: 'Problema no estoque',
-    description: 'Samsung Galaxy S24 Ultra sem estoque',
-    timestamp: '2025-09-17T13:20:00Z',
-    status: 'warning',
-    metadata: { productId: 'MLB987654321' }
-  },
-  {
-    id: '5',
-    type: 'product',
-    title: 'Produto pausado',
-    description: 'MacBook Pro M3 pausado pelo vendedor',
-    timestamp: '2025-09-17T12:50:00Z',
-    status: 'info'
-  },
-  {
-    id: '6',
-    type: 'user',
-    title: 'Login realizado',
-    description: 'Acesso ao painel administrativo',
-    timestamp: '2025-09-17T12:00:00Z',
-    status: 'info'
+// Generate real activities from dashboard metrics
+const generateRealActivities = (realData: NonNullable<ActivityFeedProps['realData']>, maxItems: number = 10): ActivityItem[] => {
+  const activities: ActivityItem[] = [];
+  const now = new Date();
+  
+  // Add order-related activities
+  if (realData.orders.total > 0) {
+    activities.push({
+      id: 'real-orders-summary',
+      type: 'sale',
+      title: `${realData.orders.total} pedidos processados`,
+      description: `Receita total de R$ ${realData.orders.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      timestamp: new Date(now.getTime() - 1000 * 60 * 30).toISOString(), // 30 min ago
+      status: 'success',
+      metadata: { amount: realData.orders.totalRevenue }
+    });
   }
-];
+  
+  // Add product status activities
+  if (realData.products.active > 0) {
+    activities.push({
+      id: 'real-products-active',
+      type: 'product',
+      title: `${realData.products.active} produtos ativos`,
+      description: `${realData.products.total} produtos cadastrados no total`,
+      timestamp: new Date(now.getTime() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
+      status: 'info'
+    });
+  }
+  
+  // Add alerts as activities
+  realData.alerts.slice(0, 3).forEach((alert, index) => {
+    const activityType = alert.type === 'order' ? 'question' : 
+                        alert.type === 'product' ? 'product' : 
+                        alert.type === 'reputation' ? 'user' : 'issue';
+    
+    activities.push({
+      id: `real-alert-${index}`,
+      type: activityType as ActivityItem['type'],
+      title: alert.title,
+      description: alert.message,
+      timestamp: alert.timestamp.toISOString(),
+      status: alert.severity === 'critical' ? 'error' : 
+              alert.severity === 'high' ? 'warning' : 'info'
+    });
+  });
+  
+  // Add some default activities if we don't have enough real data
+  if (activities.length < 3) {
+    activities.push({
+      id: 'real-system-status',
+      type: 'user',
+      title: 'Sistema operacional',
+      description: 'Dashboard atualizado com dados em tempo real',
+      timestamp: now.toISOString(),
+      status: 'info'
+    });
+  }
+  
+  return activities.slice(0, (maxItems || 10));
+};
 
 const getActivityIcon = (type: ActivityItem['type']) => {
   const iconClasses = 'h-5 w-5';
@@ -233,3 +264,58 @@ export default function ActivityFeed({ className, maxItems = 6 }: ActivityFeedPr
     </div>
   );
 }
+
+// Mock activity data for fallback
+const mockActivities: ActivityItem[] = [
+  {
+    id: '1',
+    type: 'sale',
+    title: 'Nova venda realizada',
+    description: 'iPhone 15 Pro Max vendido para João Silva',
+    timestamp: '2025-09-17T14:30:00Z',
+    status: 'success',
+    metadata: { amount: 7899.99, productId: 'MLB123456789' }
+  },
+  {
+    id: '2',
+    type: 'question',
+    title: 'Nova pergunta recebida',
+    description: 'Cliente perguntou sobre prazo de entrega',
+    timestamp: '2025-09-17T14:15:00Z',
+    status: 'info'
+  },
+  {
+    id: '3',
+    type: 'payment',
+    title: 'Pagamento aprovado',
+    description: 'Pagamento de R$ 6.299,99 aprovado via PIX',
+    timestamp: '2025-09-17T13:45:00Z',
+    status: 'success',
+    metadata: { amount: 6299.99 }
+  },
+  {
+    id: '4',
+    type: 'issue',
+    title: 'Problema no estoque',
+    description: 'Samsung Galaxy S24 Ultra sem estoque',
+    timestamp: '2025-09-17T13:20:00Z',
+    status: 'warning',
+    metadata: { productId: 'MLB987654321' }
+  },
+  {
+    id: '5',
+    type: 'product',
+    title: 'Produto pausado',
+    description: 'MacBook Pro M3 pausado pelo vendedor',
+    timestamp: '2025-09-17T12:50:00Z',
+    status: 'info'
+  },
+  {
+    id: '6',
+    type: 'user',
+    title: 'Login realizado',
+    description: 'Acesso ao painel administrativo',
+    timestamp: '2025-09-17T12:00:00Z',
+    status: 'info'
+  }
+];

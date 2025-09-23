@@ -298,10 +298,33 @@ export default function AdminDashboard() {
 
       {/* Charts and Analytics */}
       <div className="space-y-6">
-        <SalesChart height={350} />
+        <SalesChart 
+          height={350}
+          realData={{
+            totalRevenue: metrics.orders.totalRevenue,
+            totalOrders: metrics.orders.total,
+            averageOrderValue: metrics.orders.averageOrderValue,
+            ordersByStatus: metrics.orders.byStatus
+          }}
+        />
         <QuickActions />
-        <AnalyticsOverview />
-        <ActivityFeed maxItems={8} />
+        <AnalyticsOverview 
+          realData={{
+            totalRevenue: metrics.orders.totalRevenue,
+            totalOrders: metrics.orders.total,
+            averageOrderValue: metrics.orders.averageOrderValue,
+            conversionRate: metrics.orders.conversionRate,
+            products: metrics.products
+          }}
+        />
+        <ActivityFeed 
+          maxItems={8}
+          realData={{
+            orders: metrics.orders,
+            products: metrics.products,
+            alerts: metrics.alerts
+          }}
+        />
       </div>
 
       {/* Performance Summary */}
