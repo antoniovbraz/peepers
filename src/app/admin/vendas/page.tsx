@@ -54,6 +54,13 @@ export default function SalesPage() {
   const [orders, setOrders] = useState<TransformedOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    offset: 0,
+    limit: 20,
+    has_more: false,
+  });
   const [metrics, setMetrics] = useState<SalesMetrics>({
     total_orders: 0,
     total_revenue: 0,
@@ -76,8 +83,11 @@ export default function SalesPage() {
       // Timeout de 30 segundos para evitar requisições penduradas
       const timeoutId = setTimeout(() => abortController.abort(), 30000);
 
+      // Calcular offset baseado na página atual
+      const offset = (currentPage - 1) * 20;
+
       // Buscar dados reais da API do Mercado Livre
-      const response = await fetch(`/api/admin/sales?limit=20&search=${encodeURIComponent(searchTerm)}`, {
+      const response = await fetch(`/api/admin/sales?limit=20&offset=${offset}&search=${encodeURIComponent(searchTerm)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -95,6 +105,10 @@ export default function SalesPage() {
           // Atualizar métricas se disponíveis
           if (data.data.metrics) {
             setMetrics(data.data.metrics);
+          }
+          // Atualizar informações de paginação
+          if (data.data.pagination) {
+            setPagination(data.data.pagination);
           }
         } else {
           throw new Error(data.error || 'Dados inválidos da API');
@@ -121,11 +135,17 @@ export default function SalesPage() {
         total_products_sold: 0,
         avg_order_value: 0,
       });
+      setPagination({
+        total: 0,
+        offset: 0,
+        limit: 20,
+        has_more: false,
+      });
     } finally {
       setLoading(false);
       loadingRef.current = false;
     }
-  }, [searchTerm, notifyError]);
+  }, [searchTerm, currentPage, notifyError]);
 
   useEffect(() => {
     let isMounted = true;
@@ -159,6 +179,20 @@ export default function SalesPage() {
       currency: 'BRL',
     }).format(value);
   };
+
+  const handleNextPage = () => {
+    if (pagination.has_more) {
+      setCurrentPage(prev => prev + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
+  };
+
+  const totalPages = Math.ceil(pagination.total / pagination.limit);
 
   return (
     <div className="space-y-6">
@@ -282,6 +316,34 @@ export default function SalesPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Controles de paginação */}
+        {!loading && orders.length > 0 && (
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+            <div className="text-sm text-gray-700">
+              Mostrando {pagination.offset + 1}-{Math.min(pagination.offset + pagination.limit, pagination.total)} de {pagination.total} pedidos
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Anterior
+              </button>
+              <span className="text-sm text-gray-700">
+                Página {currentPage} de {totalPages}
+              </span>
+              <button
+                onClick={handleNextPage}
+                disabled={!pagination.has_more}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Próxima
+              </button>
+            </div>
           </div>
         )}
       </div>
