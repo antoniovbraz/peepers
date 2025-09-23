@@ -51,7 +51,7 @@ export default function AdminProductsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [pageSize] = useState(50); // 50 produtos por página para melhor performance
+  const [pageSize] = useState(200); // Aumentado para mostrar todos os produtos sem paginação
   
   // Estado para carregamento incremental
   const [hasMoreProducts, setHasMoreProducts] = useState(true);

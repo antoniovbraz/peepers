@@ -54,6 +54,12 @@ export default function ProductsClient() {
   const [filters, setFilters] = useState<IProductFilters>({});
   const [sortBy, setSortBy] = useState('relevance');
   const [viewMode, setViewMode] = useState<'sections' | 'grid'>('sections');
+  
+  // Estado para paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const pageSize = 20; // 20 produtos por página
 
   // Processar produtos em versão categorizada
   const categorizedProducts = useMemo(() => {
@@ -83,7 +89,7 @@ export default function ProductsClient() {
     return getRecommendedProducts(categorizedProducts);
   }, [categorizedProducts]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (page: number = 1) => {
     try {
       setLoading(true);
       setError(null);
@@ -94,7 +100,8 @@ export default function ProductsClient() {
       // ✅ NEW: Use unified v1 endpoint with summary format for high-quality images
       const url = new URL(API_ENDPOINTS.PRODUCTS, window.location.origin);
       url.searchParams.set('format', 'summary'); // Summary format includes pictures array
-      url.searchParams.set('limit', '100'); // Get more products
+      url.searchParams.set('limit', pageSize.toString());
+      url.searchParams.set('offset', ((page - 1) * pageSize).toString());
       url.searchParams.set('_t', Date.now().toString()); // Cache busting
       
       const response = await fetch(url.toString(), {
@@ -123,6 +130,14 @@ export default function ProductsClient() {
       // ✅ NEW: Handle v1 API response format
       const products = data.data?.products || data.products || [];
       setRawProducts(Array.isArray(products) ? products : []);
+      
+      // Atualizar informações de paginação
+      if (data.data?.total) {
+        setTotalProducts(data.data.total);
+        setTotalPages(data.data.totalPages || Math.ceil(data.data.total / pageSize));
+        setCurrentPage(data.data.page || page);
+      }
+      
       setNeedsAuth(false);
       
     } catch (err) {
@@ -262,7 +277,7 @@ export default function ProductsClient() {
           {error}
         </p>
         <button 
-          onClick={fetchProducts}
+          onClick={() => fetchProducts()}
           className="btn-primary inline-flex items-center"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -295,7 +310,7 @@ export default function ProductsClient() {
           Sincronizar Produtos
         </a>
         <button 
-          onClick={fetchProducts}
+          onClick={() => fetchProducts()}
           className="btn-secondary inline-flex items-center"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -438,6 +453,43 @@ export default function ProductsClient() {
               }}
             />
           ))}
+        </div>
+      )}
+
+      {/* Paginação simples */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center space-x-4 mt-8">
+          <button
+            onClick={() => {
+              if (currentPage > 1) {
+                setCurrentPage(currentPage - 1);
+                fetchProducts(currentPage - 1);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ← Anterior
+          </button>
+          
+          <span className="text-gray-600">
+            Página {currentPage} de {totalPages} ({totalProducts} produtos)
+          </span>
+          
+          <button
+            onClick={() => {
+              if (currentPage < totalPages) {
+                setCurrentPage(currentPage + 1);
+                fetchProducts(currentPage + 1);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Próxima →
+          </button>
         </div>
       )}
     </div>
