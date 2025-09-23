@@ -5,7 +5,7 @@
  * and cache layer following Clean Architecture principles
  */
 
-import { API_ENDPOINTS } from '@/config/routes';
+import { API_ENDPOINTS, CACHE_KEYS } from '@/config/routes';
 import { 
   IProductRepository, 
   RepositoryResult, 
@@ -374,8 +374,8 @@ export class ProductRepository implements IProductRepository {
         const url = `${baseUrl}?${params.toString()}`;
 
         // Get access token from cache
-        const tokenKey = `user_token_${sellerId}`;
-        const tokenData = await this.getCachedData<{ access_token: string }>(tokenKey);
+        const tokenKey = CACHE_KEYS.USER_TOKEN(sellerId.toString());
+        const tokenData = await this.getCachedData<{ access_token: string; expires_at: string }>(tokenKey);
 
         if (!tokenData?.access_token) {
           throw new Error('No access token available for ML API');

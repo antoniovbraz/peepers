@@ -11,6 +11,7 @@ import {
 } from '@/domain/repositories';
 import { Seller } from '@/domain/entities/Seller';
 import { getKVClient } from '@/lib/cache';
+import { CACHE_KEYS } from '@/config/routes';
 
 export class SellerRepository implements ISellerRepository {
   private readonly apiBaseUrl: string;
@@ -432,7 +433,7 @@ export class SellerRepository implements ISellerRepository {
       if (typeof window === 'undefined') {
         try {
           const kv = getKVClient();
-          const tokenKey = `user_token_${id}`;
+          const tokenKey = CACHE_KEYS.USER_TOKEN(id.toString());
           const tokenData = await kv.get(tokenKey) as { access_token: string } | null;
 
           if (tokenData?.access_token) {
@@ -533,7 +534,7 @@ export class SellerRepository implements ISellerRepository {
       if (typeof window === 'undefined') {
         try {
           const kv = getKVClient();
-          const tokenKey = `user_token_${id}`;
+          const tokenKey = CACHE_KEYS.USER_TOKEN(id.toString());
           const tokenData = await kv.get(tokenKey) as { access_token: string } | null;
 
           if (tokenData?.access_token) {

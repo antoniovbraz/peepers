@@ -13,6 +13,7 @@ import {
 import { Order } from '@/domain/entities/Order';
 import { PaginationParams } from '@/domain/entities/Product';
 import { getKVClient } from '@/lib/cache';
+import { CACHE_KEYS } from '@/config/routes';
 
 export interface OrderFilters {
   status?: Order['status'];
@@ -156,7 +157,7 @@ export class OrderRepository implements IOrderRepository {
       if (typeof window === 'undefined' && sellerId) {
         try {
           const kv = getKVClient();
-          const tokenKey = `user_token_${sellerId}`;
+          const tokenKey = CACHE_KEYS.USER_TOKEN(sellerId.toString());
           const tokenData = await kv.get(tokenKey) as { access_token: string } | null;
 
           if (tokenData?.access_token) {
