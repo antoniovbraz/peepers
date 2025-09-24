@@ -10,7 +10,7 @@
 set -e  # Exit on any error
 
 # Configuração
-VERCEL_URL="${VERCEL_URL:-peepers-xi.vercel.app}"
+VERCEL_URL="${VERCEL_URL:-peepers.vercel.app}"
 BASE_URL="https://${VERCEL_URL}"
 
 # Cores para output
