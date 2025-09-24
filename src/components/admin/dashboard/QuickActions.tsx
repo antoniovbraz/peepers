@@ -11,7 +11,6 @@ import { useState } from 'react';
 import {
   PlusIcon,
   ArrowPathIcon,
-  ChartBarIcon,
   CogIcon,
   DocumentArrowDownIcon,
   BellIcon,
@@ -80,20 +79,51 @@ export default function QuickActions({ className }: QuickActionsProps) {
       description: 'Atualizar dados ML',
       icon: ArrowPathIcon,
       action: async () => {
-        // TODO: Trigger data sync
-        console.log('Syncing data...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Call the sync API endpoint
+        const response = await fetch('/api/sync', {
+          method: 'GET',
+        });
+
+        if (!response.ok) {
+          throw new Error('Falha na sincronização');
+        }
+
+        const result = await response.json();
+        console.log('Sync result:', result);
+
+        // Show success message or handle errors
+        if (result.success) {
+          alert(`✅ Sincronização concluída!\n${result.active_products} produtos ativos sincronizados`);
+        } else {
+          throw new Error(result.error || 'Erro desconhecido');
+        }
       },
       variant: 'secondary'
     },
     {
-      id: 'view-analytics',
-      title: 'Analytics',
-      description: 'Ver métricas detalhadas',
-      icon: ChartBarIcon,
-      action: () => {
-        // TODO: Navigate to analytics
-        console.log('Navigating to analytics...');
+      id: 'sync-orders',
+      title: 'Sync Pedidos',
+      description: 'Atualizar pedidos',
+      icon: ArrowPathIcon,
+      action: async () => {
+        // Call the sync-orders API endpoint
+        const response = await fetch('/api/sync-orders', {
+          method: 'POST',
+        });
+
+        if (!response.ok) {
+          throw new Error('Falha na sincronização de pedidos');
+        }
+
+        const result = await response.json();
+        console.log('Sync orders result:', result);
+
+        // Show success message or handle errors
+        if (result.success) {
+          alert(`✅ Pedidos sincronizados!\n${result.data.synced} pedidos atualizados`);
+        } else {
+          throw new Error(result.error || 'Erro desconhecido');
+        }
       },
       variant: 'success'
     },

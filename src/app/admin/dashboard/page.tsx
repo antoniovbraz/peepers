@@ -66,6 +66,12 @@ export default function AdminDashboard() {
         });
 
         if (!response.ok) {
+          // Check if it's an authentication error (401/403)
+          if (response.status === 401 || response.status === 403) {
+            // Redirect to login page
+            window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+            return;
+          }
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
@@ -375,7 +381,6 @@ function calculateRevenueChange(orders: DashboardMetricsDTO['orders']): number {
   // Calculate revenue growth based on average order value and total orders
   // This is a simplified calculation - in a real scenario you'd compare with previous period
   const avgOrderValue = orders.averageOrderValue;
-  const totalOrders = orders.total;
   
   // Estimate growth based on current metrics
   if (avgOrderValue > 150) return 18.5;
