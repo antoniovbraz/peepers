@@ -1,19 +1,18 @@
 /**
  * Order Repository Implementation - Infrastructure Layer
- * 
- * Implements IOrderRepository interface using Mercado Livre API
- * and cache layer following Clean Architecture principles
+ *
+ * Implements IOrderRepository interface using unified ML Order Data Service
+ * following Clean Architecture principles and cache-first strategy
  */
 
-import { 
-  IOrderRepository, 
-  RepositoryResult, 
-  PaginatedResult 
+import {
+  IOrderRepository,
+  RepositoryResult,
+  PaginatedResult
 } from '@/domain/repositories';
 import { Order } from '@/domain/entities/Order';
 import { PaginationParams } from '@/domain/entities/Product';
-import { getKVClient } from '@/lib/cache';
-import { CACHE_KEYS } from '@/config/routes';
+import { mlOrderDataService } from '@/lib/ml-order-data-service';
 
 export interface OrderFilters {
   status?: Order['status'];
@@ -26,31 +25,10 @@ export interface OrderFilters {
 export class OrderRepository implements IOrderRepository {
   private readonly apiBaseUrl: string;
   private readonly isAdminContext: boolean;
-  
+
   constructor(apiBaseUrl?: string, isAdminContext: boolean = false) {
     this.apiBaseUrl = apiBaseUrl || (typeof window !== 'undefined' ? window.location.origin : 'https://peepers.vercel.app');
     this.isAdminContext = isAdminContext;
-  }
-
-  // Helper method to get cached data
-  private async getCachedData<T>(key: string): Promise<T | null> {
-    try {
-      const kv = getKVClient();
-      return (await kv.get(key)) as T | null;
-    } catch (error) {
-      console.warn(`Cache get error for key ${key}:`, error);
-      return null;
-    }
-  }
-
-  // Helper method to set cached data
-  private async setCachedData<T>(key: string, data: T, ttl: number): Promise<void> {
-    try {
-      const kv = getKVClient();
-      await kv.set(key, data, { ex: ttl });
-    } catch (error) {
-      console.warn(`Cache set error for key ${key}:`, error);
-    }
   }
 
   async findAll(
@@ -58,17 +36,19 @@ export class OrderRepository implements IOrderRepository {
     _pagination?: PaginationParams
   ): Promise<RepositoryResult<PaginatedResult<Order>>> {
     try {
-      // Retornar dados mockados por enquanto para evitar erro no dashboard
-      const mockOrders: Order[] = [];
+      console.log('🔄 OrderRepository: Buscando pedidos via MLOrderDataService...');
+
+      // Usar o serviço unificado para buscar pedidos
+      const orders = await mlOrderDataService.getOrders();
 
       return {
         success: true,
         data: {
-          items: mockOrders,
+          items: orders,
           pagination: {
-            total: 0,
+            total: orders.length,
             page: 1,
-            limit: 20,
+            limit: orders.length,
             totalPages: 1,
             hasNext: false,
             hasPrevious: false
@@ -78,6 +58,7 @@ export class OrderRepository implements IOrderRepository {
       };
 
     } catch (error) {
+      console.error('❌ OrderRepository findAll error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -88,18 +69,9 @@ export class OrderRepository implements IOrderRepository {
 
   async findById(id: string): Promise<RepositoryResult<Order>> {
     try {
-      const cacheKey = `order_${id}`;
-      const cached = await this.getCachedData<Order>(cacheKey);
-      
-      if (cached) {
-        return {
-          success: true,
-          data: cached,
-          timestamp: new Date()
-        };
-      }
+      console.log(`🔄 OrderRepository: Buscando pedido ${id}...`);
 
-      // Mock order for now
+      // Por enquanto, mock simples - TODO: implementar busca individual via MLOrderDataService
       const mockOrder = new Order(
         id,
         'paid',
@@ -127,8 +99,6 @@ export class OrderRepository implements IOrderRepository {
         669073070
       );
 
-      await this.setCachedData(cacheKey, mockOrder, 600);
-
       return {
         success: true,
         data: mockOrder,
@@ -136,6 +106,7 @@ export class OrderRepository implements IOrderRepository {
       };
 
     } catch (error) {
+      console.error('❌ OrderRepository findById error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -144,7 +115,7 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
-  async getStatistics(sellerId?: number, _dateFrom?: Date, _dateTo?: Date): Promise<RepositoryResult<{
+  async getStatistics(_sellerId?: number, _dateFrom?: Date, _dateTo?: Date): Promise<RepositoryResult<{
     total: number;
     byStatus: Record<Order['status'], number>;
     totalRevenue: number;
@@ -153,93 +124,10 @@ export class OrderRepository implements IOrderRepository {
     conversionRate: number;
   }>> {
     try {
-      // Try to fetch real data from ML API
-      if (typeof window === 'undefined' && sellerId) {
-        try {
-          const kv = getKVClient();
-          const tokenKey = CACHE_KEYS.USER_TOKEN(sellerId.toString());
-          const tokenData = await kv.get(tokenKey) as { access_token: string } | null;
+      console.log('🔄 OrderRepository: Calculando estatísticas via MLOrderDataService...');
 
-          if (tokenData?.access_token) {
-            console.log('🔄 Buscando estatísticas reais de pedidos do ML para vendedor:', sellerId);
-
-            // Fetch orders from ML API
-            const response = await fetch(`https://api.mercadolibre.com/orders/search?seller=${sellerId}&limit=200`, {
-              headers: {
-                'Authorization': `Bearer ${tokenData.access_token}`,
-                'Content-Type': 'application/json'
-              }
-            });
-
-            if (response.ok) {
-              const ordersData = await response.json();
-              const orders = ordersData.results || [];
-
-              const byStatus: Record<Order['status'], number> = {
-                confirmed: orders.filter((o: Record<string, unknown>) => (o.status as string) === 'confirmed').length,
-                payment_required: orders.filter((o: Record<string, unknown>) => (o.status as string) === 'payment_required').length,
-                payment_in_process: orders.filter((o: Record<string, unknown>) => (o.status as string) === 'payment_in_process').length,
-                paid: orders.filter((o: Record<string, unknown>) => (o.status as string) === 'paid').length,
-                shipped: orders.filter((o: Record<string, unknown>) => (o.status as string) === 'shipped').length,
-                delivered: orders.filter((o: Record<string, unknown>) => (o.status as string) === 'delivered').length,
-                cancelled: orders.filter((o: Record<string, unknown>) => (o.status as string) === 'cancelled').length
-              };
-
-              const completedOrders = orders.filter((o: Record<string, unknown>) => ['paid', 'shipped', 'delivered'].includes(o.status as string));
-              const totalRevenue = completedOrders.reduce((sum: number, o: Record<string, unknown>) => sum + ((o.total_amount as number) || 0), 0);
-
-              const realStats = {
-                total: orders.length,
-                byStatus,
-                totalRevenue,
-                totalProfit: totalRevenue * 0.1, // Mock 10% profit margin
-                averageOrderValue: completedOrders.length > 0 ? totalRevenue / completedOrders.length : 0,
-                conversionRate: 0.15 // Mock conversion rate
-              };
-
-              console.log('✅ Estatísticas reais de pedidos obtidas:', realStats);
-              return {
-                success: true,
-                data: realStats,
-                timestamp: new Date()
-              };
-            }
-          }
-        } catch (error) {
-          console.warn('❌ Falha ao buscar estatísticas reais de pedidos:', error);
-        }
-      }
-
-      // Fallback: Get all orders to calculate statistics (using existing mock data)
-      const result = await this.findAll();
-      
-      if (!result.success || !result.data) {
-        throw new Error(result.error || 'Failed to fetch orders for statistics');
-      }
-
-      const orders = result.data.items;
-      
-      const byStatus: Record<Order['status'], number> = {
-        confirmed: orders.filter(o => o.status === 'confirmed').length,
-        payment_required: orders.filter(o => o.status === 'payment_required').length,
-        payment_in_process: orders.filter(o => o.status === 'payment_in_process').length,
-        paid: orders.filter(o => o.status === 'paid').length,
-        shipped: orders.filter(o => o.status === 'shipped').length,
-        delivered: orders.filter(o => o.status === 'delivered').length,
-        cancelled: orders.filter(o => o.status === 'cancelled').length
-      };
-
-      const stats = {
-        total: orders.length,
-        byStatus,
-        totalRevenue: orders.reduce((sum, o) => sum + o.total_amount, 0),
-        totalProfit: orders.reduce((sum, o) => sum + (o.total_amount * 0.1), 0), // Mock 10% profit margin
-        averageOrderValue: orders.length > 0 ? orders.reduce((sum, o) => sum + o.total_amount, 0) / orders.length : 0,
-        conversionRate: 0.15 // Mock 15% conversion rate
-      };
-
-      // Temporarily disable cache to avoid Redis connection issues
-      // await this.setCachedData('order_statistics', stats, 300);
+      // Usar o serviço unificado para calcular estatísticas
+      const stats = await mlOrderDataService.getOrderStats();
 
       return {
         success: true,
@@ -248,7 +136,7 @@ export class OrderRepository implements IOrderRepository {
       };
 
     } catch (error) {
-      console.error('OrderRepository getStatistics error:', error);
+      console.error('❌ OrderRepository getStatistics error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
