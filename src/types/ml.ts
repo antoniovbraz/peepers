@@ -387,6 +387,31 @@ export interface CachedQuestions {
   cache_ttl: number;
 }
 
+export interface CachedOrder {
+  id: string;
+  status: 'confirmed' | 'payment_required' | 'payment_in_process' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+  status_detail?: string;
+  date_created: string;
+  date_closed?: string;
+  last_updated: string;
+  currency_id: string;
+  total_amount: number;
+  total_amount_with_shipping: number;
+  paid_amount: number;
+  expiration_date?: string;
+  order_items: any[]; // Simplified for caching
+  buyer: any; // Simplified for caching
+  seller_id: number;
+  payments: any[]; // Simplified for caching
+  feedback?: any;
+  shipping?: any;
+  coupon?: any;
+  context?: any;
+  tags: string[];
+  cached_at: string;
+  cache_ttl: number;
+}
+
 export interface TokenRotationHistoryEntry {
   rotated_at: string;
   old_token_hash: string;

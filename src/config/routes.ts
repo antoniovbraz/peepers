@@ -134,7 +134,9 @@ export const CACHE_KEYS = {
   USER_TOKEN: (userId: string) => `access_token:${userId}`,
   PKCE_VERIFIER: (state: string) => `pkce_verifier:${state}`,
   SYNC_LOCK: 'sync:lock',
-  LAST_SYNC: 'sync:last'
+  LAST_SYNC: 'sync:last',
+  ORDERS_ALL: 'orders:all',
+  ORDER: 'order:'
 } as const;
 
 // ==================== VALIDAÇÃO ====================

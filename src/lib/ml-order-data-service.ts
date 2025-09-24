@@ -1,6 +1,39 @@
 import { cache } from '@/lib/cache';
 import { createMercadoLivreAPI } from '@/lib/ml-api';
-import type { Order } from '@/domain/entities/Order';
+import { Order } from '@/domain/entities/Order';
+
+interface MLOrderData {
+  id: string | number;
+  status: string;
+  status_detail?: string;
+  date_created: string;
+  date_closed?: string;
+  date_last_updated?: string;
+  last_updated?: string;
+  currency_id?: string;
+  total_amount: number;
+  total_amount_with_shipping?: number;
+  paid_amount: number;
+  expiration_date?: string;
+  order_items?: unknown[];
+  buyer?: {
+    id: number;
+    nickname: string;
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+    phone?: unknown;
+  };
+  seller?: {
+    id: number;
+  };
+  payments?: unknown[];
+  feedback?: unknown;
+  shipping?: unknown;
+  coupon?: unknown;
+  context?: unknown;
+  tags?: string[];
+}
 
 interface OrderStats {
   total: number;
@@ -37,9 +70,15 @@ export class MLOrderDataService {
   async getOrders(): Promise<Order[]> {
     console.log('🔄 MLOrderDataService: Buscando pedidos do cache...');
 
-    // Por enquanto, retorna array vazio até implementarmos cache de pedidos
-    // TODO: Implementar cache de pedidos
-    console.log('⚠️ MLOrderDataService: Cache de pedidos ainda não implementado, retornando vazio');
+    // Buscar do cache primeiro
+    const cachedOrders = await cache.getAllOrders();
+
+    if (cachedOrders && cachedOrders.length > 0) {
+      console.log(`✅ MLOrderDataService: ${cachedOrders.length} pedidos encontrados no cache`);
+      return cachedOrders;
+    }
+
+    console.log('⚠️ MLOrderDataService: Cache vazio, retornando array vazio');
     return [];
   }
 
@@ -131,9 +170,15 @@ export class MLOrderDataService {
       if (mlOrders.length > 0) {
         console.log('💾 MLOrderDataService: Salvando pedidos no cache...');
 
-        // TODO: Implementar conversão e cache de pedidos
-        // Por enquanto, apenas log
-        console.log('✅ MLOrderDataService: Pedidos salvos no cache (simulado)');
+        // Converter dados da API ML para entidades Order
+        const orders: Order[] = mlOrders.map((mlOrder: Record<string, unknown>) => {
+          return this.convertMLOrderToEntity(mlOrder);
+        });
+
+        // Salvar no cache
+        await cache.setAllOrders(orders);
+
+        console.log('✅ MLOrderDataService: Pedidos salvos no cache');
       }
 
       return { synced: mlOrders.length, errors };
@@ -160,8 +205,37 @@ export class MLOrderDataService {
    */
   async clearCache(): Promise<void> {
     console.log('🗑️ MLOrderDataService: Limpando cache de pedidos...');
-    // TODO: Implementar limpeza do cache de pedidos
-    console.log('✅ MLOrderDataService: Cache limpo (simulado)');
+    await cache.invalidateOrdersCache();
+    console.log('✅ MLOrderDataService: Cache limpo');
+  }
+
+  /**
+   * Converte dados da API ML para entidade Order
+   */
+  private convertMLOrderToEntity(mlOrder: Record<string, unknown>): Order {
+    const order = mlOrder as unknown as MLOrderData;
+    return new Order(
+      String(order.id),
+      (order.status as Order['status']) || 'confirmed',
+      order.status_detail,
+      new Date(order.date_created),
+      order.date_closed ? new Date(order.date_closed) : undefined,
+      new Date(order.date_last_updated || order.last_updated || order.date_created),
+      order.currency_id || 'BRL',
+      order.total_amount || 0,
+      order.total_amount_with_shipping || order.total_amount || 0,
+      order.paid_amount || 0,
+      order.expiration_date ? new Date(order.expiration_date) : undefined,
+      [], // order_items - será implementado depois
+      null, // buyer - será implementado depois
+      order.seller?.id || 0,
+      [], // payments - será implementado depois
+      undefined, // feedback
+      undefined, // shipping
+      undefined, // coupon
+      undefined, // context
+      order.tags || []
+    );
   }
 }
 

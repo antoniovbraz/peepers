@@ -11,7 +11,9 @@ import {
   CachedQuestions,
   CachedUser,
   CachedCategory,
+  CachedOrder,
 } from '@/types/ml';
+import { Order } from '@/domain/entities/Order';
 import { logger } from './logger';
 import { CACHE_KEYS as GLOBAL_CACHE_KEYS } from '@/config/routes';
 
@@ -85,6 +87,7 @@ const CACHE_TTL = {
   QUESTIONS: 3600, // 1 hour
   USER_DATA: 7200, // 2 hours (increased from 30 minutes)
   CATEGORIES: 86400, // 24 hours
+  ORDERS: 7200, // 2 hours (orders change frequently)
 } as const;
 
 // Cache key prefixes - use global configuration
@@ -497,11 +500,177 @@ class CacheManager {
       await kv.set(testKey, testValue, { ex: 10 });
       const retrieved = await kv.get(testKey);
       await kv.del(testKey);
-      
+
       return retrieved === testValue;
     } catch (error) {
       logger.error({ err: error }, 'Cache health check failed');
       return false;
+    }
+  }
+
+  // ==================== ORDER CACHE METHODS ====================
+
+  /**
+   * Get all cached orders
+   */
+  async getAllOrders(): Promise<Order[] | null> {
+    const kv = getKVClient();
+    try {
+      const cached = await kv.get(GLOBAL_CACHE_KEYS.ORDERS_ALL) as CachedOrder[] | null;
+
+      if (!cached) {
+        logger.info('Cache miss: no orders cached');
+        return null;
+      }
+
+      // Check if cache is expired
+      const now = new Date().toISOString();
+      const isExpired = cached.some((order: CachedOrder) =>
+        new Date(order.cached_at).getTime() + (order.cache_ttl * 1000) < new Date(now).getTime()
+      );
+
+      if (isExpired) {
+        logger.warn({ count: cached.length }, 'Cache expired, invalidating orders cache');
+        await this.invalidateOrdersCache();
+        return null;
+      }
+
+      logger.info({ count: cached.length }, 'Cache hit: returning orders from cache');
+
+      // Convert cached orders to Order entities
+      return cached.map((cachedOrder: CachedOrder) => this.toOrder(cachedOrder));
+    } catch (error) {
+      logger.error({ err: error }, 'Cache get error - falling back to null');
+      return null;
+    }
+  }
+
+  /**
+   * Set all orders in cache
+   */
+  async setAllOrders(orders: Order[]): Promise<void> {
+    const kv = getKVClient();
+    try {
+      const cachedOrders: CachedOrder[] = orders.map(order => ({
+        ...order,
+        date_created: order.date_created.toISOString(),
+        date_closed: order.date_closed?.toISOString(),
+        last_updated: order.last_updated.toISOString(),
+        expiration_date: order.expiration_date?.toISOString(),
+        cached_at: new Date().toISOString(),
+        cache_ttl: CACHE_TTL.ORDERS
+      }));
+
+      await kv.set(GLOBAL_CACHE_KEYS.ORDERS_ALL, cachedOrders, { ex: CACHE_TTL.ORDERS });
+
+      logger.info({ count: cachedOrders.length }, 'Orders cached successfully');
+    } catch (error) {
+      logger.error({ err: error }, 'Cache set error for orders');
+    }
+  }
+
+  /**
+   * Get individual cached order
+   */
+  async getOrder(orderId: string): Promise<Order | null> {
+    const kv = getKVClient();
+    try {
+      const cached = await kv.get(`${GLOBAL_CACHE_KEYS.ORDER}${orderId}`) as CachedOrder | null;
+
+      if (!cached) {
+        return null;
+      }
+
+      // Check if cache is expired
+      const now = new Date().toISOString();
+      const isExpired = new Date(cached.cached_at).getTime() + (cached.cache_ttl * 1000) < new Date(now).getTime();
+
+      if (isExpired) {
+        logger.warn({ orderId }, 'Order cache expired');
+        await this.invalidateOrder(orderId);
+        return null;
+      }
+
+      return this.toOrder(cached);
+    } catch (error) {
+      logger.error({ err: error, orderId }, 'Cache get error for order');
+      return null;
+    }
+  }
+
+  /**
+   * Set individual order in cache
+   */
+  async setOrder(order: Order): Promise<void> {
+    const kv = getKVClient();
+    try {
+      const cachedOrder: CachedOrder = {
+        ...order,
+        date_created: order.date_created.toISOString(),
+        date_closed: order.date_closed?.toISOString(),
+        last_updated: order.last_updated.toISOString(),
+        expiration_date: order.expiration_date?.toISOString(),
+        cached_at: new Date().toISOString(),
+        cache_ttl: CACHE_TTL.ORDERS
+      };
+
+      await kv.set(`${GLOBAL_CACHE_KEYS.ORDER}${order.id}`, cachedOrder, { ex: CACHE_TTL.ORDERS });
+    } catch (error) {
+      logger.error({ err: error, orderId: order.id }, 'Cache set error for order');
+    }
+  }
+
+  /**
+   * Convert cached order to Order entity
+   */
+  private toOrder(cached: CachedOrder): Order {
+    return new Order(
+      cached.id,
+      cached.status,
+      cached.status_detail,
+      new Date(cached.date_created),
+      cached.date_closed ? new Date(cached.date_closed) : undefined,
+      new Date(cached.last_updated),
+      cached.currency_id,
+      cached.total_amount,
+      cached.total_amount_with_shipping,
+      cached.paid_amount,
+      cached.expiration_date ? new Date(cached.expiration_date) : undefined,
+      cached.order_items,
+      cached.buyer,
+      cached.seller_id,
+      cached.payments,
+      cached.feedback,
+      cached.shipping,
+      cached.coupon,
+      cached.context,
+      cached.tags
+    );
+  }
+
+  /**
+   * Invalidate all orders cache
+   */
+  async invalidateOrdersCache(): Promise<void> {
+    const kv = getKVClient();
+    try {
+      await kv.del(GLOBAL_CACHE_KEYS.ORDERS_ALL);
+      logger.info('Orders cache invalidated');
+    } catch (error) {
+      logger.error({ err: error }, 'Error invalidating orders cache');
+    }
+  }
+
+  /**
+   * Invalidate individual order cache
+   */
+  async invalidateOrder(orderId: string): Promise<void> {
+    const kv = getKVClient();
+    try {
+      await kv.del(`${GLOBAL_CACHE_KEYS.ORDER}${orderId}`);
+      logger.info({ orderId }, 'Order cache invalidated');
+    } catch (error) {
+      logger.error({ err: error, orderId }, 'Error invalidating order cache');
     }
   }
 }
