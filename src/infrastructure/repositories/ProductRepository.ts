@@ -471,6 +471,55 @@ export class ProductRepository implements IProductRepository {
     averagePrice: number;
   }>> {
     try {
+      // If in admin context and server-side, try to get from cache first (same as products page)
+      if (this.isAdminContext && typeof window === 'undefined') {
+        try {
+          console.log('🔄 Admin context: trying to get product stats from cache...');
+
+          // Import here to avoid circular dependency
+          const { API_ENDPOINTS } = await import('@/config/routes');
+
+          // Fetch from cache using the same endpoint as products page
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://peepers.vercel.app';
+          const response = await fetch(`${baseUrl}${API_ENDPOINTS.PRODUCTS}?limit=1000&format=summary`, {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            // Include credentials for admin context
+            credentials: 'include',
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data?.items) {
+              const products = data.data.items;
+
+              const stats = {
+                total: data.data.total || products.length,
+                active: products.filter((p: MLProductRaw) => p.status === 'active').length,
+                paused: products.filter((p: MLProductRaw) => p.status === 'paused').length,
+                closed: products.filter((p: MLProductRaw) => p.status === 'closed').length,
+                outOfStock: products.filter((p: MLProductRaw) => (p.available_quantity || 0) === 0).length,
+                lowStock: products.filter((p: MLProductRaw) => (p.available_quantity || 0) < 5 && (p.available_quantity || 0) > 0).length,
+                totalValue: products.reduce((sum: number, p: MLProductRaw) => sum + ((p.price || 0) * (p.available_quantity || 0)), 0),
+                averagePrice: products.length > 0 ? products.reduce((sum: number, p: MLProductRaw) => sum + (p.price || 0), 0) / products.length : 0
+              };
+
+              console.log('✅ Got product stats from cache:', stats);
+              return {
+                success: true,
+                data: stats,
+                timestamp: new Date()
+              };
+            }
+          }
+
+          console.log('❌ Failed to fetch product stats from cache, falling back to ML API...');
+        } catch (cacheError) {
+          console.warn('❌ Cache fetch failed:', cacheError);
+        }
+      }
+
       // If in admin context and server-side, try to fetch real ML data first
       if (this.isAdminContext && typeof window === 'undefined' && sellerId) {
         try {
