@@ -15,7 +15,21 @@ interface MLOrderData {
   total_amount_with_shipping?: number;
   paid_amount: number;
   expiration_date?: string;
-  order_items?: unknown[];
+  order_items?: Array<{
+    item: {
+      id: string;
+      title: string;
+      category_id: string;
+      variation_id?: string;
+      seller_custom_field?: string;
+      condition?: string;
+    };
+    quantity: number;
+    unit_price: number;
+    full_unit_price: number;
+    currency_id: string;
+    sale_fee?: number;
+  }>;
   buyer?: {
     id: number;
     nickname: string;
@@ -214,6 +228,38 @@ export class MLOrderDataService {
    */
   private convertMLOrderToEntity(mlOrder: Record<string, unknown>): Order {
     const order = mlOrder as unknown as MLOrderData;
+
+    // Mapear order_items da API ML para nossa estrutura
+    const orderItems = order.order_items && order.order_items.length > 0
+      ? order.order_items.map((item: any) => ({
+          item: {
+            id: item.item?.id || '',
+            title: item.item?.title || '',
+            category_id: item.item?.category_id || '',
+            variation_id: item.item?.variation_id,
+            seller_custom_field: item.item?.seller_custom_field,
+            variation_attributes: [] // Será implementado se necessário
+          },
+          quantity: item.quantity || 1,
+          unit_price: item.unit_price || 0,
+          currency_id: item.currency_id || 'BRL',
+          full_unit_price: item.full_unit_price || item.unit_price || 0,
+          seller_sku: item.item?.seller_custom_field
+        }))
+      : [{
+          // Item padrão se não houver dados da API
+          item: {
+            id: 'unknown',
+            title: 'Produto',
+            category_id: 'unknown',
+            variation_attributes: []
+          },
+          quantity: 1,
+          unit_price: order.total_amount || 0,
+          currency_id: order.currency_id || 'BRL',
+          full_unit_price: order.total_amount || 0
+        }];
+
     return new Order(
       String(order.id),
       (order.status as Order['status']) || 'confirmed',
@@ -226,8 +272,15 @@ export class MLOrderDataService {
       order.total_amount_with_shipping || order.total_amount || 0,
       order.paid_amount || 0,
       order.expiration_date ? new Date(order.expiration_date) : undefined,
-      [], // order_items - será implementado depois
-      null, // buyer - será implementado depois
+      orderItems, // Agora passamos os itens mapeados
+      order.buyer ? {
+        id: order.buyer.id,
+        nickname: order.buyer.nickname,
+        email: order.buyer.email,
+        first_name: order.buyer.first_name,
+        last_name: order.buyer.last_name,
+        phone: order.buyer.phone as { area_code: string; number: string; } | undefined
+      } : null,
       order.seller?.id || 0,
       [], // payments - será implementado depois
       undefined, // feedback
