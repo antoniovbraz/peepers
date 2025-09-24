@@ -13,6 +13,8 @@ import {
 import { Product } from '@/domain/entities/Product';
 import { Order } from '@/domain/entities/Order';
 import { DashboardMetricsDTO, DashboardFiltersDTO } from '../dtos/DashboardMetricsDTO';
+import { API_ENDPOINTS } from '@/config/routes';
+import type { MLProduct } from '@/types/ml';
 
 type ProductStatsType = {
   total: number;
@@ -57,6 +59,53 @@ export class GetDashboardMetricsUseCase {
     private readonly sellerRepository: ISellerRepository
   ) {}
 
+  /**
+   * Fetch product statistics from cache for admin context
+   * This uses the same data source as the products page (/api/products-public)
+   */
+  private async getProductStatsFromCache(): Promise<ProductStatsType | null> {
+    try {
+      // Only works server-side in admin context
+      if (typeof window !== 'undefined') {
+        return null;
+      }
+
+      // Fetch from cache using the same endpoint as products page
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://peepers.vercel.app';
+      const response = await fetch(`${baseUrl}${API_ENDPOINTS.PRODUCTS}?limit=1000&format=summary`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Include credentials for admin context
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data?.items) {
+          const products = data.data.items;
+
+          return {
+            total: data.data.total || products.length,
+            active: products.filter((p: MLProduct) => p.status === 'active').length,
+            paused: products.filter((p: MLProduct) => p.status === 'paused').length,
+            closed: products.filter((p: MLProduct) => p.status === 'closed').length,
+            outOfStock: products.filter((p: MLProduct) => (p.available_quantity || 0) === 0).length,
+            lowStock: products.filter((p: MLProduct) => (p.available_quantity || 0) < 5 && (p.available_quantity || 0) > 0).length,
+            totalValue: products.reduce((sum: number, p: MLProduct) => sum + ((p.price || 0) * (p.available_quantity || 0)), 0),
+            averagePrice: products.length > 0 ? products.reduce((sum: number, p: MLProduct) => sum + (p.price || 0), 0) / products.length : 0
+          };
+        }
+      }
+
+      console.warn('❌ Failed to fetch product stats from cache');
+      return null;
+    } catch (error) {
+      console.error('❌ Error fetching product stats from cache:', error);
+      return null;
+    }
+  }
+
   async execute(filters?: DashboardFiltersDTO, isAdmin: boolean = false): Promise<{
     success: boolean;
     data?: DashboardMetricsDTO;
@@ -66,15 +115,36 @@ export class GetDashboardMetricsUseCase {
       const sellerId = filters?.sellerId || 123456; // Default seller for demo
       
       // Fetch all data in parallel for better performance
+      let productStatsResult;
+
+      if (isAdmin) {
+        // In admin context, try to get product stats from cache first (same source as products page)
+        console.log('🔄 Admin context: trying to get product stats from cache...');
+        const cachedStats = await this.getProductStatsFromCache();
+        if (cachedStats) {
+          productStatsResult = {
+            success: true,
+            data: cachedStats,
+            timestamp: new Date()
+          };
+          console.log('✅ Got product stats from cache:', cachedStats);
+        } else {
+          console.log('❌ Cache miss, falling back to repository...');
+          productStatsResult = await this.productRepository.getStatistics(sellerId);
+        }
+      } else {
+        // Public context uses repository as before
+        productStatsResult = await this.productRepository.getStatistics(sellerId);
+      }
+
+      // Fetch remaining data in parallel
       const [
-        productStatsResult,
         orderStatsResult,
         sellerReputationResult,
         sellerPerformanceResult,
         productsNeedingAttentionResult,
         ordersNeedingAttentionResult
       ] = await Promise.all([
-        this.productRepository.getStatistics(sellerId),
         this.orderRepository.getStatistics(sellerId, filters?.dateFrom, filters?.dateTo),
         this.sellerRepository.getReputationMetrics(sellerId),
         this.sellerRepository.getPerformanceMetrics(sellerId, this.mapPeriod(filters?.period || 'month')),

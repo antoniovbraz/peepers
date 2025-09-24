@@ -425,6 +425,13 @@ export class ProductRepository implements IProductRepository {
           scrollId = data.scroll_id || null;
           hasMore = Boolean(scrollId) && data.results.length === 100;
 
+          console.log('🔄 Scroll check:', {
+            scrollId: scrollId ? 'present' : 'null',
+            hasMore,
+            resultsCount: data.results.length,
+            totalFetched: allProducts.length
+          });
+
           // Safety limit to prevent infinite loops
           if (allProducts.length > 50000) {
             console.warn('⚠️ Safety limit reached - stopping product fetch at 50,000 products');
